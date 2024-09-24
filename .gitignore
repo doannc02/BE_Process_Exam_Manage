@@ -1,0 +1,75 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+/.vs/ExamProcessManage/DesignTimeBuild/.dtbcache.v2
+/.vs
+/ExamProcessManage/.vs
+/ExamProcessManage/bin/Debug/net6.0
+/ExamProcessManage/obj
+/ExamProcessManage/appsettings.json
+
+# Build Folders / Files
+bin/
+obj/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# ASP.NET Scaffolding
+.scaffolding
+
+# Configuration files
+appsettings.json
+appsettings.*.json
+
+# Entity Framework Migrations
+Migrations/
+
+# Package Management
+*.nupkg
+*.snupkg
+*.lock.json
+
+# IDE
+.vscode/
+.idea/
+.vscode/
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.cache
+
+# Logs
+logs/
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+
+# Node.js modules and lock files (if you have any frontend dependencies)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Database files
+*.mdf
+*.ldf
+*.db
+
+# Exclude MySQL backup files
+*.sql
+*.bak
+
