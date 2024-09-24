@@ -1,7 +1,7 @@
-﻿
-using ExamProcessManage.Data;
+﻿using ExamProcessManage.Data;
 using ExamProcessManage.Dbconnection;
 using ExamProcessManage.Interfaces;
+using ExamProcessManage.Repository;
 using ExamProcessManage.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -28,8 +27,6 @@ builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =
     options.UseMySql(databaseConnection.GetConnectionString(), ServerVersion.AutoDetect(databaseConnection.GetConnectionString()));
 });
 
-
-
 //Add JWT Authentication Middleware - This code will intercept HTTP request and validate the JWT.
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(
     opt =>
@@ -47,9 +44,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 
 // Add services to the container.
 builder.Services.AddScoped<IUserService, AccountService>();
-builder.Services.AddScoped< ITokenService, TokenService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IAcademicYearRepository, AcademicYearRepository>();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpContextAccessor();
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddControllers(options =>
@@ -67,6 +66,7 @@ builder.Services.AddControllers(options =>
     options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull; // Bỏ qua các giá trị null
     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles; // Bỏ qua các vòng lặp tham chiếu
 });
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

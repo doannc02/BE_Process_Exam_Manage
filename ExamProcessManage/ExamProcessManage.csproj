@@ -39,7 +39,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Reposioty\" />
     <Folder Include="wwwroot\images\" />
     <Folder Include="wwwroot\files\" />
   </ItemGroup>

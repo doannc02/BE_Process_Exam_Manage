@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace ExamProcessManage.Models
+﻿namespace ExamProcessManage.Models
 {
     public partial class AcademicYear
     {

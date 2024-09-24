@@ -1,7 +1,9 @@
 ﻿using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
+using ExamProcessManage.Repository;
 using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace ExamProcessManage.Controllers
 {
@@ -9,9 +11,9 @@ namespace ExamProcessManage.Controllers
     [ApiController]
     public class UserController : ControllerBase
     {
-        private readonly IUserRepository _userRepository;
+        private readonly UserRepository _userRepository;
         private readonly CreateCommonResponse _createCommonResponse;
-        public UserController(IUserRepository userRepository)
+        public UserController(UserRepository userRepository)
         {
             _userRepository = userRepository;
             _createCommonResponse = new CreateCommonResponse();
@@ -39,7 +41,7 @@ namespace ExamProcessManage.Controllers
         //[Authorize(Roles = "Admin")]
         //[AllowAnonymous]
         [Route("/api/v1/user/detail")]
-        public async Task<IActionResult> GetUserDetail([FromQuery] int user_id)
+        public async Task<IActionResult> GetUserDetail([FromQuery][Required] int user_id)
         {
             var baseResUser = await _userRepository.GetDetailUserAsync(user_id);
             if (baseResUser != null)
