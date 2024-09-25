@@ -1,5 +1,4 @@
 ﻿using ExamProcessManage.Helpers;
-using Microsoft.AspNetCore.Http;
 using System.Diagnostics;
 
 namespace ExamProcessManage.Utils
@@ -11,7 +10,7 @@ namespace ExamProcessManage.Utils
             return new CommonResponse<T>
             {
                 message = message,
-                traceId = Activity.Current?.Id ?? httpContext.TraceIdentifier, 
+                traceId = Activity.Current?.Id ?? httpContext.TraceIdentifier,
                 data = data
             };
         }

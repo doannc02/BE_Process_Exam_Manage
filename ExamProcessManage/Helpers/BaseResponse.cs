@@ -9,6 +9,7 @@
      public class DetailResponse {
         public int? id { get; set; }
      }
+
     public class BaseResponseDetail : BaseResponse<DetailResponse>
     {
     }

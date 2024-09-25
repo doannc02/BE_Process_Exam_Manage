@@ -1,9 +1,8 @@
-﻿namespace ExamProcessManage.ResponseModels
+﻿namespace ExamProcessManage.RequestModels
 {
-    public class AcademicYearResponse
+    public class AcademicYearRequest
     {
         public int year_id { get; set; }
-        public string year_name { get; set; }
         public int start_year { get; set; }
         public int end_year { get; set; }
     }
