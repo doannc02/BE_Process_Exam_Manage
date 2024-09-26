@@ -2,6 +2,7 @@
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.ResponseModels;
 using ExamProcessManage.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
@@ -57,6 +58,7 @@ namespace ExamProcessManage.Controllers
 
         // POST an academic_year
         [HttpPost]
+        [Authorize(Roles = "Admin, Writer")]
         public async Task<IActionResult> PostAcdemicYearAsync([FromBody] AcademicYearResponse year)
         {
             // Matches years between 2000 and 2099
@@ -85,6 +87,7 @@ namespace ExamProcessManage.Controllers
 
         // PUT api/<AcademicYearController>/5
         [HttpPut]
+        [Authorize(Roles = "Admin, Writer")]
         public async Task<IActionResult> PutAcademicYearAsync([FromBody] AcademicYearResponse year)
         {
             // Matches years between 2000 and 2099
@@ -119,6 +122,7 @@ namespace ExamProcessManage.Controllers
 
         // DELETE api/<AcademicYearController>/5
         [HttpDelete]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteAcademicYearAsync([FromQuery][Required] int id)
         {
             var yearDel = await _repository.DeleteAcademicYearAsync(id);

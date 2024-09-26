@@ -8,7 +8,7 @@ namespace ExamProcessManage.Services
     public class AccountService : IUserService
     {
         private readonly ITokenService _jwtUtils;
-         private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext _context;
 
         public AccountService(ITokenService jwtUtils, ApplicationDbContext context)
         {
@@ -20,8 +20,8 @@ namespace ExamProcessManage.Services
         public AuthenticateResponse Authenticate(LoginDto model)
         {
             var user = _context.Users.SingleOrDefault(x => x.Email == model.UserName);
-          if (user == null)
-        {
+            if (user == null)
+            {
                 // throw new ApplicationException("Username or password is incorrect");
                 return null;
             }
@@ -39,7 +39,7 @@ namespace ExamProcessManage.Services
                 };
             }
 
-           //  var token = _jwtUtils.GenerateToken(user);
+            //  var token = _jwtUtils.GenerateToken(user);
             var token = _jwtUtils.CreateToken(user);
 
             return new AuthenticateResponse
@@ -52,7 +52,5 @@ namespace ExamProcessManage.Services
                 jti = Guid.NewGuid().ToString()
             };
         }
-
-
     }
 }
