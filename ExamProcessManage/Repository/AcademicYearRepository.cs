@@ -19,14 +19,14 @@ namespace ExamProcessManage.Repository
         public async Task<PageResponse<AcademicYearResponse>> GetListAcademicYearAsync(QueryObject queryObject)
         {
             var yearResponses = new List<AcademicYearResponse>();
-            var academicYearsQuery = _context.AcademicYears.AsQueryable();
-            var totalCount = await academicYearsQuery.CountAsync();
-            var academicYears = await academicYearsQuery
+            var queryAcademicYears = _context.AcademicYears.AsQueryable();
+            var totalCount = await queryAcademicYears.CountAsync();
+            var listAcademicYears = await queryAcademicYears
                 .Skip((queryObject.page.Value - 1) * queryObject.size)
                 .Take(queryObject.size)
                 .ToListAsync();
 
-            foreach (var item in academicYears)
+            foreach (var item in listAcademicYears)
             {
                 var academic = new AcademicYearResponse()
                 {
@@ -39,25 +39,26 @@ namespace ExamProcessManage.Repository
                 yearResponses.Add(academic);
             }
 
-            var pageResponse = new PageResponse<AcademicYearResponse>()
+            return new PageResponse<AcademicYearResponse>()
             {
+                content = yearResponses,
                 totalElements = totalCount,
                 totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
                 size = queryObject.size,
-                content = yearResponses
+                page = queryObject.page.Value,
+                numberOfElements = yearResponses.Count
             };
-
-            return pageResponse;
         }
 
         public async Task<BaseResponse<AcademicYearResponse>> GetDetailAcademicYearAsync(int id)
         {
             var academicYear = await _context.AcademicYears.FindAsync(id);
+
             if (academicYear != null)
             {
                 return new BaseResponse<AcademicYearResponse>()
                 {
-                    message = "Success",
+                    message = "success",
                     data = new AcademicYearResponse
                     {
                         year_id = academicYear.AcademicYearId,
@@ -71,7 +72,7 @@ namespace ExamProcessManage.Repository
             {
                 return new BaseResponse<AcademicYearResponse>
                 {
-                    message = $"academic_year with id = {id} could not be found"
+                    message = $"academic_year with id = '{id}' could not be found"
                 };
             }
         }
@@ -85,7 +86,7 @@ namespace ExamProcessManage.Repository
                 year.end_year = year.end_year == 0 ? year.start_year + 1 : year.end_year;
                 year.year_name = $"{year.start_year}-{year.end_year}";
 
-                bool existYear = await _context.AcademicYears.AnyAsync(a => a.AcademicYearId == year.year_id || a.YearName == year.year_name);
+                var existYear = await _context.AcademicYears.AnyAsync(a => a.AcademicYearId == year.year_id || a.YearName == year.year_name);
 
                 if (!existYear)
                 {
@@ -105,7 +106,7 @@ namespace ExamProcessManage.Repository
                 }
                 else
                 {
-                    response.message = $"conflict data with id = {year.year_id} or name = {year.year_name}";
+                    response.message = $"conflict data with id = '{year.year_id}' or name = '{year.year_name}'";
                 }
 
             }
@@ -131,8 +132,7 @@ namespace ExamProcessManage.Repository
                 {
                     if (existYear.YearName != year.year_name)
                     {
-                        bool yearByNameExists = await _context.AcademicYears
-                            .AnyAsync(y => y.YearName == year.year_name && y.AcademicYearId != year.year_id);
+                        var yearByNameExists = await _context.AcademicYears.AnyAsync(y => y.YearName == year.year_name);
 
                         if (!yearByNameExists)
                         {
@@ -157,7 +157,7 @@ namespace ExamProcessManage.Repository
                 }
                 else
                 {
-                    response.message = $"no academic_year found with ID = {year.year_id}";
+                    response.message = $"no academic_year found with ID = '{year.year_id}'";
                 }
             }
             catch (Exception ex)
@@ -190,7 +190,7 @@ namespace ExamProcessManage.Repository
             }
             else
             {
-                response.message = $"no academic_year found with ID = {yearId}";
+                response.message = $"no academic_year found with ID = '{yearId}'";
             }
 
             return response;

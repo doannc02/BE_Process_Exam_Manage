@@ -23,8 +23,7 @@ namespace ExamProcessManage.Controllers
         }
 
         // GET: list of academic_year
-        [HttpGet]
-        [Route("list")]
+        [HttpGet("list")]
         public async Task<IActionResult> GetListAcademicYearAsync([FromQuery] QueryObject queryObject)
         {
             var academics = await _repository.GetListAcademicYearAsync(queryObject);
@@ -105,7 +104,7 @@ namespace ExamProcessManage.Controllers
                     var response = _createCommon.CreateResponse(yearUpdate.message, HttpContext, yearUpdate.data);
                     return Ok(response);
                 }
-                else if (yearUpdate.message.Contains("nothing"))
+                else if (yearUpdate.message.Contains("no changes"))
                 {
                     return new CustomJsonResult(418, HttpContext, yearUpdate.message);
                 }

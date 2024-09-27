@@ -2,7 +2,6 @@
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-
 using Microsoft.AspNetCore.Mvc;
 
 namespace ExamProcessManage.Controllers
