@@ -2,10 +2,7 @@
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Data;
 
 namespace ExamProcessManage.Controllers
 {
@@ -16,9 +13,9 @@ namespace ExamProcessManage.Controllers
 
         private readonly IUserService _userService;
 
-        public AccountController( ITokenService tokenService, IUserService userService)
+        public AccountController(ITokenService tokenService, IUserService userService)
         {
-            _userService = userService; 
+            _userService = userService;
         }
 
 
@@ -33,7 +30,7 @@ namespace ExamProcessManage.Controllers
             });
         }
         [Authorize(Roles = "Admin")]
-       // [AllowAnonymous]
+        // [AllowAnonymous]
         [HttpGet("unAuthenticated")]
         public IActionResult Unauthenticated()
         {
@@ -49,8 +46,8 @@ namespace ExamProcessManage.Controllers
         public async Task<IActionResult> Login(LoginDto loginDto)
         {
             var valid = _userService.Authenticate(loginDto);
-            
-            if(valid == null)
+
+            if (valid == null)
             {
                 var err = new ErrorCodes
                 {
@@ -64,15 +61,15 @@ namespace ExamProcessManage.Controllers
                 };
                 return Ok(result);
             }
-            
-           if(valid.accessToken == null)
+
+            if (valid.accessToken == null)
             {
                 var err = new ErrorCodes
                 {
                     code = "password",
                     message = "Mật khẩu không chính xác!!!",
                 };
-            
+
                 var result = new ErrorMessage<ErrorCodes>
                 {
                     errorCodes = new List<ErrorCodes> { err }

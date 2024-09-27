@@ -47,6 +47,7 @@ builder.Services.AddScoped<IUserService, AccountService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAcademicYearRepository, AcademicYearRepository>();
 builder.Services.AddScoped<IProposalRepository, ProposalRepository>();
+builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpContextAccessor();
 
