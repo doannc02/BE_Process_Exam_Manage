@@ -7,9 +7,9 @@ namespace ExamProcessManage.Interfaces
     public interface IProposalRepository
     {
         Task<PageResponse<ProposalDTO>> GetListProposalsAsync(QueryObject queryObject);
-        Task<BaseResponse<ProposaResponse>> GetDetailProposalAsync(int id);
-        Task<BaseResponse<BaseResponseId>> CreateProposalAsync(AcademicYearResponse academicYear);
-        Task<BaseResponse<BaseResponseId>> UpdateProposalAsync(AcademicYearResponse academicYear);
-        Task<BaseResponse<BaseResponseId>> DeleteProposalAsync(int yearId);
+        Task<BaseResponse<ProposalDTO>> GetDetailProposalAsync(int id);
+        Task<BaseResponseId> CreateProposalAsync(ProposalDTO proposalDTO);
+        Task<BaseResponseId> UpdateProposalAsync(ProposalDTO proposalDTO);
+        Task<BaseResponse<string>> DeleteProposalAsync(int id);
     }
 }

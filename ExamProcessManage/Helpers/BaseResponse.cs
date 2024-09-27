@@ -2,7 +2,8 @@
 {
     public class BaseResponse<T>
     {
-        public string message { get; set; }
+        public string? traceId { get; set; }
+        public string? message { get; set; }
         public T data { get; set; }
     }
 
@@ -10,7 +11,7 @@
         public int? id { get; set; }
      }
 
-    public class BaseResponseDetail : BaseResponse<DetailResponse>
+    public class BaseResponseId : BaseResponse<DetailResponse>
     {
     }
 }

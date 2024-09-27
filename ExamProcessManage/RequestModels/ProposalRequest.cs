@@ -1,6 +1,8 @@
-﻿namespace ExamProcessManage.RequestModels
+﻿using ExamProcessManage.Helpers;
+
+namespace ExamProcessManage.RequestModels
 {
-    public class ProposalRequest
+    public class ProposalRequest : QueryObject
     {
     }
 }

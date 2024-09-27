@@ -1,19 +1,27 @@
 ﻿using ExamProcessManage.Helpers;
+using ExamProcessManage.Models;
 
 namespace ExamProcessManage.Dtos
 {
-    public class ProposalDTO
+    public partial class ProposalDTO
     {
-        public string academic_year { get; set; }
-        public CommonObject instructor { get; set; }
-        public string? id { get; set; }
-        public CommonObject user { get; set; }
-        public CommonObject course { get; set; }
-        public string status { get; set; }
-        public string deadline { get; set; }
-        public string start { get; set; }
-        public int number_of_assignment { get; set; }
-        public string semester { get; set; }
+        public ProposalDTO()
+        {
+            exam_sets = new HashSet<ExamSetDTO>();
+            teacher_roposals = new HashSet<TeacherProposal>();
+        }
 
+        public CommonObject user { get; set; }
+        public int proposal_id { get; set; }
+        public string plan_code { get; set; } = null!;
+        public string academic_year { get; set; } = null!;
+        public string semester { get; set; } = null!;
+        public DateOnly? start_date { get; set; }
+        public DateOnly? end_date { get; set; }
+        public string? content { get; set; }
+        public string status { get; set; } = null!;
+
+        public virtual ICollection<ExamSetDTO>? exam_sets { get; set; }
+        public virtual ICollection<TeacherProposal>? teacher_roposals { get; set; }
     }
 }
