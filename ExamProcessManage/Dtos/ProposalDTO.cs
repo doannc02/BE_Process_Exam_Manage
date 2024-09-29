@@ -20,7 +20,7 @@ namespace ExamProcessManage.Dtos
         public DateOnly? end_date { get; set; }
         public string? content { get; set; }
         public string status { get; set; } = null!;
-
+        public int? total_exam_set { get; set; }
         public virtual ICollection<ExamSetDTO>? exam_sets { get; set; }
         public virtual ICollection<TeacherProposal>? teacher_roposals { get; set; }
     }

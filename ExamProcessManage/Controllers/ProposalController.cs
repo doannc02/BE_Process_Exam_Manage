@@ -1,9 +1,11 @@
 ﻿using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
+using ExamProcessManage.Models;
 using ExamProcessManage.Repository;
 using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ExamProcessManage.Controllers
 {
@@ -20,20 +22,56 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous]
         [Route("list")]
         public async Task<IActionResult> GetListAcademicYearAsync([FromQuery] QueryObject queryObject)
         {
-            var proposals = await _proposalRepository.GetListProposalsAsync(queryObject);
+            try
+            {
+                var roleClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
+                var userId = User.Claims.FirstOrDefault(c => c.Type == "userId");
 
-            if (proposals.content.Any())
-            {
-                var commonResponse = _createCommonResponse.CreateResponse("success", HttpContext, proposals);
-                return Ok(commonResponse);
+                if (roleClaim == null || userId == null)
+                {
+                    return new CustomJsonResult(401, HttpContext, "Unauthorized!!");
+                }
+                else
+                {
+                    if (roleClaim.Value == "Admin")
+                    {
+                        var proposals = await _proposalRepository.GetListProposalsAsync(null, queryObject);
+
+                        if (proposals != null)
+                        {
+                            var commonResponse = _createCommonResponse.CreateResponse("success", HttpContext, proposals);
+                            return Ok(commonResponse);
+                        }
+                        else
+                        {
+                            return new CustomJsonResult(500, HttpContext, "Error!");
+                        }
+                    }
+                    else
+                    {
+
+                        var proposals = await _proposalRepository.GetListProposalsAsync(int.Parse(userId.Value), queryObject);
+
+                        if (proposals != null)
+                        {
+                            var commonResponse = _createCommonResponse.CreateResponse("success", HttpContext, proposals);
+                            return Ok(commonResponse);
+                        }
+                        else
+                        {
+                            return new CustomJsonResult(500, HttpContext, "Error!");
+                        }
+                    }
+                }
+
+
             }
-            else
+            catch (Exception ex)
             {
-                return new CustomJsonResult(400, HttpContext, "bad request");
+                return new CustomJsonResult(500, HttpContext, "Server error!!");
             }
         }
 

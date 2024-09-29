@@ -30,6 +30,7 @@ namespace ExamProcessManage.Services
                 //list of Claims - we only checking username - more claims can be added.
                 new Claim("username", Convert.ToString(user)),
                 new Claim(ClaimTypes.Role, role.Name),
+               new Claim("userId", user.Id.ToString()),
             };
 
             var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_configuration.GetSection("AppSettings:Token").Value));
