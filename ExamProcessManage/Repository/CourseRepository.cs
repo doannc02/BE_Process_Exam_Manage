@@ -1,6 +1,7 @@
 ﻿using ExamProcessManage.Data;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
+using ExamProcessManage.Models;
 using ExamProcessManage.ResponseModels;
 using Microsoft.EntityFrameworkCore;
 
@@ -64,7 +65,7 @@ namespace ExamProcessManage.Repository
                     course_id = item.CourseId,
                     course_code = item.CourseCode ?? string.Empty,
                     course_name = item.CourseName ?? string.Empty,
-                    course_credit = (int)item.CourseCredit,
+                    course_credit = item?.CourseCredit ?? 0,
                     major = new CommonObject
                     {
                         id = majorCourse?.MajorId ?? 0,  // Handle potential null value
@@ -87,54 +88,77 @@ namespace ExamProcessManage.Repository
             };
         }
 
-        //public async Task<PageResponse<CourseReponse>> GetListCourseAsync(QueryObject queryObject)
-        //{
-        //    var responses = new List<CourseReponse>();
-        //    var courseQueryable = _context.Courses.AsQueryable();
-        //    var majorList = await _context.Majors.ToListAsync();
-        //    var totalCount = await courseQueryable.CountAsync();
-        //    var courseList = await courseQueryable.Skip((queryObject.page.Value - 1) * queryObject.size)
-        //        .Take(queryObject.size)
-        //        .ToListAsync();
-
-        //    foreach (var item in courseQueryable)
-        //    {
-        //        var majorCourse = majorList.FirstOrDefault(m => m.MajorId == item.MajorId);
-        //        var course = new CourseReponse
-        //        {
-        //            course_id = item.CourseId,
-        //            course_code = item.CourseCode ?? string.Empty,
-        //            course_name = item.CourseName ?? string.Empty,
-        //            course_credit = (int)item.CourseCredit,
-        //            major = new CommonObject
-        //            {
-        //                id = majorCourse.MajorId,
-        //                code = majorCourse.MajorId.ToString(),
-        //                name = majorCourse.MajorName
-        //            }
-        //        };
-        //        responses.Add(course);
-        //    }
-
-        //    return new PageResponse<CourseReponse>
-        //    {
-        //        content = responses,
-        //        totalElements = totalCount,
-        //        totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
-        //        size = queryObject.size,
-        //        page = queryObject.page.Value,
-        //        numberOfElements = responses.Count
-        //    };
-        //}
-
-        public Task<BaseResponse<CourseReponse>> GetDetailCourseAsync(int courseId)
+        public async Task<BaseResponse<CourseReponse>> GetDetailCourseAsync(int courseId)
         {
-            throw new NotImplementedException();
+            var response = new BaseResponse<CourseReponse>();
+            var course = await _context.Courses.FirstOrDefaultAsync(c => c.CourseId == courseId);
+
+            if (course != null)
+            {
+                var major = await _context.Majors.FirstOrDefaultAsync(m => m.MajorId == course.MajorId);
+
+                response.message = "success";
+                response.data = new CourseReponse
+                {
+                    course_id = course.CourseId,
+                    course_code = course.CourseCode ?? string.Empty,
+                    course_name = course.CourseName ?? string.Empty,
+                    course_credit = course?.CourseCredit ?? 0,
+                    major = new CommonObject
+                    {
+                        id = major?.MajorId ?? 0,
+                        code = major?.MajorId.ToString(),
+                        name = major?.MajorName ?? string.Empty,
+                    }
+                };
+            }
+            else
+            {
+                response.message = $"course with id = '{courseId}' could not be found";
+            }
+
+            return response;
         }
 
-        public Task<BaseResponse<CourseReponse>> CreateCourseAsync(CourseReponse newCourse)
+        public async Task<BaseResponse<CourseReponse>> CreateCourseAsync(CourseReponse inputCourse)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var response = new BaseResponse<CourseReponse>();
+
+                var existCourse = await _context.Courses.AnyAsync(c => c.CourseId == inputCourse.course_id || 
+                c.CourseCode == inputCourse.course_code || c.CourseName == inputCourse.course_name);
+
+                if (!existCourse)
+                {
+                    var newCourse = new Course
+                    {
+                        CourseCode = inputCourse.course_code,
+                        CourseName = inputCourse.course_name,
+                        CourseCredit = inputCourse.course_credit,
+                        MajorId = inputCourse.major.id
+                    };
+
+                    await _context.Courses.AddAsync(newCourse);
+                    await _context.SaveChangesAsync();
+
+                    response.data = inputCourse;
+                    response.message = "course added successfully";
+                }
+                else
+                {
+                    response.message = $"course already exists";
+                }
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<CourseReponse>
+                {
+                    message = "an error occurred: " + ex.Message
+                };
+            }
         }
 
         public Task<BaseResponse<CourseReponse>> UpdateCourseAsync(CourseReponse updateCourse)

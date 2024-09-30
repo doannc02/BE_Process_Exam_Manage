@@ -1,15 +1,16 @@
 ﻿using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
+using ExamProcessManage.ResponseModels;
 using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+using System.ComponentModel.DataAnnotations;
 
 namespace ExamProcessManage.Controllers
 {
     [Route("api/v1/course")]
     [ApiController]
+    [AllowAnonymous]
     public class CourseController : ControllerBase
     {
         private readonly ICourseRepository _repository;
@@ -23,36 +24,72 @@ namespace ExamProcessManage.Controllers
 
         // GET: api/<ValuesController>
         [HttpGet("list")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetListCourseAsync([FromQuery] QueryObject queryObject)
         {
             var listCourse = await _repository.GetListCourseAsync(queryObject);
-            var response = _createCommon.CreateResponse("", HttpContext, listCourse);
-            return Ok(response);
+
+            if (listCourse.content.Any())
+            {
+                var commonResponse = _createCommon.CreateResponse("success", HttpContext, listCourse);
+                return Ok(commonResponse);
+            }
+            else
+            {
+                return new CustomJsonResult(400, HttpContext, "bad request");
+            }
         }
 
         // GET api/<ValuesController>/5
-        [HttpGet("{id}")]
-        public string Get(int id)
+        [HttpGet("detail")]
+        public async Task<IActionResult> GetDetailCourseAsync([FromQuery][Required] int id)
         {
-            return "value";
+            var course = await _repository.GetDetailCourseAsync(id);
+
+            if (course != null && course.data != null)
+            {
+                var response = _createCommon.CreateResponse(course.message, HttpContext, course.data);
+                return Ok(response);
+            }
+            else
+            {
+                return new CustomJsonResult(404, HttpContext, course.message);
+            }
         }
 
         // POST api/<ValuesController>
         [HttpPost]
-        public void Post([FromBody] string value)
+        public async Task<IActionResult> PostCourseAsync([FromBody] CourseReponse inputCourse)
         {
+            if (inputCourse != null && inputCourse.course_id != 0 && 
+                inputCourse.course_name != "string" && inputCourse.major.id != 0)
+            {
+                var newCourse = await _repository.CreateCourseAsync(inputCourse);
+
+                if (newCourse.data!= null)
+                {
+                    var response = _createCommon.CreateResponse(newCourse.message, HttpContext, newCourse.data);
+                    return Ok(response);
+                }
+                else
+                {
+                    return new CustomJsonResult(409, HttpContext, newCourse.message);
+                }
+            }
+            else
+            {
+                return new CustomJsonResult(400, HttpContext, "invalid input");
+            }
         }
 
         // PUT api/<ValuesController>/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
+        [HttpPut]
+        public void PutCourseAsync(int id, [FromBody] string value)
         {
         }
 
         // DELETE api/<ValuesController>/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
+        [HttpDelete]
+        public void DeleteCourseAsync(int id)
         {
         }
     }

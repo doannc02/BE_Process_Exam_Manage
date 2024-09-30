@@ -44,7 +44,7 @@ namespace ExamProcessManage.Controllers
         public async Task<IActionResult> GetDetailAcademicYearAsync([FromQuery][Required] int id)
         {
             var academic = await _repository.GetDetailAcademicYearAsync(id);
-            if (academic.data != null)
+            if (academic != null && academic.data != null)
             {
                 var yearResponse = _createCommon.CreateResponse(academic.message, HttpContext, academic.data);
                 return Ok(yearResponse);
