@@ -3,12 +3,7 @@ using ExamProcessManage.Dtos;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.Models;
-using ExamProcessManage.ResponseModels;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
-using Minio.DataModel;
-using System.Linq;
-using System.Net.WebSockets;
 
 namespace ExamProcessManage.Repository
 {
@@ -170,6 +165,7 @@ namespace ExamProcessManage.Repository
                 {
                     query = query.Where(p => p.PlanCode.Contains(queryObject.search));
                 }
+
                 if (userId.HasValue)
                 {
                     var proposalIds = _context.TeacherProposals
