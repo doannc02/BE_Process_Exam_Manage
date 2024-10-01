@@ -50,7 +50,11 @@ builder.Services.AddScoped<IProposalRepository, ProposalRepository>();
 builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<IExamSetRepository, ExamSetRepository>();
+builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+builder.Services.AddScoped<IUploadFileService, UploadService>();
+
 builder.Services.AddMemoryCache();
+
 builder.Services.AddHttpContextAccessor();
 
 // Add services to the container.
