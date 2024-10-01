@@ -16,12 +16,18 @@ namespace ExamProcessManage.Repository
             _context = context;
         }
 
-        public async Task<PageResponse<CourseReponse>> GetListCourseAsync(QueryObject queryObject)
+        public async Task<PageResponse<CourseReponse>> GetListCourseAsync(int majorId, QueryObject queryObject)
         {
             var responses = new List<CourseReponse>();
 
             // Base query
             var courseQueryable = _context.Courses.AsQueryable();
+
+            // MajorId filter
+            if (majorId > 0)
+            {
+                courseQueryable = courseQueryable.Where(c => c.MajorId == majorId);
+            }
 
             // Apply search filter
             if (!string.IsNullOrEmpty(queryObject.search))
@@ -126,7 +132,7 @@ namespace ExamProcessManage.Repository
             {
                 var response = new BaseResponse<CourseReponse>();
 
-                var existCourse = await _context.Courses.AnyAsync(c => c.CourseId == inputCourse.course_id || 
+                var existCourse = await _context.Courses.AnyAsync(c => c.CourseId == inputCourse.course_id ||
                 c.CourseCode == inputCourse.course_code || c.CourseName == inputCourse.course_name);
 
                 if (!existCourse)
@@ -161,14 +167,94 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public Task<BaseResponse<CourseReponse>> UpdateCourseAsync(CourseReponse updateCourse)
+        public async Task<BaseResponse<CourseReponse>> UpdateCourseAsync(CourseReponse updateCourse)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var response = new BaseResponse<CourseReponse>();
+                var existCourse = await _context.Courses.FirstOrDefaultAsync(c => c.CourseId == updateCourse.course_id);
+
+                if (existCourse != null)
+                {
+                    if (existCourse.CourseName != updateCourse.course_name &&
+                        existCourse.CourseCredit != updateCourse.course_credit &&
+                        existCourse.MajorId != updateCourse.major.id)
+                    {
+                        var checkConflictCourse = await _context.Courses.AnyAsync(c => c.CourseName == updateCourse.course_name);
+
+                        if (!checkConflictCourse)
+                        {
+                            existCourse.CourseName = updateCourse.course_name;
+                            existCourse.CourseCredit = updateCourse.course_credit;
+                            existCourse.MajorId = updateCourse.major.id > 0 ? updateCourse.major.id : existCourse.MajorId;
+
+                            await _context.SaveChangesAsync();
+
+                            response.message = "update successfully";
+                            response.data = updateCourse;
+                        }
+                        else
+                        {
+                            response.message = $"course name = '{updateCourse.course_name}' already exists";
+                        }
+                    }
+                    else
+                    {
+                        response.message = "no changes detected";
+                    }
+                }
+                else
+                {
+                    response.message = $"no course found with id = '{updateCourse.course_id}'";
+                }
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<CourseReponse>
+                {
+                    message = "an error occurred: " + ex.Message
+                };
+            }
         }
 
-        public Task<BaseResponse<CourseReponse>> DeleteCourseAsync(int courseId)
+        public async Task<BaseResponse<CourseReponse>> DeleteCourseAsync(int courseId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var response = new BaseResponse<CourseReponse>();
+                var existCourse = await _context.Courses.FirstOrDefaultAsync(y => y.CourseId == courseId);
+
+                if (existCourse != null)
+                {
+                    _context.Courses.Remove(existCourse);
+                    await _context.SaveChangesAsync();
+
+                    response.message = "delete successfully";
+                    response.data = new CourseReponse
+                    {
+                        course_id = existCourse.CourseId,
+                        course_code = existCourse.CourseCode,
+                        course_name = existCourse.CourseName,
+                        course_credit = (int)existCourse.CourseCredit,
+                        major = new CommonObject { id = (int)existCourse.MajorId }
+                    };
+                }
+                else
+                {
+                    response.message = $"no course found with ID = '{courseId}'";
+                }
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<CourseReponse>
+                {
+                    message = "an error occurred: " + ex.Message
+                };
+            }
         }
     }
 }

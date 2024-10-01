@@ -5,7 +5,7 @@ namespace ExamProcessManage.Interfaces
 {
     public interface ICourseRepository
     {
-        Task<PageResponse<CourseReponse>> GetListCourseAsync(QueryObject queryObject);
+        Task<PageResponse<CourseReponse>> GetListCourseAsync(int majorId, QueryObject queryObject);
         Task<BaseResponse<CourseReponse>> GetDetailCourseAsync(int courseId);
         Task<BaseResponse<CourseReponse>> CreateCourseAsync(CourseReponse newCourse);
         Task<BaseResponse<CourseReponse>> UpdateCourseAsync(CourseReponse updateCourse);
