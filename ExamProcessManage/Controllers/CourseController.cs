@@ -2,7 +2,6 @@
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.ResponseModels;
 using ExamProcessManage.Utils;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
@@ -10,7 +9,6 @@ namespace ExamProcessManage.Controllers
 {
     [Route("api/v1/course")]
     [ApiController]
-    [AllowAnonymous]
     public class CourseController : ControllerBase
     {
         private readonly ICourseRepository _repository;
@@ -115,7 +113,7 @@ namespace ExamProcessManage.Controllers
 
         // DELETE api/<ValuesController>/5
         [HttpDelete]
-        public async Task<IActionResult> DeleteCourseAsync(int id)
+        public async Task<IActionResult> DeleteCourseAsync([FromQuery][Required] int id)
         {
             var delCourse = await _repository.DeleteCourseAsync(id);
 

@@ -50,6 +50,7 @@ builder.Services.AddScoped<IProposalRepository, ProposalRepository>();
 builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<IExamSetRepository, ExamSetRepository>();
+builder.Services.AddScoped<IMajorRepository, MajorRepository>();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpContextAccessor();
 
