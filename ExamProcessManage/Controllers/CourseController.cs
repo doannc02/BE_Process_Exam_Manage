@@ -62,8 +62,8 @@ namespace ExamProcessManage.Controllers
         [HttpPost]
         public async Task<IActionResult> PostCourseAsync([FromBody] CourseReponse inputCourse)
         {
-            if (inputCourse != null && inputCourse.course_id != 0 &&
-                inputCourse.course_name != "string" && inputCourse.major.id != 0)
+            if (inputCourse != null && inputCourse.id != 0 &&
+                inputCourse.name != "string" && inputCourse.major.id != 0)
             {
                 var newCourse = await _repository.CreateCourseAsync(inputCourse);
 
@@ -87,7 +87,7 @@ namespace ExamProcessManage.Controllers
         [HttpPut]
         public async Task<IActionResult> PutCourseAsync([FromBody] CourseReponse inputCourse)
         {
-            if (inputCourse != null && inputCourse.course_id != 0 && inputCourse.course_name != "string")
+            if (inputCourse != null && inputCourse.id != 0 && inputCourse.name != "string")
             {
                 var updatedCourse = await _repository.UpdateCourseAsync(inputCourse);
 

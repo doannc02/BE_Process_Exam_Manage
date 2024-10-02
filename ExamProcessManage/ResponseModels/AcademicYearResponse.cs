@@ -2,8 +2,8 @@
 {
     public class AcademicYearResponse
     {
-        public int year_id { get; set; }
-        public string year_name { get; set; }
+        public int id { get; set; }
+        public string name { get; set; }
         public int start_year { get; set; }
         public int end_year { get; set; }
     }

@@ -63,7 +63,7 @@ namespace ExamProcessManage.Controllers
             // Matches years between 2000 and 2099
             string yearPattern = @"^20\d{2}$";
 
-            if (year.year_id > 0 && year.start_year > 0 && year.start_year > year.end_year &&
+            if (year.id > 0 && year.start_year > 0 && year.start_year > year.end_year &&
                 Regex.IsMatch(year.start_year.ToString(), yearPattern))
             {
                 var yearAdd = await _repository.CreateAcademicYearAsync(year);
@@ -92,7 +92,7 @@ namespace ExamProcessManage.Controllers
             // Matches years between 2000 and 2099
             string yearPattern = @"^20\d{2}$";
 
-            if (year.year_id > 0 && year.start_year > 0 && year.end_year > 0 &&
+            if (year.id > 0 && year.start_year > 0 && year.end_year > 0 &&
                 year.start_year < year.end_year &&
                 Regex.IsMatch(year.start_year.ToString(), yearPattern) &&
                 Regex.IsMatch(year.end_year.ToString(), yearPattern))

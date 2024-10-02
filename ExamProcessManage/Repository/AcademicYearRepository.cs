@@ -30,8 +30,8 @@ namespace ExamProcessManage.Repository
             {
                 var academic = new AcademicYearResponse()
                 {
-                    year_id = item.AcademicYearId,
-                    year_name = item.YearName ?? string.Empty,
+                    id = item.AcademicYearId,
+                    name = item.YearName ?? string.Empty,
                     start_year = (int)item.StartYear,
                     end_year = (int)item.EndYear
                 };
@@ -61,8 +61,8 @@ namespace ExamProcessManage.Repository
                     message = "success",
                     data = new AcademicYearResponse
                     {
-                        year_id = academicYear.AcademicYearId,
-                        year_name = academicYear.YearName ?? string.Empty,
+                        id = academicYear.AcademicYearId,
+                        name = academicYear.YearName ?? string.Empty,
                         start_year = (int)academicYear.StartYear,
                         end_year = (int)academicYear.EndYear
                     }
@@ -84,16 +84,16 @@ namespace ExamProcessManage.Repository
             try
             {
                 year.end_year = year.end_year == 0 ? year.start_year + 1 : year.end_year;
-                year.year_name = $"{year.start_year}-{year.end_year}";
+                year.name = $"{year.start_year}-{year.end_year}";
 
-                var existYear = await _context.AcademicYears.AnyAsync(a => a.AcademicYearId == year.year_id || a.YearName == year.year_name);
+                var existYear = await _context.AcademicYears.AnyAsync(a => a.AcademicYearId == year.id || a.YearName == year.name);
 
                 if (!existYear)
                 {
                     var academicYear = new AcademicYear
                     {
-                        AcademicYearId = year.year_id,
-                        YearName = year.year_name,
+                        AcademicYearId = year.id,
+                        YearName = year.name,
                         StartYear = year.start_year,
                         EndYear = year.end_year
                     };
@@ -106,7 +106,7 @@ namespace ExamProcessManage.Repository
                 }
                 else
                 {
-                    response.message = $"conflict data with id = '{year.year_id}' or name = '{year.year_name}'";
+                    response.message = $"conflict data with id = '{year.id}' or name = '{year.name}'";
                 }
 
             }
@@ -124,21 +124,21 @@ namespace ExamProcessManage.Repository
 
             try
             {
-                year.year_name = $"{year.start_year}-{year.end_year}";
+                year.name = $"{year.start_year}-{year.end_year}";
 
-                var existYear = await _context.AcademicYears.FirstOrDefaultAsync(y => y.AcademicYearId == year.year_id);
+                var existYear = await _context.AcademicYears.FirstOrDefaultAsync(y => y.AcademicYearId == year.id);
 
                 if (existYear != null)
                 {
-                    if (existYear.YearName != year.year_name)
+                    if (existYear.YearName != year.name)
                     {
-                        var yearByNameExists = await _context.AcademicYears.AnyAsync(y => y.YearName == year.year_name);
+                        var yearByNameExists = await _context.AcademicYears.AnyAsync(y => y.YearName == year.name);
 
                         if (!yearByNameExists)
                         {
                             existYear.StartYear = year.start_year;
                             existYear.EndYear = year.end_year;
-                            existYear.YearName = year.year_name;
+                            existYear.YearName = year.name;
 
                             await _context.SaveChangesAsync();
 
@@ -147,7 +147,7 @@ namespace ExamProcessManage.Repository
                         }
                         else
                         {
-                            response.message = $"an academic_year with the name '{year.year_name}' already exists";
+                            response.message = $"an academic_year with the name '{year.name}' already exists";
                         }
                     }
                     else
@@ -157,7 +157,7 @@ namespace ExamProcessManage.Repository
                 }
                 else
                 {
-                    response.message = $"no academic_year found with ID = '{year.year_id}'";
+                    response.message = $"no academic_year found with ID = '{year.id}'";
                 }
             }
             catch (Exception ex)
@@ -182,8 +182,8 @@ namespace ExamProcessManage.Repository
                 response.message = "delete successfully";
                 response.data = new AcademicYearResponse
                 {
-                    year_id = existYear.AcademicYearId,
-                    year_name = existYear.YearName,
+                    id = existYear.AcademicYearId,
+                    name = existYear.YearName,
                     start_year = (int)existYear.StartYear,
                     end_year = (int)existYear.EndYear
                 };

@@ -62,8 +62,8 @@ namespace ExamProcessManage.Controllers
         [HttpPost]
         public async Task<IActionResult> PostMajorAsync([FromBody] MajorResponse inputMajor)
         {
-            if (inputMajor != null && inputMajor.major_id > 0 &&
-                inputMajor.major_name != "string" && inputMajor.department.id != 0)
+            if (inputMajor != null && inputMajor.id > 0 &&
+                inputMajor.name != "string" && inputMajor.department.id != 0)
             {
                 var newCourse = await _majorRepository.CreateMajorAsync(inputMajor);
 
@@ -87,7 +87,7 @@ namespace ExamProcessManage.Controllers
         [HttpPut]
         public async Task<IActionResult> PutMajorAsync([FromBody] MajorResponse inputMajor)
         {
-            if (inputMajor != null && inputMajor.major_id > 0 && inputMajor.major_name != "string")
+            if (inputMajor != null && inputMajor.id > 0 && inputMajor.name != "string")
             {
                 var updatedMajor = await _majorRepository.UpdateMajorAsync(inputMajor);
 

@@ -68,10 +68,10 @@ namespace ExamProcessManage.Repository
                 var majorCourse = majorList.FirstOrDefault(m => m.MajorId == item.MajorId);
                 var course = new CourseReponse
                 {
-                    course_id = item.CourseId,
-                    course_code = item.CourseCode ?? string.Empty,
-                    course_name = item.CourseName ?? string.Empty,
-                    course_credit = item?.CourseCredit ?? 0,
+                    id = item.CourseId,
+                    code = item.CourseCode ?? string.Empty,
+                    name = item.CourseName ?? string.Empty,
+                    credit = item?.CourseCredit ?? 0,
                     major = new CommonObject
                     {
                         id = majorCourse?.MajorId ?? 0,  // Handle potential null value
@@ -106,10 +106,10 @@ namespace ExamProcessManage.Repository
                 response.message = "success";
                 response.data = new CourseReponse
                 {
-                    course_id = course.CourseId,
-                    course_code = course.CourseCode ?? string.Empty,
-                    course_name = course.CourseName ?? string.Empty,
-                    course_credit = course?.CourseCredit ?? 0,
+                    id = course.CourseId,
+                    code = course.CourseCode ?? string.Empty,
+                    name = course.CourseName ?? string.Empty,
+                    credit = course?.CourseCredit ?? 0,
                     major = new CommonObject
                     {
                         id = major?.MajorId ?? 0,
@@ -132,16 +132,16 @@ namespace ExamProcessManage.Repository
             {
                 var response = new BaseResponse<CourseReponse>();
 
-                var existCourse = await _context.Courses.AnyAsync(c => c.CourseId == inputCourse.course_id ||
-                c.CourseCode == inputCourse.course_code || c.CourseName == inputCourse.course_name);
+                var existCourse = await _context.Courses.AnyAsync(c => c.CourseId == inputCourse.id ||
+                c.CourseCode == inputCourse.code || c.CourseName == inputCourse.name);
 
                 if (!existCourse)
                 {
                     var newCourse = new Course
                     {
-                        CourseCode = inputCourse.course_code,
-                        CourseName = inputCourse.course_name,
-                        CourseCredit = inputCourse.course_credit,
+                        CourseCode = inputCourse.code,
+                        CourseName = inputCourse.name,
+                        CourseCredit = inputCourse.credit,
                         MajorId = inputCourse.major.id
                     };
 
@@ -172,20 +172,20 @@ namespace ExamProcessManage.Repository
             try
             {
                 var response = new BaseResponse<CourseReponse>();
-                var existCourse = await _context.Courses.FirstOrDefaultAsync(c => c.CourseId == updateCourse.course_id);
+                var existCourse = await _context.Courses.FirstOrDefaultAsync(c => c.CourseId == updateCourse.id);
 
                 if (existCourse != null)
                 {
-                    if (existCourse.CourseName != updateCourse.course_name &&
-                        existCourse.CourseCredit != updateCourse.course_credit &&
+                    if (existCourse.CourseName != updateCourse.name &&
+                        existCourse.CourseCredit != updateCourse.credit &&
                         existCourse.MajorId != updateCourse.major.id)
                     {
-                        var checkConflictCourse = await _context.Courses.AnyAsync(c => c.CourseName == updateCourse.course_name);
+                        var checkConflictCourse = await _context.Courses.AnyAsync(c => c.CourseName == updateCourse.name);
 
                         if (!checkConflictCourse)
                         {
-                            existCourse.CourseName = updateCourse.course_name;
-                            existCourse.CourseCredit = updateCourse.course_credit;
+                            existCourse.CourseName = updateCourse.name;
+                            existCourse.CourseCredit = updateCourse.credit;
                             existCourse.MajorId = updateCourse.major.id > 0 ? updateCourse.major.id : existCourse.MajorId;
 
                             await _context.SaveChangesAsync();
@@ -195,7 +195,7 @@ namespace ExamProcessManage.Repository
                         }
                         else
                         {
-                            response.message = $"course name = '{updateCourse.course_name}' already exists";
+                            response.message = $"course name = '{updateCourse.name}' already exists";
                         }
                     }
                     else
@@ -205,7 +205,7 @@ namespace ExamProcessManage.Repository
                 }
                 else
                 {
-                    response.message = $"no course found with id = '{updateCourse.course_id}'";
+                    response.message = $"no course found with id = '{updateCourse.id}'";
                 }
 
                 return response;
@@ -234,10 +234,10 @@ namespace ExamProcessManage.Repository
                     response.message = "delete successfully";
                     response.data = new CourseReponse
                     {
-                        course_id = existCourse.CourseId,
-                        course_code = existCourse.CourseCode,
-                        course_name = existCourse.CourseName,
-                        course_credit = (int)existCourse.CourseCredit,
+                        id = existCourse.CourseId,
+                        code = existCourse.CourseCode,
+                        name = existCourse.CourseName,
+                        credit = (int)existCourse.CourseCredit,
                         major = new CommonObject { id = (int)existCourse.MajorId }
                     };
                 }

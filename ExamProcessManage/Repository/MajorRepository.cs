@@ -53,8 +53,8 @@ namespace ExamProcessManage.Repository
                 var departmentMajor = departmentList.FirstOrDefault(d => d.DepartmentId == item.DepartmentId);
                 listMajors.Add(new MajorResponse
                 {
-                    major_id = item.MajorId,
-                    major_name = item.MajorName ?? string.Empty,
+                    id = item.MajorId,
+                    name = item.MajorName ?? string.Empty,
                     department = new CommonObject
                     {
                         id = departmentMajor?.DepartmentId ?? (int)item.DepartmentId,
@@ -87,8 +87,8 @@ namespace ExamProcessManage.Repository
                 response.message = "success";
                 response.data = new MajorResponse
                 {
-                    major_id = major.MajorId,
-                    major_name = major.MajorName,
+                    id = major.MajorId,
+                    name = major.MajorName,
                     department = new CommonObject
                     {
                         id = department.DepartmentId,
@@ -111,14 +111,14 @@ namespace ExamProcessManage.Repository
             {
                 var response = new BaseResponse<MajorResponse>();
 
-                var existMajor = await _context.Majors.AnyAsync(m => m.MajorId == inputMajor.major_id || m.MajorName == inputMajor.major_name);
+                var existMajor = await _context.Majors.AnyAsync(m => m.MajorId == inputMajor.id || m.MajorName == inputMajor.name);
 
                 if (!existMajor)
                 {
                     var newMajor = new Major
                     {
-                        MajorId = inputMajor.major_id,
-                        MajorName = inputMajor.major_name,
+                        MajorId = inputMajor.id,
+                        MajorName = inputMajor.name,
                         DepartmentId = inputMajor.department.id
                     };
 
@@ -149,17 +149,17 @@ namespace ExamProcessManage.Repository
             try
             {
                 var response = new BaseResponse<MajorResponse>();
-                var existMajor = await _context.Majors.FirstOrDefaultAsync(m => m.MajorId == updateMajor.major_id);
+                var existMajor = await _context.Majors.FirstOrDefaultAsync(m => m.MajorId == updateMajor.id);
 
                 if (existMajor != null)
                 {
-                    if (existMajor.MajorName != updateMajor.major_name && existMajor.DepartmentId != updateMajor.department.id)
+                    if (existMajor.MajorName != updateMajor.name && existMajor.DepartmentId != updateMajor.department.id)
                     {
-                        var checkConflictMajor = await _context.Majors.AnyAsync(m => m.MajorName == updateMajor.major_name);
+                        var checkConflictMajor = await _context.Majors.AnyAsync(m => m.MajorName == updateMajor.name);
 
                         if (!checkConflictMajor)
                         {
-                            existMajor.MajorName = updateMajor.major_name;
+                            existMajor.MajorName = updateMajor.name;
                             existMajor.DepartmentId = updateMajor.department.id > 0 ? updateMajor.department.id : existMajor.DepartmentId;
 
                             await _context.SaveChangesAsync();
@@ -169,7 +169,7 @@ namespace ExamProcessManage.Repository
                         }
                         else
                         {
-                            response.message = $"major name = '{updateMajor.major_name}' already exists";
+                            response.message = $"major name = '{updateMajor.name}' already exists";
                         }
                     }
                     else
@@ -179,7 +179,7 @@ namespace ExamProcessManage.Repository
                 }
                 else
                 {
-                    response.message = $"no major found with id = '{updateMajor.major_id}'";
+                    response.message = $"no major found with id = '{updateMajor.id}'";
                 }
 
                 return response;
@@ -208,8 +208,8 @@ namespace ExamProcessManage.Repository
                     response.message = "delete successfully";
                     response.data = new MajorResponse
                     {
-                        major_id = existMajor.MajorId,
-                        major_name = existMajor.MajorName,
+                        id = existMajor.MajorId,
+                        name = existMajor.MajorName,
                         department = new CommonObject { id = (int)existMajor.DepartmentId }
                     };
                 }
