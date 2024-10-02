@@ -126,43 +126,58 @@ namespace ExamProcessManage.Repository
             return response;
         }
 
-        public async Task<BaseResponse<CourseReponse>> CreateCourseAsync(CourseReponse inputCourse)
+        public async Task<BaseResponse<List<CourseReponse>>> CreateCourseAsync(List<CourseReponse> inputCourses)
         {
             try
             {
-                var response = new BaseResponse<CourseReponse>();
-
-                var existCourse = await _context.Courses.AnyAsync(c => c.CourseId == inputCourse.id ||
-                c.CourseCode == inputCourse.code || c.CourseName == inputCourse.name);
-
-                if (!existCourse)
+                var response = new BaseResponse<List<CourseReponse>>
                 {
-                    var newCourse = new Course
-                    {
-                        CourseCode = inputCourse.code,
-                        CourseName = inputCourse.name,
-                        CourseCredit = inputCourse.credit,
-                        MajorId = inputCourse.major.id
-                    };
+                    data = new List<CourseReponse>()
+                };
 
-                    await _context.Courses.AddAsync(newCourse);
+                var newCourses = new List<Course>();
+
+                foreach (var inputCourse in inputCourses)
+                {
+                    var existCourse = await _context.Courses.AnyAsync(c => c.CourseId == inputCourse.id ||
+                        c.CourseCode == inputCourse.code || c.CourseName == inputCourse.name);
+
+                    if (!existCourse)
+                    {
+                        var newCourse = new Course
+                        {
+                            CourseId = inputCourse.id,
+                            CourseCode = inputCourse.code,
+                            CourseName = inputCourse.name,
+                            CourseCredit = inputCourse.credit,
+                            MajorId = inputCourse.major.id
+                        };
+
+                        newCourses.Add(newCourse);
+                        response.data.Add(inputCourse);
+                    }
+                    else
+                    {
+                        response.message = $"Some courses already exist. Course Code: {inputCourse.code}";
+                        break;
+                    }
+                }
+
+                if (newCourses.Any())
+                {
+                    await _context.Courses.AddRangeAsync(newCourses);
                     await _context.SaveChangesAsync();
 
-                    response.data = inputCourse;
-                    response.message = "course added successfully";
-                }
-                else
-                {
-                    response.message = $"course already exists";
+                    response.message = "Courses added successfully";
                 }
 
                 return response;
             }
             catch (Exception ex)
             {
-                return new BaseResponse<CourseReponse>
+                return new BaseResponse<List<CourseReponse>>
                 {
-                    message = "an error occurred: " + ex.Message
+                    message = "An error occurred: " + ex.Message
                 };
             }
         }

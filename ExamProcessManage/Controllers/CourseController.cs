@@ -2,6 +2,7 @@
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.ResponseModels;
 using ExamProcessManage.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
@@ -9,6 +10,7 @@ namespace ExamProcessManage.Controllers
 {
     [Route("api/v1/course")]
     [ApiController]
+    [AllowAnonymous]
     public class CourseController : ControllerBase
     {
         private readonly ICourseRepository _repository;
@@ -60,26 +62,31 @@ namespace ExamProcessManage.Controllers
 
         // POST api/<ValuesController>
         [HttpPost]
-        public async Task<IActionResult> PostCourseAsync([FromBody] CourseReponse inputCourse)
+        public async Task<IActionResult> PostCourseAsync([FromBody] List<CourseReponse> inputCourses)
         {
-            if (inputCourse != null && inputCourse.id != 0 &&
-                inputCourse.name != "string" && inputCourse.major.id != 0)
+            if (inputCourses?.Any() != true)
             {
-                var newCourse = await _repository.CreateCourseAsync(inputCourse);
+                return new CustomJsonResult(400, HttpContext, "No course data provided");
+            }
 
-                if (newCourse.data != null)
+            foreach (var inputCourse in inputCourses)
+            {
+                if (inputCourse.id == 0 || inputCourse.name == "string" || inputCourse.major.id == 0)
                 {
-                    var response = _createCommon.CreateResponse(newCourse.message, HttpContext, newCourse.data);
-                    return Ok(response);
+                    return new CustomJsonResult(400, HttpContext, "invalid input for one or more courses");
                 }
-                else
-                {
-                    return new CustomJsonResult(409, HttpContext, newCourse.message);
-                }
+            }
+
+            var newCourseResponse = await _repository.CreateCourseAsync(inputCourses);
+
+            if (newCourseResponse.data != null)
+            {
+                var response = _createCommon.CreateResponse(newCourseResponse.message, HttpContext, newCourseResponse.data);
+                return Ok(response);
             }
             else
             {
-                return new CustomJsonResult(400, HttpContext, "invalid input");
+                return new CustomJsonResult(409, HttpContext, newCourseResponse.message);
             }
         }
 
