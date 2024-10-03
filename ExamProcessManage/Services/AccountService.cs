@@ -2,6 +2,7 @@
 using ExamProcessManage.Dtos;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace ExamProcessManage.Services
 {
@@ -20,6 +21,7 @@ namespace ExamProcessManage.Services
         public AuthenticateResponse Authenticate(LoginDto model)
         {
             var user = _context.Users.SingleOrDefault(x => x.Email == model.UserName);
+            var role = _context.Roles.AsNoTracking().ToList();
             if (user == null)
             {
                 // throw new ApplicationException("Username or password is incorrect");
@@ -49,6 +51,7 @@ namespace ExamProcessManage.Services
                 expiresIn = "3600", // Thời gian hết hạn tùy vào cấu hình
                 scopes = "read write",
                 userId = user.Id,
+                role = role.Find(a => a.Id == user.RoleId).Name,
                 jti = Guid.NewGuid().ToString()
             };
         }

@@ -53,7 +53,7 @@ builder.Services.AddScoped<IExamSetRepository, ExamSetRepository>();
 builder.Services.AddScoped<IMajorRepository, MajorRepository>();
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddScoped<IUploadFileService, UploadService>();
-
+builder.Services.AddScoped<IExamRepository, ExamRepository>();
 builder.Services.AddMemoryCache();
 
 builder.Services.AddHttpContextAccessor();

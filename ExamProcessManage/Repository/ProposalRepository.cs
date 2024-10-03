@@ -3,6 +3,7 @@ using ExamProcessManage.Dtos;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.Models;
+using ExamProcessManage.ResponseModels;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamProcessManage.Repository
@@ -32,8 +33,8 @@ namespace ExamProcessManage.Repository
                         StartDate = proposalDTO.start_date,
                         Semester = proposalDTO.semester,
                         Status = proposalDTO.status,
-                        ExamSets = (ICollection<ExamSet>)proposalDTO.exam_sets,
-                        TeacherProposals = (ICollection<TeacherProposal>)proposalDTO.teacher_roposals
+                        //ExamSets = (ICollection<ExamSet>)proposalDTO.exam_sets,
+                        //TeacherProposals = (ICollection<TeacherProposal>)proposalDTO.teacher_roposals
                     };
 
                     _ = await _context.Proposals.AddAsync(newProposal);
@@ -70,9 +71,44 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public Task<BaseResponse<string>> DeleteProposalAsync(int id)
+        public async Task<BaseResponse<string>> DeleteProposalAsync(int proposalId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var proposal = await _context.Proposals.FirstOrDefaultAsync(p => p.ProposalId == proposalId);
+
+                if (proposal != null)
+                {
+                    _context.Proposals.Remove(proposal);
+                    await _context.SaveChangesAsync();
+
+                   
+                    var baseResponseId = new BaseResponse<string>
+                    {
+                        message = "Xóa thành công",
+                    };
+                    return baseResponseId;
+                }
+                else
+                {
+                 
+                    var baseResponseId = new BaseResponse<string>
+                    {
+                        message = "Không tìm thấy đề xuất",
+                    };
+                    return baseResponseId;
+                }
+            }
+            catch (Exception ex)
+            {
+               
+                var baseResponseId = new BaseResponse<string>
+                {
+                    message = ex.Message,
+                  
+                };
+                return baseResponseId;
+            }
         }
 
         public async Task<BaseResponse<ProposalDTO>> GetDetailProposalAsync(int id)
@@ -233,9 +269,67 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public Task<BaseResponseId> UpdateProposalAsync(ProposalDTO proposalDTO)
+        public async Task<BaseResponseId> UpdateProposalAsync(ProposalDTO proposalDTO)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var existingProposal = await _context.Proposals.FirstOrDefaultAsync(id => id.ProposalId == proposalDTO.proposal_id);
+
+                if (existingProposal != null && existingProposal.Status != "approved")
+                {
+                    existingProposal.AcademicYear = proposalDTO.academic_year;
+                    existingProposal.Content = proposalDTO.content;
+                    existingProposal.EndDate = proposalDTO.end_date;
+                    existingProposal.PlanCode = proposalDTO.plan_code;
+                    existingProposal.StartDate = proposalDTO.start_date;
+                    existingProposal.Semester = proposalDTO.semester;
+                    existingProposal.Status = proposalDTO.status;
+                    // Update other properties as needed
+                    // existingProposal.ExamSets = (ICollection<ExamSet>)proposalDTO.exam_sets;
+                    // existingProposal.TeacherProposals = (ICollection<TeacherProposal>)proposalDTO.teacher_proposals;
+
+                    _context.Proposals.Update(existingProposal);
+                    await _context.SaveChangesAsync();
+
+                    var detailResponse = new DetailResponse { id = existingProposal.ProposalId };
+                    var baseResponseId = new BaseResponseId
+                    {
+                        message = "Cập nhật thành công",
+                        data = detailResponse
+                    };
+                    return baseResponseId;
+                }
+                else if(existingProposal != null && existingProposal.Status == "approved")
+                {
+                    var detailResponse = new DetailResponse { id = null };
+                    var baseResponseId = new BaseResponseId
+                    {
+                        message = "Kế hoạch đã phê duyệt không được sửa",
+                        data = detailResponse
+                    };
+                    return baseResponseId;
+                }
+                else
+                {
+                    var detailResponse = new DetailResponse { id = null };
+                    var baseResponseId = new BaseResponseId
+                    {
+                        message = "Không tìm thấy đề xuất",
+                        data = detailResponse
+                    };
+                    return baseResponseId;
+                }
+            }
+            catch (Exception ex)
+            {
+                var detailResponse = new DetailResponse { id = null };
+                var baseResponseId = new BaseResponseId
+                {
+                    message = ex.Message,
+                    data = detailResponse
+                };
+                return baseResponseId;
+            }
         }
     }
 }

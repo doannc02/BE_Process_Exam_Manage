@@ -1,10 +1,13 @@
-﻿namespace ExamProcessManage.Helpers
+﻿using ExamProcessManage.Dtos;
+
+namespace ExamProcessManage.Helpers
 {
     public class BaseResponse<T>
     {
         public string? traceId { get; set; }
         public string? message { get; set; }
         public T data { get; set; }
+        public IEnumerable<ErrorCodes>? errs { get; set; }
     }
 
      public class DetailResponse {

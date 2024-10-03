@@ -2,8 +2,11 @@
 using ExamProcessManage.Dtos;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
+using ExamProcessManage.Models;
 using ExamProcessManage.RequestModels;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Crypto.Encodings;
 
 namespace ExamProcessManage.Repository
 {
@@ -15,10 +18,115 @@ namespace ExamProcessManage.Repository
             _context = context;
         }
 
-        public Task<BaseResponseId> CreateExamSetAsync(ExamSetDTO examSetDTO)
+        public async Task<BaseResponseId> CreateExamSetAsync(ExamSetDTO examSetDto)
         {
-            throw new NotImplementedException();
+            // Kiểm tra dữ liệu đầu vào
+            if (examSetDto == null || examSetDto.exams == null || !examSetDto.exams.Any())
+            {
+                return null; // Dữ liệu không hợp lệ
+            }
+
+            // Kiểm tra xem ExamSet đã tồn tại trong DB hay chưa
+            var ckExisExamSets = await _context.ExamSets
+                .FirstOrDefaultAsync(es => es.ExamSetId == examSetDto.exam_set_id || es.ExamSetName == examSetDto.exam_set_name);
+
+            if (ckExisExamSets != null)
+            {
+                var errs = new List<ErrorCodes>();
+                // Nếu ExamSet đã tồn tại, trả về thông báo tồn tại
+                var err = new ErrorCodes
+                {
+                    message = "ExamSet đã tồn tại",
+                    code= $"exam_set_name"
+                };
+                return new BaseResponseId
+                {
+                    message = "Exam set đã tồn tại",
+                    errs = errs
+                };
+            }
+
+            // Kiểm tra phần tử trùng lặp trong mảng Exams
+            for (int i = 0; i < examSetDto.exams.ToList().Count; i++)
+            {
+                var exam = examSetDto?.exams.ToList()[i];
+
+                // Kiểm tra trùng lặp dựa trên ExamCode hoặc tiêu chí khác
+                var existingExamCode = await _context.Exams
+                    .FirstOrDefaultAsync(e => e.ExamCode == exam.exam_code);
+
+                     var existingExamName = await _context.Exams
+                    .FirstOrDefaultAsync(e => e.ExamName == exam.exam_name);
+
+                if (existingExamCode != null)
+                {
+                    var errs = new List<ErrorCodes>();
+                    // Trả về index của phần tử bị trùng
+                    var err = new ErrorCodes
+                    {
+                        message = "Exam đã tồn tại",
+                        code = $"exam_set.{i}.exam_code"
+                    };
+                    return new BaseResponseId
+                    {
+                        errs = errs,
+                    };
+                }
+
+                if (existingExamName != null)
+                {
+                    var errs = new List<ErrorCodes>();
+                    // Trả về index của phần tử bị trùng
+                    var err = new ErrorCodes
+                    {
+                        message = "Tên Exam đã tồn tại",
+                        code = $"exam_set.{i}.exam_name"
+                    };
+                    return new BaseResponseId
+                    {
+                        errs = errs,
+                    };
+                }
+            }
+
+            // Nếu không có trùng lặp, tạo mới ExamSet
+            var newExamSet = new ExamSet
+            {
+                ExamSetName = examSetDto.exam_set_name,
+                Description = examSetDto.description,
+                ExamQuantity = examSetDto.exam_quantity,
+                Major = examSetDto.major,
+                Status = examSetDto.status,
+                CourseId = examSetDto.course.id,
+                ProposalId = examSetDto?.proposal?.id,
+                Department = examSetDto.department,
+
+                Exams = examSetDto.exams.Select(e => new Exam
+                {
+                    AttachedFile = e.attached_file,
+                    Comment = e.comment,
+                    Description = e.description,
+                    ExamCode = e.exam_code,
+                    ExamName = e.exam_name,
+                    ExamSetId = examSetDto.exam_set_id,
+                    Status = e.status,
+                    AcademicYearId = e.academic_year.id,
+                    UploadDate = DateOnly.FromDateTime(DateTime.Now),
+                }).ToList()
+            };
+
+            // Thêm vào context và lưu vào database
+            _context.ExamSets.Add(newExamSet);
+            await _context.SaveChangesAsync();
+
+            // Trả về response thành công
+            return new BaseResponseId
+            {
+                message = "ExamSet đã được tạo thành công",
+                data = new DetailResponse { id = newExamSet.ExamSetId }
+            };
         }
+
 
         public Task<BaseResponse<string>> DeleteExamSetAsync(int id)
         {
@@ -40,11 +148,11 @@ namespace ExamProcessManage.Repository
                         id = (int)tp.UserId,
                         name = tp.User?.Name ?? "" + " - " + tp.User?.Teacher?.Name ?? ""
                     }).FirstOrDefault();
-                if(userId != null)
+                if (userId != null)
                 {
-                    if(userId != user.id)
+                    if (userId != user.id)
                     {
-                         return new BaseResponse<ExamSetDTO>
+                        return new BaseResponse<ExamSetDTO>
                         {
                             message = "403",
                             data = null

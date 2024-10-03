@@ -21,6 +21,6 @@ namespace ExamProcessManage.Dtos
         public  CommonObject course { get; set; }
         public  CommonObject? proposal { get; set; }
         public virtual CommonObject? user { get; set; }
-        public  ICollection<ExamDTO> exams { get; set; }
+        public  IEnumerable<ExamDTO> exams { get; set; }
     }
 }

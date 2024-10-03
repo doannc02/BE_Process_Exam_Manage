@@ -8,5 +8,6 @@
         public string scopes { get; set; }
         public ulong userId { get; set; }
         public string jti { get; set; }
+        public string? role { get; set; }
     }
 }

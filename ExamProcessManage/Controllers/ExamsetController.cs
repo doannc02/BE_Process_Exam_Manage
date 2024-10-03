@@ -1,4 +1,5 @@
-﻿using ExamProcessManage.Helpers;
+﻿using ExamProcessManage.Dtos;
+using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.Repository;
 using ExamProcessManage.RequestModels;
@@ -127,6 +128,21 @@ namespace ExamProcessManage.Controllers
                 return new CustomJsonResult(500, HttpContext, "Server error!!");
             }
 
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateExamSet([FromBody] ExamSetDTO req)
+        {
+            try
+            {
+                var res = await _repository.CreateExamSetAsync(req);
+                if (res != null) return Ok(res);
+                else return new CustomJsonResult(500, HttpContext, "Error");
+            }
+            catch (Exception ex)
+            {
+                return new CustomJsonResult(500, HttpContext, "Server error!!");
+            }
         }
     }
 }
