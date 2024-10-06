@@ -11,9 +11,9 @@ namespace ExamProcessManage.Controllers
     [ApiController]
     public class UserController : ControllerBase
     {
-        private readonly UserRepository _userRepository;
+        private readonly IUserRepository _userRepository;
         private readonly CreateCommonResponse _createCommonResponse;
-        public UserController(UserRepository userRepository)
+        public UserController(IUserRepository userRepository)
         {
             _userRepository = userRepository;
             _createCommonResponse = new CreateCommonResponse();

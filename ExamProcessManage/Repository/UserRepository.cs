@@ -20,13 +20,19 @@ namespace ExamProcessManage.Repository
 
         public async Task<PageResponse<UserDTO>> GetListUsersAsync(QueryObject queryObject)
         {
+            var startRow = (queryObject.page.Value - 1) * queryObject.size;
+
             var yearResponses = new List<UserDTO>();
             var teachers = _context.Teachers.AsNoTracking().ToList();
-            var queryAcademicYears = _context.Users.AsQueryable();
+            var queryAcademicYears = _context.Users.AsNoTracking().AsQueryable();
+
+            if (!string.IsNullOrEmpty(queryObject.search))
+            {
+                queryAcademicYears = queryAcademicYears.Where(p => p.Email.Contains(queryObject.search));
+            }
             var totalCount = await queryAcademicYears.CountAsync();
             var listAcademicYears = await queryAcademicYears
-                .Skip((queryObject.page.Value - 1) * queryObject.size)
-                .Take(queryObject.size)
+                .Skip(startRow).Take(queryObject.size)
                 .ToListAsync();
 
             foreach (var item in listAcademicYears)
@@ -35,7 +41,7 @@ namespace ExamProcessManage.Repository
                 {
                     id = item.Id.ToString(),
                     name = item.Email,
-                    fullname = teachers.FirstOrDefault(i => i.Id == item.TeacherId).Name,
+                    fullname = teachers.FirstOrDefault(i => i.Id == item.TeacherId)?.Name ?? "",
                 };
 
                 yearResponses.Add(academic);

@@ -26,7 +26,7 @@ namespace ExamProcessManage.Repository
                 {
                     var newProposal = new Proposal
                     {
-                        AcademicYear = proposalDTO.academic_year,
+                        AcademicYear = proposalDTO.academic_year.name,
                         Content = proposalDTO.content,
                         EndDate = proposalDTO.end_date,
                         PlanCode = proposalDTO.plan_code,
@@ -173,7 +173,10 @@ namespace ExamProcessManage.Repository
                 data = new ProposalDTO
                 {
                     proposal_id = proposal.ProposalId,
-                    academic_year = proposal.AcademicYear,
+                    academic_year = new CommonObject
+                    {
+                        name = proposal.AcademicYear
+                    },
                     content = proposal.Content,
                     end_date = proposal.EndDate,
                     start_date = proposal.StartDate,
@@ -230,22 +233,26 @@ namespace ExamProcessManage.Repository
                 }
 
                 var totalCount = await query.CountAsync();
-
+                var academic_years =  _context.AcademicYears.AsNoTracking().ToList();
                 var proposals = await query.OrderBy(p => p.ProposalId).Skip(startRow).Take(queryObject.size).Include(p => p.TeacherProposals)
                     .ThenInclude(tp => tp.User).ThenInclude(u => u.Teacher)
                     .Select(p => new ProposalDTO
                     {
                         proposal_id = p.ProposalId,
-                        academic_year = p.AcademicYear,
+                        academic_year = new CommonObject
+                        {
+                           // id = academic_years.FirstOrDefault(a => a.YearName == p.AcademicYear).AcademicYearId ,
+                            name = p.AcademicYear
+                        },
                         content = p.Content,
                         end_date = p.EndDate,
                         plan_code = p.PlanCode,
                         semester = p.Semester,
                         start_date = p.StartDate,
                         status = p.Status,
-                        total_exam_set = p.TeacherProposals.Count(),
+                       // total_exam_set = p.TeacherProposals.Count(),
                         user = p.TeacherProposals.Select(tp => new CommonObject
-                        {
+                        {      
                             id = (int)tp.User.Id,
                             name = tp.User.Name + " - " + tp.User.Teacher.Name
                         }).FirstOrDefault()
@@ -277,7 +284,7 @@ namespace ExamProcessManage.Repository
 
                 if (existingProposal != null && existingProposal.Status != "approved")
                 {
-                    existingProposal.AcademicYear = proposalDTO.academic_year;
+                    existingProposal.AcademicYear = proposalDTO.academic_year.name;
                     existingProposal.Content = proposalDTO.content;
                     existingProposal.EndDate = proposalDTO.end_date;
                     existingProposal.PlanCode = proposalDTO.plan_code;

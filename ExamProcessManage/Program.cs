@@ -54,6 +54,7 @@ builder.Services.AddScoped<IMajorRepository, MajorRepository>();
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddScoped<IUploadFileService, UploadService>();
 builder.Services.AddScoped<IExamRepository, ExamRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddMemoryCache();
 
 builder.Services.AddHttpContextAccessor();
