@@ -1,5 +1,4 @@
 ﻿using ExamProcessManage.Helpers;
-using ExamProcessManage.Models;
 
 namespace ExamProcessManage.Dtos
 {

@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using ExamProcessManage.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata;
-using ExamProcessManage.Models;
 
 namespace ExamProcessManage.Data
 {
@@ -146,6 +143,19 @@ namespace ExamProcessManage.Data
                     .WithMany(p => p.Exams)
                     .HasForeignKey(d => d.ExamSetId)
                     .HasConstraintName("exams_ibfk_1");
+
+                // Ngăn trùng lặp
+                entity.HasIndex(e => e.ExamCode)
+                    .IsUnique()
+                    .HasDatabaseName("IX_Unique_ExamCode");
+
+                entity.HasIndex(e => e.ExamName)
+                    .IsUnique()
+                    .HasDatabaseName("IX_Unique_ExamName");
+
+                entity.HasIndex(e => e.AttachedFile)
+                    .IsUnique()
+                    .HasDatabaseName("IX_Unique_AttachedFile");
             });
 
             modelBuilder.Entity<ExamSet>(entity =>

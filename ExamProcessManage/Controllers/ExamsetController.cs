@@ -1,11 +1,8 @@
 ﻿using ExamProcessManage.Dtos;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
-using ExamProcessManage.Repository;
 using ExamProcessManage.RequestModels;
 using ExamProcessManage.Utils;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -13,12 +10,12 @@ namespace ExamProcessManage.Controllers
 {
     [Route("api/v1/exam-set")]
     [ApiController]
-    public class ExamsetController : ControllerBase
+    public class ExamSetController : ControllerBase
     {
         private readonly IExamSetRepository _repository;
         private readonly CreateCommonResponse _createCommonResponse;
 
-        public ExamsetController(IExamSetRepository repository)
+        public ExamSetController(IExamSetRepository repository)
         {
             _repository = repository;
             _createCommonResponse = new CreateCommonResponse();

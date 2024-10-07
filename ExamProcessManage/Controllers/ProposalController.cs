@@ -10,7 +10,6 @@ namespace ExamProcessManage.Controllers
 {
     [Route("api/v1/proposal")]
     [Controller]
-    [AllowAnonymous]
     public class ProposalController : ControllerBase
     {
         private readonly IProposalRepository _proposalRepository;

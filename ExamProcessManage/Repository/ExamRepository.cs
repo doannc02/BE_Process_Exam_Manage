@@ -4,7 +4,6 @@ using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.Models;
 using ExamProcessManage.RequestModels;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamProcessManage.Repository
@@ -15,56 +14,6 @@ namespace ExamProcessManage.Repository
         public ExamRepository(ApplicationDbContext context)
         {
             _context = context;
-        }
-
-        public Task<BaseResponse<int>> CreateExamAsync(ExamDTO examDTO)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<BaseResponse<string>> DeleteExamAsync(int examId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task<BaseResponse<ExamDTO>> GetExamAsync(int examId)
-        {
-            try
-            {
-                var p = await _context.Exams.FindAsync(examId);
-                if (p == null) return null;
-                var academic_years = _context.AcademicYears.AsNoTracking().ToList();
-                var examDto = new ExamDTO
-                {
-                    comment = p.Comment,
-                    attached_file = p.AttachedFile,
-                    description = p.Description,
-                    code = p.ExamCode,
-                    id = p.ExamId,
-                    name = p.ExamName,
-                    status = p.Status,
-                    upload_date = p.UploadDate,
-                    academic_year = new CommonObject
-                    {
-                        id = academic_years.Find(a => a.AcademicYearId == p.AcademicYearId).AcademicYearId,
-                        name = academic_years.Find(a => a.AcademicYearId == p.AcademicYearId).YearName
-                    }
-                };
-                return new BaseResponse<ExamDTO>
-                {
-                    message = "Thành công",
-                    data = examDto
-                };
-
-            }
-            catch (Exception ex)
-            {
-                return new BaseResponse<ExamDTO>
-                {
-                    message = "Thành công",
-                    data = null
-                };
-            }
         }
 
         public async Task<PageResponse<ExamDTO>> GetListExamAsync(ExamRequestParams queryObject)
@@ -123,6 +72,169 @@ namespace ExamProcessManage.Repository
             }
         }
 
+        public async Task<BaseResponse<ExamDTO>> GetDetailExamAsync(int examId)
+        {
+            try
+            {
+                var p = await _context.Exams.FindAsync(examId);
+                if (p == null) return null;
+                var academic_years = _context.AcademicYears.AsNoTracking().ToList();
+                var examDto = new ExamDTO
+                {
+                    comment = p.Comment,
+                    attached_file = p.AttachedFile,
+                    description = p.Description,
+                    code = p.ExamCode,
+                    id = p.ExamId,
+                    name = p.ExamName,
+                    status = p.Status,
+                    upload_date = p.UploadDate,
+                    academic_year = new CommonObject
+                    {
+                        id = academic_years.Find(a => a.AcademicYearId == p.AcademicYearId).AcademicYearId,
+                        name = academic_years.Find(a => a.AcademicYearId == p.AcademicYearId).YearName
+                    }
+                };
+                return new BaseResponse<ExamDTO>
+                {
+                    message = "Thành công",
+                    data = examDto
+                };
+
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<ExamDTO>
+                {
+                    message = "Thành công",
+                    data = null
+                };
+            }
+        }
+
+        public async Task<BaseResponse<List<DetailResponse>>> CreateExamsAsync(List<ExamDTO> exams)
+        {
+            try
+            {
+                if (exams == null || !exams.Any())
+                {
+                    return new BaseResponse<List<DetailResponse>>
+                    {
+                        message = "Danh sách bài thi rỗng"
+                    };
+                }
+
+                var listExam = new List<Exam>();
+                var errors = new List<ErrorCodes>();
+
+                for (int i = 0; i < exams.Count; i++)
+                {
+                    if (exams[i].code == "string" || string.IsNullOrEmpty(exams[i].code))
+                    {
+                        errors.Add(new ErrorCodes
+                        {
+                            code = $"exams.{i}.code",
+                            message = $"Exam with code '{exams[i].code}' invalid."
+                        });
+                        continue;
+                    }
+
+                    if (exams[i].name == "string" || string.IsNullOrEmpty(exams[i].name))
+                    {
+                        errors.Add(new ErrorCodes
+                        {
+                            code = $"exams.{i}.name",
+                            message = $"Exam with name '{exams[i].name}' invalid."
+                        });
+                        continue;
+                    }
+
+                    if (exams[i].attached_file == "string" || string.IsNullOrEmpty(exams[i].attached_file))
+                    {
+                        errors.Add(new ErrorCodes
+                        {
+                            code = $"exams.{i}.attached_file",
+                            message = $"Exam with attached_file '{exams[i].attached_file}' invalid."
+                        });
+                        continue;
+                    }
+
+                    var isDuplicateCode = await _context.Exams.AnyAsync(e => e.ExamCode == exams[i].code);
+                    if (isDuplicateCode)
+                    {
+                        errors.Add(new ErrorCodes
+                        {
+                            code = $"exams.{i}.code",
+                            message = $"Exam with code '{exams[i].code}' already exists."
+                        });
+                        continue;
+                    }
+
+                    var isDuplicateName = await _context.Exams.AnyAsync(e => e.ExamName == exams[i].name);
+                    if (isDuplicateName)
+                    {
+                        errors.Add(new ErrorCodes
+                        {
+                            code = $"exams.{i}.name",
+                            message = $"Exam with name '{exams[i].name}' already exists."
+                        });
+                        continue;
+                    }
+
+                    var isDuplicateFile = await _context.Exams.AnyAsync(e => e.AttachedFile == exams[i].attached_file);
+                    if (isDuplicateFile)
+                    {
+                        errors.Add(new ErrorCodes
+                        {
+                            code = $"exams.{i}.attached_file",
+                            message = $"Exam with file '{exams[i].attached_file}' already exists."
+                        });
+                        continue;
+                    }
+
+                    listExam.Add(new Exam
+                    {
+                        ExamCode = exams[i].code,
+                        ExamName = exams[i].name,
+                        ExamSetId = exams[i].exam_set?.id,
+                        AcademicYearId = exams[i].academic_year?.id,
+                        AttachedFile = exams[i].attached_file,
+                        Comment = exams[i].comment,
+                        Description = exams[i].description,
+                        UploadDate = exams[i].upload_date,
+                        Status = exams[i].status,
+                    });
+                }
+
+                if (listExam.Count == exams.Count)
+                {
+                    await _context.AddRangeAsync(listExam);
+                    //await _context.SaveChangesAsync();
+
+                    return new BaseResponse<List<DetailResponse>>
+                    {
+                        message = "Thêm thành công",
+                        data = new List<DetailResponse>(listExam.Select(e => new DetailResponse { id = e.ExamId }).ToList())
+                    };
+                }
+                else
+                {
+                    return new BaseResponse<List<DetailResponse>>
+                    {
+                        message = "Lỗi thêm bài thi",
+                        errs = errors
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponse<List<DetailResponse>>
+                {
+                    message = "Có lỗi xảy ra: " + ex.Message
+                };
+            }
+        }
+
         public Task<BaseResponse<int>> UpdateExamAsync(ExamDTO examDTO)
         {
             throw new NotImplementedException();
@@ -133,7 +245,7 @@ namespace ExamProcessManage.Repository
             try
             {
                 var findExam = await _context.Exams.FindAsync(examId);
-                if(findExam == null)
+                if (findExam == null)
                 {
                     return new BaseResponse<int>
                     {
@@ -141,10 +253,10 @@ namespace ExamProcessManage.Repository
                     };
                 }
                 List<string> validStatuses = new List<string> { "in_progress", "rejected", "approved", "pending_approval" };
-                
+
 
                 bool isValid = validStatuses.Contains(status);
-               if (!isValid )   return new BaseResponse<int>
+                if (!isValid) return new BaseResponse<int>
                 {
                     message = "Có lỗi xảy ra",
                 };
@@ -165,6 +277,11 @@ namespace ExamProcessManage.Repository
                 };
 
             }
+        }
+
+        public Task<BaseResponse<string>> DeleteExamAsync(int examId)
+        {
+            throw new NotImplementedException();
         }
     }
 }
