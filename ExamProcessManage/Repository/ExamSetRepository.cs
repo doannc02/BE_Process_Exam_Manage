@@ -4,9 +4,7 @@ using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.Models;
 using ExamProcessManage.RequestModels;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Org.BouncyCastle.Crypto.Encodings;
 
 namespace ExamProcessManage.Repository
 {
@@ -37,8 +35,9 @@ namespace ExamProcessManage.Repository
                 var err = new ErrorCodes
                 {
                     message = "ExamSet đã tồn tại",
-                    code= $"exam_set_name"
+                    code = $"exam_set_name"
                 };
+
                 return new BaseResponseId
                 {
                     message = "Exam set đã tồn tại",
@@ -55,8 +54,8 @@ namespace ExamProcessManage.Repository
                 var existingExamCode = await _context.Exams
                     .FirstOrDefaultAsync(e => e.ExamCode == exam.code);
 
-                     var existingExamName = await _context.Exams
-                    .FirstOrDefaultAsync(e => e.ExamName == exam.name);
+                var existingExamName = await _context.Exams
+               .FirstOrDefaultAsync(e => e.ExamName == exam.name);
 
                 if (existingExamCode != null)
                 {
@@ -180,7 +179,7 @@ namespace ExamProcessManage.Repository
                     department = examSet.Department,
                     description = examSet.Description,
                     id = examSet.ExamSetId,
-                    name  = examSet.ExamSetName,
+                    name = examSet.ExamSetName,
                     exam_quantity = examSet.ExamQuantity,
                     status = examSet.Status,
                     exams = exams.Where(c => c.ExamSetId == examSet.ExamSetId).Select(e => new ExamDTO

@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using System.Diagnostics;
-using System.Net;
 
 namespace ExamProcessManage.Helpers
 {
@@ -10,44 +9,47 @@ namespace ExamProcessManage.Helpers
         private readonly int _status;
         private readonly string _traceId;
         private readonly string _title;
+        private readonly ErrorDetail? _errorDetail;
 
-        public CustomJsonResult(int status, HttpContext httpContext, string title)
+        public CustomJsonResult(int status, HttpContext httpContext, string title, ErrorDetail? errorDetail = null)
         {
             _status = status;
             _traceId = Activity.Current?.Id ?? httpContext.TraceIdentifier;
             _title = title;
+            _errorDetail = errorDetail;
         }
 
         public async Task ExecuteResultAsync(ActionContext context)
         {
             var response = context.HttpContext.Response;
             response.ContentType = "application/json";
-            response.Headers["Content-Type"] = "application/json";
-            response.StatusCode = _status;
 
-            var result = new
-            {
-                error = new
-                {
-                    status = _status,
-                    title = _title,
-                    traceId = _traceId
-                }
-            };
-            var json = JsonConvert.SerializeObject(result);
-            if (_status == StatusCodes.Status401Unauthorized)
+            if (_status == StatusCodes.Status401Unauthorized ||
+                _status == StatusCodes.Status403Forbidden)
             {
                 response.Headers.Add("www-authenticate", "Bearer");
-                response.Headers["Content-Type"] = "application/json";
+
+                var unauthorizedResponse = new
+                {
+                    status = _status == 401 ? 401 : 403,
+                    traceId = _traceId,
+                    message = _status == 401 ? "Unauthorized" : "Forbidden"
+                };
+
+                var json = JsonConvert.SerializeObject(unauthorizedResponse);
+                await response.WriteAsync(json);
+                return;
             }
 
-            if (_status == StatusCodes.Status403Forbidden)
+            var jsonResponse = System.Text.Json.JsonSerializer.Serialize(new
             {
-                response.Headers.Add("www-authorized", "Bearer");
-                response.Headers["Content-Type"] = "application/json";
-            }
+                statusCode = _status,
+                traceId = _traceId,
+                title = _title,
+                error = _errorDetail == null ? new ErrorDetail() : _errorDetail
+            });
 
-            await response.WriteAsync(json);
+            await response.WriteAsync(jsonResponse);
         }
     }
 }

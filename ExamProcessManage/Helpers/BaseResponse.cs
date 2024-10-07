@@ -10,11 +10,10 @@ namespace ExamProcessManage.Helpers
         public IEnumerable<ErrorCodes>? errs { get; set; }
     }
 
-     public class DetailResponse {
-        public int? id { get; set; }
-     }
-
-    public class BaseResponseId : BaseResponse<DetailResponse>
+    public class DetailResponse
     {
+        public int? id { get; set; }
     }
+
+    public class BaseResponseId : BaseResponse<DetailResponse> { }
 }

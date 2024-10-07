@@ -10,6 +10,7 @@ namespace ExamProcessManage.Interfaces
         Task<BaseResponse<ProposalDTO>> GetDetailProposalAsync(int id);
         Task<BaseResponseId> CreateProposalAsync(ProposalDTO proposalDTO);
         Task<BaseResponseId> UpdateProposalAsync(ProposalDTO proposalDTO);
+        Task<BaseResponseId> UpdateStateProposalAsync(int proposalId, string newState);
         Task<BaseResponse<string>> DeleteProposalAsync(int id);
     }
 }

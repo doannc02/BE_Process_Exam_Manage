@@ -1,16 +1,16 @@
 ﻿using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
-using ExamProcessManage.Models;
-using ExamProcessManage.Repository;
 using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 
 namespace ExamProcessManage.Controllers
 {
     [Route("api/v1/proposal")]
     [Controller]
+    [AllowAnonymous]
     public class ProposalController : ControllerBase
     {
         private readonly IProposalRepository _proposalRepository;
@@ -76,7 +76,6 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous]
         [Route("detail")]
         public async Task<IActionResult> GetDetailAcademicYearAsync(int id)
         {
@@ -90,6 +89,31 @@ namespace ExamProcessManage.Controllers
             else
             {
                 return new CustomJsonResult(400, HttpContext, "bad request");
+            }
+        }
+
+        [HttpPut]
+        public async Task<IActionResult> UpdateStateProposalAsync([FromQuery][Required] int proposalId, [Required] string newState)
+        {
+            try
+            {
+                var status = new List<string> { "in_progress", "pending_approval", "approved", "rejected" };
+
+                if (status.Contains(newState))
+                {
+                    var response = await _proposalRepository.UpdateStateProposalAsync(proposalId, newState);
+
+                    if (response != null) return Ok(response);
+                    else return new CustomJsonResult(500, HttpContext, "Error");
+                }
+                else
+                {
+                    return new CustomJsonResult(400, HttpContext, "newState không hợp lệ");
+                }
+            }
+            catch
+            {
+                return new CustomJsonResult(500, HttpContext, "Server error");
             }
         }
     }
