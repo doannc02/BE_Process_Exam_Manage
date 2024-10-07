@@ -73,3 +73,4 @@ yarn.lock
 *.sql
 *.bak
 
+*.pdf
