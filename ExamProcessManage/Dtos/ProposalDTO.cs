@@ -12,8 +12,8 @@ namespace ExamProcessManage.Dtos
         }
 
         public CommonObject user { get; set; }
-        public int proposal_id { get; set; }
-        public string plan_code { get; set; } = null!;
+        public int id { get; set; }
+        public string code { get; set; } = null!;
         public  CommonObject academic_year { get; set; } = null!;
         public string semester { get; set; } = null!;
         public DateOnly? start_date { get; set; }

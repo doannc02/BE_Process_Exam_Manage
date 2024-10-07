@@ -21,7 +21,7 @@ namespace ExamProcessManage.Repository
         {
             try
             {
-                var ckExistProposal = await _context.Proposals.FirstOrDefaultAsync(id => id.ProposalId == proposalDTO.proposal_id || id.PlanCode == proposalDTO.plan_code);
+                var ckExistProposal = await _context.Proposals.FirstOrDefaultAsync(id => id.ProposalId == proposalDTO.id || id.PlanCode == proposalDTO.code);
                 if (ckExistProposal == null)
                 {
                     var newProposal = new Proposal
@@ -29,7 +29,7 @@ namespace ExamProcessManage.Repository
                         AcademicYear = proposalDTO.academic_year.name,
                         Content = proposalDTO.content,
                         EndDate = proposalDTO.end_date,
-                        PlanCode = proposalDTO.plan_code,
+                        PlanCode = proposalDTO.code,
                         StartDate = proposalDTO.start_date,
                         Semester = proposalDTO.semester,
                         Status = proposalDTO.status,
@@ -141,8 +141,8 @@ namespace ExamProcessManage.Repository
                 },
                 department = es.Department,
                 description = es.Description,
-                exam_set_id = es.ExamSetId,
-                exam_set_name = es.ExamSetName,
+                id = es.ExamSetId,
+                name = es.ExamSetName,
                 exam_quantity = es.ExamQuantity,
                 status = es.Status,
                 exams = es.Exams.Select(e => new ExamDTO
@@ -155,9 +155,9 @@ namespace ExamProcessManage.Repository
                     attached_file = e.AttachedFile,
                     comment = e.Comment,
                     description = e.Description,
-                    exam_code = e.ExamCode,
-                    exam_id = e.ExamId,
-                    exam_name = e.ExamName,
+                    code = e.ExamCode,
+                    id = e.ExamId,
+                    name = e.ExamName,
                     status = e.Status,
                     upload_date = e.UploadDate
                 }).ToList(),
@@ -172,7 +172,7 @@ namespace ExamProcessManage.Repository
             {
                 data = new ProposalDTO
                 {
-                    proposal_id = proposal.ProposalId,
+                    id = proposal.ProposalId,
                     academic_year = new CommonObject
                     {
                         name = proposal.AcademicYear
@@ -180,7 +180,7 @@ namespace ExamProcessManage.Repository
                     content = proposal.Content,
                     end_date = proposal.EndDate,
                     start_date = proposal.StartDate,
-                    plan_code = proposal.PlanCode,
+                    code = proposal.PlanCode,
                     status = proposal.Status,
                     semester = proposal.Semester,
                     user = new CommonObject
@@ -238,7 +238,7 @@ namespace ExamProcessManage.Repository
                     .ThenInclude(tp => tp.User).ThenInclude(u => u.Teacher)
                     .Select(p => new ProposalDTO
                     {
-                        proposal_id = p.ProposalId,
+                        id = p.ProposalId,
                         academic_year = new CommonObject
                         {
                            // id = academic_years.FirstOrDefault(a => a.YearName == p.AcademicYear).AcademicYearId ,
@@ -246,7 +246,7 @@ namespace ExamProcessManage.Repository
                         },
                         content = p.Content,
                         end_date = p.EndDate,
-                        plan_code = p.PlanCode,
+                        code = p.PlanCode,
                         semester = p.Semester,
                         start_date = p.StartDate,
                         status = p.Status,
@@ -280,14 +280,14 @@ namespace ExamProcessManage.Repository
         {
             try
             {
-                var existingProposal = await _context.Proposals.FirstOrDefaultAsync(id => id.ProposalId == proposalDTO.proposal_id);
+                var existingProposal = await _context.Proposals.FirstOrDefaultAsync(id => id.ProposalId == proposalDTO.id);
 
                 if (existingProposal != null && existingProposal.Status != "approved")
                 {
                     existingProposal.AcademicYear = proposalDTO.academic_year.name;
                     existingProposal.Content = proposalDTO.content;
                     existingProposal.EndDate = proposalDTO.end_date;
-                    existingProposal.PlanCode = proposalDTO.plan_code;
+                    existingProposal.PlanCode = proposalDTO.code;
                     existingProposal.StartDate = proposalDTO.start_date;
                     existingProposal.Semester = proposalDTO.semester;
                     existingProposal.Status = proposalDTO.status;

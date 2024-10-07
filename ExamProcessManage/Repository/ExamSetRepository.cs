@@ -28,7 +28,7 @@ namespace ExamProcessManage.Repository
 
             // Kiểm tra xem ExamSet đã tồn tại trong DB hay chưa
             var ckExisExamSets = await _context.ExamSets
-                .FirstOrDefaultAsync(es => es.ExamSetId == examSetDto.exam_set_id || es.ExamSetName == examSetDto.exam_set_name);
+                .FirstOrDefaultAsync(es => es.ExamSetId == examSetDto.id || es.ExamSetName == examSetDto.name);
 
             if (ckExisExamSets != null)
             {
@@ -53,10 +53,10 @@ namespace ExamProcessManage.Repository
 
                 // Kiểm tra trùng lặp dựa trên ExamCode hoặc tiêu chí khác
                 var existingExamCode = await _context.Exams
-                    .FirstOrDefaultAsync(e => e.ExamCode == exam.exam_code);
+                    .FirstOrDefaultAsync(e => e.ExamCode == exam.code);
 
                      var existingExamName = await _context.Exams
-                    .FirstOrDefaultAsync(e => e.ExamName == exam.exam_name);
+                    .FirstOrDefaultAsync(e => e.ExamName == exam.name);
 
                 if (existingExamCode != null)
                 {
@@ -65,7 +65,7 @@ namespace ExamProcessManage.Repository
                     var err = new ErrorCodes
                     {
                         message = "Exam đã tồn tại",
-                        code = $"exam_set.{i}.exam_code"
+                        code = $"exam_set.{i}.code"
                     };
                     return new BaseResponseId
                     {
@@ -92,7 +92,7 @@ namespace ExamProcessManage.Repository
             // Nếu không có trùng lặp, tạo mới ExamSet
             var newExamSet = new ExamSet
             {
-                ExamSetName = examSetDto.exam_set_name,
+                ExamSetName = examSetDto.name,
                 Description = examSetDto.description,
                 ExamQuantity = examSetDto.exam_quantity,
                 Major = examSetDto.major,
@@ -106,9 +106,9 @@ namespace ExamProcessManage.Repository
                     AttachedFile = e.attached_file,
                     Comment = e.comment,
                     Description = e.description,
-                    ExamCode = e.exam_code,
-                    ExamName = e.exam_name,
-                    ExamSetId = examSetDto.exam_set_id,
+                    ExamCode = e.code,
+                    ExamName = e.name,
+                    ExamSetId = examSetDto.id,
                     Status = e.status,
                     AcademicYearId = e.academic_year.id,
                     UploadDate = DateOnly.FromDateTime(DateTime.Now),
@@ -179,8 +179,8 @@ namespace ExamProcessManage.Repository
                     user = user,
                     department = examSet.Department,
                     description = examSet.Description,
-                    exam_set_id = examSet.ExamSetId,
-                    exam_set_name = examSet.ExamSetName,
+                    id = examSet.ExamSetId,
+                    name  = examSet.ExamSetName,
                     exam_quantity = examSet.ExamQuantity,
                     status = examSet.Status,
                     exams = exams.Where(c => c.ExamSetId == examSet.ExamSetId).Select(e => new ExamDTO
@@ -193,9 +193,9 @@ namespace ExamProcessManage.Repository
                         attached_file = e.AttachedFile,
                         comment = e.Comment,
                         description = e.Description,
-                        exam_code = e.ExamCode,
-                        exam_id = e.ExamId,
-                        exam_name = e.ExamName,
+                        code = e.ExamCode,
+                        id = e.ExamId,
+                        name = e.ExamName,
                         status = e.Status,
                         upload_date = e.UploadDate
                     }).ToList(),
@@ -270,9 +270,9 @@ namespace ExamProcessManage.Repository
                     description = p.Description,
                     status = p.Status,
                     exam_quantity = p.ExamQuantity,
-                    exam_set_id = p.ExamSetId,
+                    id = p.ExamSetId,
                     major = p.Major,
-                    exam_set_name = p.ExamSetName,
+                    name = p.ExamSetName,
                     total_exams = p.Exams.Count(),
                     user = p.Proposal.TeacherProposals.Select(tp => new CommonObject
                     {

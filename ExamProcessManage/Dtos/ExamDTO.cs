@@ -5,9 +5,9 @@ namespace ExamProcessManage.Dtos
 {
     public class ExamDTO
     {
-        public int exam_id { get; set; }
-        public string exam_code { get; set; } = null!;
-        public string? exam_name { get; set; }
+        public int id { get; set; }
+        public string code { get; set; } = null!;
+        public string? name { get; set; }
         public string? attached_file { get; set; }
         public string? comment { get; set; }
         public string? description { get; set; }

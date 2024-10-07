@@ -10,8 +10,8 @@ namespace ExamProcessManage.Dtos
             exams = new HashSet<ExamDTO>();
         }
 
-        public int exam_set_id { get; set; }
-        public string? exam_set_name { get; set; }
+        public int id { get; set; }
+        public string? name { get; set; }
         public string department { get; set; } = null!;
         public string major { get; set; } = null!;
         public int total_exams { get; set; }
