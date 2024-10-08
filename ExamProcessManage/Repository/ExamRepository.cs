@@ -159,7 +159,7 @@ namespace ExamProcessManage.Repository
                         continue;
                     }
 
-                    var isDuplicateCode = await _context.Exams.AnyAsync(e => e.ExamCode == exams[i].code);
+                    var isDuplicateCode = await _context.Exams.AsNoTracking().AnyAsync(e => e.ExamCode == exams[i].code);
                     if (isDuplicateCode)
                     {
                         errors.Add(new ErrorCodes
@@ -170,7 +170,7 @@ namespace ExamProcessManage.Repository
                         continue;
                     }
 
-                    var isDuplicateName = await _context.Exams.AnyAsync(e => e.ExamName == exams[i].name);
+                    var isDuplicateName = await _context.Exams.AsNoTracking().AnyAsync(e => e.ExamName == exams[i].name);
                     if (isDuplicateName)
                     {
                         errors.Add(new ErrorCodes
@@ -181,7 +181,7 @@ namespace ExamProcessManage.Repository
                         continue;
                     }
 
-                    var isDuplicateFile = await _context.Exams.AnyAsync(e => e.AttachedFile == exams[i].attached_file);
+                    var isDuplicateFile = await _context.Exams.AsNoTracking().AnyAsync(e => e.AttachedFile == exams[i].attached_file);
                     if (isDuplicateFile)
                     {
                         errors.Add(new ErrorCodes
@@ -209,7 +209,7 @@ namespace ExamProcessManage.Repository
                 if (listExam.Count == exams.Count)
                 {
                     await _context.AddRangeAsync(listExam);
-                    //await _context.SaveChangesAsync();
+                    await _context.SaveChangesAsync();
 
                     return new BaseResponse<List<DetailResponse>>
                     {
@@ -240,42 +240,129 @@ namespace ExamProcessManage.Repository
             throw new NotImplementedException();
         }
 
-        public async Task<BaseResponse<int>> UpdateState(int examId, string status, string comment)
+        public async Task<BaseResponseId> UpdateStateAsync(int examId, string status, string? comment)
         {
             try
             {
+                var validStatuses = new List<string> { "in_progress", "rejected", "approved", "pending_approval" };
                 var findExam = await _context.Exams.FindAsync(examId);
+
                 if (findExam == null)
                 {
-                    return new BaseResponse<int>
+                    return new BaseResponseId
                     {
-                        message = "Có lỗi xảy ra",
+                        message = $"Không tìm thấy bài thi",
+                        errs = new List<ErrorCodes>
+                        {
+                            new()
+                            {
+                                code = "exam_id",
+                                message = $"Không tìm thấy bài thi {examId}"
+                            }
+                        }
                     };
                 }
-                List<string> validStatuses = new List<string> { "in_progress", "rejected", "approved", "pending_approval" };
 
-
-                bool isValid = validStatuses.Contains(status);
-                if (!isValid) return new BaseResponse<int>
+                if (!validStatuses.Contains(status))
                 {
-                    message = "Có lỗi xảy ra",
-                };
+                    return new BaseResponseId
+                    {
+                        message = $"Không hợp lệ",
+                        errs = new List<ErrorCodes>
+                        {
+                            new()
+                            {
+                                code = "status",
+                                message = $"status nhập vào không hợp lệ"
+                            }
+                        }
+                    };
+                }
+
+                if (findExam.Status == status && findExam.Comment == comment)
+                {
+                    return new BaseResponseId
+                    {
+                        message = $"Không có thay đổi",
+                        errs = new List<ErrorCodes>
+                        {
+                            new()
+                            {
+                                code = "status",
+                                message = "status không thay đổi"
+                            },
+                            new()
+                            {
+                                code = "comment",
+                                message = "comment không thay đổi"
+                            }
+                        }
+                    };
+                }
+
                 findExam.Status = status;
                 findExam.Comment = comment;
-                return new BaseResponse<int>
+                await _context.SaveChangesAsync();
+
+                return new BaseResponseId
                 {
-                    data = findExam.ExamId,
+                    data = new DetailResponse { id = findExam.ExamId },
                     message = "Thành công",
                 };
             }
             catch (Exception ex)
             {
-                //todo handle log here 
-                return new BaseResponse<int>
+                return new BaseResponseId
                 {
-                    message = "Có lỗi xảy ra",
+                    message = "Có lỗi xảy ra: " + ex.Message,
                 };
+            }
+        }
 
+        public async Task<BaseResponseId> RemoveChildAsync(int examSetId, int examId, string? comment)
+        {
+            try
+            {
+                var findExam = await _context.Exams.FindAsync(examId);
+
+                if (findExam != null)
+                {
+                    findExam.ExamSetId = null;
+                    findExam.Comment = comment ?? findExam.Comment;
+                }
+                else
+                {
+                    return new BaseResponseId
+                    {
+                        message = "Thất bại",
+                        errs = new List<ErrorCodes>
+                            {
+                                new()
+                                {
+                                    code = $"exam.exam_id",
+                                    message = "Không tìm thấy bài thi"
+                                }
+                            }
+                    };
+                }
+
+                await _context.SaveChangesAsync();
+
+                return new BaseResponseId
+                {
+                    message = "Thành công",
+                    data = new DetailResponse
+                    {
+                        id = examId,
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponseId
+                {
+                    message = "Có lỗi xảy ra: " + ex.Message,
+                };
             }
         }
 
