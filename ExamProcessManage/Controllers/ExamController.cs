@@ -25,21 +25,52 @@ namespace ExamProcessManage.Controllers
             _createCommon = new CreateCommonResponse();
         }
 
-        // GET: api/<ValuesController>
         [HttpGet("list")]
         public async Task<IActionResult> GetListExamAsync([FromQuery] ExamRequestParams examRequest)
         {
-            return Ok(200);
+            try
+            {
+                var exams = await _examRepository.GetListExamsAsync(examRequest);
+
+                if (exams != null && exams.content.Any())
+                {
+                    var response = _createCommon.CreateResponse("Lấy danh sách bài thi thành công", HttpContext, exams);
+                    return Ok(response);
+                }
+                else
+                {
+                    return new CustomJsonResult(404, HttpContext, "Không tìm thấy bài thi nào");
+                }
+            }
+            catch (Exception ex)
+            {
+                return new CustomJsonResult(500, HttpContext, "Internal Server Error: " + ex.Message);
+            }
         }
 
-        // GET api/<ValuesController>/5
         [HttpGet("detail")]
         public async Task<IActionResult> GetDetailExamAsync([Required] int examId)
         {
-            return Ok(examId);
+            try
+            {
+                var examDetail = await _examRepository.GetDetailExamAsync(examId);
+
+                if (examDetail != null)
+                {
+                    var response = _createCommon.CreateResponse("Lấy chi tiết bài thi thành công", HttpContext, examDetail);
+                    return Ok(response);
+                }
+                else
+                {
+                    return new CustomJsonResult(404, HttpContext, $"Không tìm thấy bài thi với ID {examId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                return new CustomJsonResult(500, HttpContext, "Internal Server Error: " + ex.Message);
+            }
         }
 
-        // POST api/<ValuesController>
         [HttpPost]
         public async Task<IActionResult> PostExamAsync([FromBody] List<ExamDTO> examDTOs)
         {
@@ -64,11 +95,28 @@ namespace ExamProcessManage.Controllers
             }
         }
 
-        // PUT api/<ValuesController>/5
         [HttpPut]
-        public async Task<IActionResult> PutExamAsync(int id, [FromBody] string value)
+        public async Task<IActionResult> PutExamAsync([FromBody] ExamDTO examDTO)
         {
-            return Ok();
+            try
+            {
+                var updateExam = await _examRepository.UpdateExamAsync(examDTO);
+
+                if (updateExam != null && updateExam.data != null)
+                {
+                    var response = _createCommon.CreateResponse(updateExam.message, HttpContext, updateExam.data);
+                    return Ok(response);
+                }
+                else
+                {
+                    var response = _createCommon.CreateResponse(updateExam.message, HttpContext, updateExam);
+                    return Ok(response);
+                }
+            }
+            catch
+            {
+                return new CustomJsonResult(500, HttpContext, "Internal Server Error");
+            }
         }
 
         [HttpPut("update-state")]
@@ -119,11 +167,28 @@ namespace ExamProcessManage.Controllers
             }
         }
 
-        // DELETE api/<ValuesController>/5
-        [HttpDelete]
+        [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteExamAsync(int id)
         {
-            return Ok();
+            try
+            {
+                var deleteExam = await _examRepository.DeleteExamAsync(id);
+
+                if (deleteExam != null && deleteExam.data != null)
+                {
+                    var response = _createCommon.CreateResponse(deleteExam.message, HttpContext, deleteExam.data);
+                    return Ok(response);
+                }
+                else
+                {
+                    var response = _createCommon.CreateResponse(deleteExam.message, HttpContext, deleteExam);
+                    return Ok(response);
+                }
+            }
+            catch
+            {
+                return new CustomJsonResult(500, HttpContext, "Internal Server Error");
+            }
         }
     }
 }

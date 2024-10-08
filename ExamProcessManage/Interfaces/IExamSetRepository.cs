@@ -4,7 +4,7 @@ using ExamProcessManage.RequestModels;
 
 namespace ExamProcessManage.Interfaces
 {
-    public interface IExamSetRepository
+    public interface IExamSetRepository : IBaseRepository
     {
         Task<PageResponse<ExamSetDTO>> GetListExamSetAsync(int? userId, RequestParamsExamSets queryObject);
         Task<BaseResponse<ExamSetDTO>> GetDetailExamSetAsync(int? userId, int id);

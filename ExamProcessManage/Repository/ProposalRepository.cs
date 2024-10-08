@@ -146,7 +146,7 @@ namespace ExamProcessManage.Repository
                     id = e.ExamId,
                     name = e.ExamName,
                     status = e.Status,
-                    upload_date = e.UploadDate
+                    upload_date = e.UploadDate.ToString()
                 }).ToList(),
                 major = es.Major,
             }).ToList();

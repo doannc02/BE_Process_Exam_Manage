@@ -10,7 +10,7 @@ namespace ExamProcessManage.Dtos
         public string? attached_file { get; set; }
         public string? comment { get; set; }
         public string? description { get; set; }
-        public DateOnly? upload_date { get; set; }
+        public string? upload_date { get; set; }
         public string status { get; set; } = null!;
         public virtual CommonObject? user { get; set; }
         public virtual CommonObject? academic_year { get; set; }

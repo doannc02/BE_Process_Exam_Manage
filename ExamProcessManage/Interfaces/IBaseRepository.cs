@@ -4,7 +4,7 @@ namespace ExamProcessManage.Interfaces
 {
     public interface IBaseRepository
     {
-        Task<BaseResponseId> UpdateStateAsync(int examId, string status, string? comment);
-        Task<BaseResponseId> RemoveChildAsync(int examSetId, int examId, string? comment);
+        Task<BaseResponseId> UpdateStateAsync(int id, string status, string? comment);
+        Task<BaseResponseId> RemoveChildAsync(int parentId, int childId, string? comment);
     }
 }

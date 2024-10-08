@@ -3,6 +3,7 @@ using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.RequestModels;
 using ExamProcessManage.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -10,6 +11,7 @@ namespace ExamProcessManage.Controllers
 {
     [Route("api/v1/exam-set")]
     [ApiController]
+    [AllowAnonymous]
     public class ExamSetController : ControllerBase
     {
         private readonly IExamSetRepository _repository;
@@ -70,7 +72,6 @@ namespace ExamProcessManage.Controllers
                 return new CustomJsonResult(500, HttpContext, "Server error!!");
             }
         }
-
 
         [HttpGet]
         [Route("detail")]
@@ -140,6 +141,30 @@ namespace ExamProcessManage.Controllers
             {
                 return new CustomJsonResult(500, HttpContext, "Server error!!");
             }
+        }
+
+        [HttpPut]
+        public async Task<IActionResult> PutExamSetAsync([FromBody] ExamSetDTO examSet)
+        {
+            return NotFound();
+        }
+
+        [HttpPut("update-state")]
+        public async Task<IActionResult> UpdateStateAsync([FromQuery] int id, string status, string? comment)
+        {
+            return NotFound();
+        }
+
+        [HttpPut("remove-child")]
+        public async Task<IActionResult> RemoveChildAsync([FromQuery] int parentId, int childId, string? comment)
+        {
+            return NotFound();
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteExamSetAsync([FromQuery] int examSetId)
+        {
+            return NotFound();
         }
     }
 }

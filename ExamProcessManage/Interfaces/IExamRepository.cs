@@ -6,10 +6,10 @@ namespace ExamProcessManage.Interfaces
 {
     public interface IExamRepository : IBaseRepository
     {
-        Task<PageResponse<ExamDTO>> GetListExamAsync(ExamRequestParams examRequest);
+        Task<PageResponse<ExamDTO>> GetListExamsAsync(ExamRequestParams examRequest);
         Task<BaseResponse<ExamDTO>> GetDetailExamAsync(int examId);
         Task<BaseResponse<List<DetailResponse>>> CreateExamsAsync(List<ExamDTO> examDTOs);
-        Task<BaseResponse<int>> UpdateExamAsync(ExamDTO examDTO);
+        Task<BaseResponseId> UpdateExamAsync(ExamDTO examDTO);
         Task<BaseResponse<string>> DeleteExamAsync(int examId);
     }
 }
