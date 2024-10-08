@@ -90,7 +90,7 @@ namespace ExamProcessManage.Repository
                     name = p.ExamName,
                     status = p.Status,
                     upload_date = p.UploadDate.ToString(),
-                    academic_year = p.AcademicYearId.HasValue && academicYears.ContainsKey(p.AcademicYearId.Value) ? 
+                    academic_year = p.AcademicYearId.HasValue && academicYears.ContainsKey(p.AcademicYearId.Value) ?
                         new CommonObject
                         {
                             id = p.AcademicYearId.Value,
@@ -177,14 +177,36 @@ namespace ExamProcessManage.Repository
                 var listExam = new List<Exam>();
                 var errors = new List<ErrorCodes>();
 
-                // Lấy tất cả các bài thi hiện có từ cơ sở dữ liệu
-                var existingExams = await _context.Exams.AsNoTracking().ToListAsync();
+                // Fetch existing codes, names, and attached files in one query each
+                var existingCodes = await _context.Exams.AsNoTracking()
+                                          .Where(e => exams.Select(x => x.code).Contains(e.ExamCode))
+                                          .Select(e => e.ExamCode)
+                                          .ToListAsync();
+
+                var existingNames = await _context.Exams.AsNoTracking()
+                                          .Where(e => exams.Select(x => x.name).Contains(e.ExamName))
+                                          .Select(e => e.ExamName)
+                                          .ToListAsync();
+
+                var existingFiles = await _context.Exams.AsNoTracking()
+                                          .Where(e => exams.Select(x => x.attached_file).Contains(e.AttachedFile))
+                                          .Select(e => e.AttachedFile)
+                                          .ToListAsync();
+
+                var examSetIds = await _context.ExamSets.AsNoTracking()
+                                          .Select(e => e.ExamSetId)
+                                          .ToListAsync();
+
+                var academicYearIds = await _context.AcademicYears.AsNoTracking()
+                                              .Select(e => e.AcademicYearId)
+                                              .ToListAsync();
 
                 for (int i = 0; i < exams.Count; i++)
                 {
                     var examDTO = exams[i];
+                    var examHasErrors = false;
 
-                    // Kiểm tra dữ liệu không hợp lệ
+                    // Validate code
                     if (IsInvalidString(examDTO.code))
                     {
                         errors.Add(new ErrorCodes
@@ -192,9 +214,19 @@ namespace ExamProcessManage.Repository
                             code = $"exams.{i}.code",
                             message = $"Exam with code '{examDTO.code}' invalid."
                         });
-                        continue;
+                        examHasErrors = true;
+                    }
+                    else if (existingCodes.Contains(examDTO.code))
+                    {
+                        errors.Add(new ErrorCodes
+                        {
+                            code = $"exams.{i}.code",
+                            message = $"Exam with code '{examDTO.code}' already exists."
+                        });
+                        examHasErrors = true;
                     }
 
+                    // Validate name
                     if (IsInvalidString(examDTO.name))
                     {
                         errors.Add(new ErrorCodes
@@ -202,9 +234,19 @@ namespace ExamProcessManage.Repository
                             code = $"exams.{i}.name",
                             message = $"Exam with name '{examDTO.name}' invalid."
                         });
-                        continue;
+                        examHasErrors = true;
+                    }
+                    else if (existingNames.Contains(examDTO.name))
+                    {
+                        errors.Add(new ErrorCodes
+                        {
+                            code = $"exams.{i}.name",
+                            message = $"Exam with name '{examDTO.name}' already exists."
+                        });
+                        examHasErrors = true;
                     }
 
+                    // Validate attached file
                     if (IsInvalidString(examDTO.attached_file))
                     {
                         errors.Add(new ErrorCodes
@@ -212,67 +254,73 @@ namespace ExamProcessManage.Repository
                             code = $"exams.{i}.attached_file",
                             message = $"Exam with attached_file '{examDTO.attached_file}' invalid."
                         });
-                        continue;
+                        examHasErrors = true;
                     }
-
-                    // Kiểm tra sự trùng lặp trong danh sách các bài thi hiện có
-                    if (existingExams.Any(e => e.ExamCode == examDTO.code))
-                    {
-                        errors.Add(new ErrorCodes
-                        {
-                            code = $"exams.{i}.code",
-                            message = $"Exam with code '{examDTO.code}' already exists."
-                        });
-                        continue;
-                    }
-
-                    if (existingExams.Any(e => e.ExamName == examDTO.name))
-                    {
-                        errors.Add(new ErrorCodes
-                        {
-                            code = $"exams.{i}.name",
-                            message = $"Exam with name '{examDTO.name}' already exists."
-                        });
-                        continue;
-                    }
-
-                    if (existingExams.Any(e => e.AttachedFile == examDTO.attached_file))
+                    else if (existingFiles.Contains(examDTO.attached_file))
                     {
                         errors.Add(new ErrorCodes
                         {
                             code = $"exams.{i}.attached_file",
                             message = $"Exam with file '{examDTO.attached_file}' already exists."
                         });
-                        continue;
+                        examHasErrors = true;
                     }
 
-                    // Thêm exam vào danh sách
-                    listExam.Add(new Exam
+                    var validStatus = new List<string> { "in_progress", "rejected", "approved", "pending_approval" };
+
+                    // Validate status
+                    if (IsInvalidString(examDTO.status) || !validStatus.Contains(examDTO.status))
                     {
-                        ExamCode = examDTO.code,
-                        ExamName = examDTO.name,
-                        ExamSetId = examDTO.exam_set?.id,
-                        AcademicYearId = examDTO.academic_year?.id,
-                        AttachedFile = examDTO.attached_file,
-                        Comment = examDTO.comment,
-                        Description = examDTO.description,
-                        UploadDate = DateTimeFormat.ConvertToDateOnly(examDTO.upload_date),
-                        Status = examDTO.status,
-                    });
+                        errors.Add(new ErrorCodes
+                        {
+                            code = $"exams.{i}.status",
+                            message = $"Exam with status '{examDTO.status}' is invalid."
+                        });
+                        examHasErrors = true;
+                    }
+
+                    // Validate exam set
+                    if (!examSetIds.Contains(examDTO.exam_set.id))
+                    {
+                        errors.Add(new ErrorCodes
+                        {
+                            code = $"exams.{i}.exam_set.id",
+                            message = $"ExamSet with id '{examDTO.exam_set.id}' does not exist."
+                        });
+                        examHasErrors = true;
+                    }
+
+                    // Validate academic year
+                    if (!academicYearIds.Contains(examDTO.academic_year.id))
+                    {
+                        errors.Add(new ErrorCodes
+                        {
+                            code = $"exams.{i}.academic_year.id",
+                            message = $"AcademicYear with id '{examDTO.academic_year.id}' does not exist."
+                        });
+                        examHasErrors = true;
+                    }
+
+                    // If no errors, add exam to the list
+                    if (!examHasErrors)
+                    {
+                        listExam.Add(new Exam
+                        {
+                            ExamCode = examDTO.code,
+                            ExamName = examDTO.name,
+                            ExamSetId = examDTO.exam_set?.id,
+                            AcademicYearId = examDTO.academic_year?.id,
+                            AttachedFile = examDTO.attached_file,
+                            Comment = examDTO.comment == "string" ? string.Empty : examDTO.comment,
+                            Description = examDTO.description == "string" ? string.Empty : examDTO.description,
+                            UploadDate = DateTimeFormat.ConvertToDateOnly(examDTO.upload_date),
+                            Status = examDTO.status,
+                        });
+                    }
                 }
 
-                if (listExam.Count == exams.Count)
-                {
-                    await _context.AddRangeAsync(listExam);
-                    await _context.SaveChangesAsync();
-
-                    return new BaseResponse<List<DetailResponse>>
-                    {
-                        message = "Thêm thành công",
-                        data = listExam.Select(e => new DetailResponse { id = e.ExamId }).ToList()
-                    };
-                }
-                else
+                // If no exams were successfully added, return the errors
+                if (listExam.Count == 0)
                 {
                     return new BaseResponse<List<DetailResponse>>
                     {
@@ -280,6 +328,16 @@ namespace ExamProcessManage.Repository
                         errs = errors
                     };
                 }
+
+                // Save valid exams to the database
+                await _context.AddRangeAsync(listExam);
+                await _context.SaveChangesAsync();
+
+                return new BaseResponse<List<DetailResponse>>
+                {
+                    message = "Thêm thành công",
+                    data = listExam.Select(e => new DetailResponse { id = e.ExamId }).ToList()
+                };
             }
             catch (Exception ex)
             {
