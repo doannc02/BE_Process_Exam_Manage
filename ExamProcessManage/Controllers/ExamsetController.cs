@@ -129,13 +129,22 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateExamSet([FromBody] ExamSetDTO req)
+        public async Task<IActionResult> CreateExamSet([FromBody] ExamSetDTO examSetDTO)
         {
             try
             {
-                var res = await _repository.CreateExamSetAsync(req);
-                if (res != null) return Ok(res);
-                else return new CustomJsonResult(500, HttpContext, "Error");
+                var uID = User.Claims.FirstOrDefault(c => c.Type == "userId");
+                if (uID != null)
+                {
+                    var res = await _repository.CreateExamSetAsync(int.Parse(uID.Value), examSetDTO);
+
+                    if (res != null) { return Ok(res); }
+                    else return new CustomJsonResult(500, HttpContext, "Error");
+                }
+                else
+                {
+                    return Forbid();
+                }
             }
             catch (Exception ex)
             {
