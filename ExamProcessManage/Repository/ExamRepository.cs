@@ -170,6 +170,7 @@ namespace ExamProcessManage.Repository
                 {
                     return new BaseResponse<List<DetailResponse>>
                     {
+                        errorCode = 400,
                         message = "Danh sách bài thi rỗng"
                     };
                 }

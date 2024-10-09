@@ -132,21 +132,11 @@ namespace ExamProcessManage.Repository
                 name = es.ExamSetName,
                 exam_quantity = es.ExamQuantity,
                 status = es.Status,
-                exams = es.Exams.Select(e => new ExamDTO
+                exams = es.Exams.Select(e => new CommonObject
                 {
-                    academic_year = new CommonObject
-                    {
-                        id = e.AcademicYear?.AcademicYearId ?? 0,
-                        name = e.AcademicYear?.YearName ?? string.Empty,
-                    },
-                    attached_file = e.AttachedFile,
-                    comment = e.Comment,
-                    description = e.Description,
                     code = e.ExamCode,
                     id = e.ExamId,
-                    name = e.ExamName,
-                    status = e.Status,
-                    upload_date = e.UploadDate.ToString()
+                    name = e.ExamName
                 }).ToList(),
                 major = es.Major,
             }).ToList();

@@ -2,7 +2,6 @@
 using ExamProcessManage.Dtos;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
-using ExamProcessManage.Models;
 using ExamProcessManage.RequestModels;
 using Microsoft.EntityFrameworkCore;
 
@@ -75,15 +74,12 @@ namespace ExamProcessManage.Repository
                     id = p.ExamSetId,
                     major = p.Major,
                     name = p.ExamSetName,
-                    total_exams = p.Exams.Count(),
                     user = p.Proposal.TeacherProposals.Select(tp => new CommonObject
                     {
                         id = (int)tp.User.Id,
                         name = tp.User.Name + " - " + tp.User.Teacher.Name
                     }).FirstOrDefault()
                 }).ToListAsync();
-
-
 
                 var pageResponse = new PageResponse<ExamSetDTO>
                 {
@@ -153,21 +149,11 @@ namespace ExamProcessManage.Repository
                     name = examSet.ExamSetName,
                     exam_quantity = examSet.ExamQuantity,
                     status = examSet.Status,
-                    exams = exams.Where(c => c.ExamSetId == examSet.ExamSetId).Select(e => new ExamDTO
+                    exams = exams.Where(c => c.ExamSetId == examSet.ExamSetId).Select(e => new CommonObject
                     {
-                        academic_year = new CommonObject
-                        {
-                            id = (int)e.AcademicYearId,
-                            name = e.AcademicYear.YearName ?? string.Empty,
-                        },
-                        attached_file = e.AttachedFile,
-                        comment = e.Comment,
-                        description = e.Description,
                         code = e.ExamCode,
                         id = e.ExamId,
-                        name = e.ExamName,
-                        status = e.Status,
-                        upload_date = e.UploadDate.ToString()
+                        name = e.ExamName
                     }).ToList(),
                     major = examSet.Major,
                 };
@@ -184,114 +170,214 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public async Task<BaseResponseId> CreateExamSetAsync(ExamSetDTO examSetDto)
+        public async Task<BaseResponseId> CreateExamSetAsync(ExamSetDTO examSetDTO)
         {
-            // Kiểm tra dữ liệu đầu vào
-            if (examSetDto == null || examSetDto.exams == null || !examSetDto.exams.Any())
+            try
             {
-                return null; // Dữ liệu không hợp lệ
-            }
-
-            // Kiểm tra xem ExamSet đã tồn tại trong DB hay chưa
-            var ckExisExamSets = await _context.ExamSets
-                .FirstOrDefaultAsync(es => es.ExamSetId == examSetDto.id || es.ExamSetName == examSetDto.name);
-
-            if (ckExisExamSets != null)
-            {
-                var errs = new List<ErrorCodes>();
-                // Nếu ExamSet đã tồn tại, trả về thông báo tồn tại
-                var err = new ErrorCodes
+                if (examSetDTO == null)
                 {
-                    message = "ExamSet đã tồn tại",
-                    code = $"exam_set_name"
-                };
+                    return new BaseResponseId
+                    {
+                        errorCode = 400,
+                        message = "Bộ đề rỗng"
+                    };
+                }
 
+                var errors = new List<ErrorCodes>();
+
+                if (!string.IsNullOrEmpty(examSetDTO.name) && examSetDTO.name != "string")
+                {
+                    var isExistingName = await _context.ExamSets.AsNoTracking().AnyAsync(e => examSetDTO.name == e.ExamSetName);
+                    if (isExistingName)
+                    {
+                        errors.Add(new ErrorCodes
+                        {
+                            code = "exam_set.name",
+                            message = "Tên bộ đề đã tồn tại"
+                        });
+                    }
+                }
+
+                var validStatus = new List<string> { "in_progress", "rejected", "approved", "pending_approval" };
+
+                if (!validStatus.Contains(examSetDTO.status))
+                {
+                    errors.Add(new ErrorCodes
+                    {
+                        code = "exam_set.status",
+                        message = "Trạng thái bộ đề không hợp lệ"
+                    });
+                }
+
+                if (examSetDTO.course.id == 0 && examSetDTO.course.code == "string")
+                {
+                    errors.Add(new ErrorCodes
+                    {
+                        code = "exam_set.course",
+                        message = "Học phần không hợp lệ"
+                    });
+                }
+
+                if (examSetDTO.proposal != null)
+                {
+                    var isExistingProposal = await _context.Proposals.AsNoTracking()
+                    .AnyAsync(p => p.ProposalId == examSetDTO.proposal.id || p.PlanCode == examSetDTO.proposal.code);
+
+                    if (!isExistingProposal)
+                    {
+                        errors.Add(new ErrorCodes
+                        {
+                            code = "exam_set.proposal",
+                            message = "Không tìm thấy Đề xuất"
+                        });
+                    }
+                }
+
+                if (examSetDTO.exams.Any())
+                {
+                    if (examSetDTO.exams != null)
+                    {
+                        var exams = examSetDTO.exams.ToList();
+                        for (int i = 0; i < exams.Count; i++)
+                        {
+                            var isExamCode = await _context.Exams.AnyAsync(e => e.ExamCode == exams[i].code);
+                            var isExamName = await _context.Exams.AnyAsync(e => e.ExamName == exams[i].name);
+
+
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
                 return new BaseResponseId
                 {
-                    message = "Exam set đã tồn tại",
-                    errs = errs
+                    message = "Có lỗi xảy ra: " + ex.Message
                 };
             }
 
-            // Kiểm tra phần tử trùng lặp trong mảng Exams
-            for (int i = 0; i < examSetDto.exams.ToList().Count; i++)
-            {
-                var exam = examSetDto?.exams.ToList()[i];
 
-                // Kiểm tra trùng lặp dựa trên ExamCode hoặc tiêu chí khác
-                var existingExamCode = await _context.Exams
-                    .FirstOrDefaultAsync(e => e.ExamCode == exam.code);
 
-                var existingExamName = await _context.Exams
-               .FirstOrDefaultAsync(e => e.ExamName == exam.name);
 
-                if (existingExamCode != null)
-                {
-                    var errs = new List<ErrorCodes>();
-                    // Trả về index của phần tử bị trùng
-                    var err = new ErrorCodes
-                    {
-                        message = "Exam đã tồn tại",
-                        code = $"exam_set.{i}.code"
-                    };
-                    return new BaseResponseId
-                    {
-                        errs = errs,
-                    };
-                }
-
-                if (existingExamName != null)
-                {
-                    var errs = new List<ErrorCodes>();
-                    // Trả về index của phần tử bị trùng
-                    var err = new ErrorCodes
-                    {
-                        message = "Tên Exam đã tồn tại",
-                        code = $"exam_set.{i}.exam_name"
-                    };
-                    return new BaseResponseId
-                    {
-                        errs = errs,
-                    };
-                }
-            }
-
-            // Nếu không có trùng lặp, tạo mới ExamSet
-            var newExamSet = new ExamSet
-            {
-                ExamSetName = examSetDto.name,
-                Description = examSetDto.description,
-                ExamQuantity = examSetDto.exam_quantity,
-                Major = examSetDto.major,
-                Status = examSetDto.status,
-                CourseId = examSetDto.course.id,
-                ProposalId = examSetDto?.proposal?.id,
-                Department = examSetDto.department,
-
-                Exams = examSetDto.exams.Select(e => new Exam
-                {
-                    AttachedFile = e.attached_file,
-                    Comment = e.comment,
-                    Description = e.description,
-                    ExamCode = e.code,
-                    ExamName = e.name,
-                    ExamSetId = examSetDto.id,
-                    Status = e.status,
-                    AcademicYearId = e.academic_year.id,
-                    UploadDate = DateOnly.FromDateTime(DateTime.Now),
-                }).ToList()
-            };
-
-            // Thêm vào context và lưu vào database
-            _context.ExamSets.Add(newExamSet);
-            await _context.SaveChangesAsync();
-
-            // Trả về response thành công
             return new BaseResponseId
             {
-                message = "ExamSet đã được tạo thành công",
-                data = new DetailResponse { id = newExamSet.ExamSetId }
+                message = "Có lỗi xảy ra: "
             };
+
+
+
+
+
+
+
+
+
+            // Kiểm tra dữ liệu đầu vào
+            //if (examSetDto == null || examSetDto.exams == null || !examSetDto.exams.Any())
+            //{
+            //    return null; // Dữ liệu không hợp lệ
+            //}
+
+            // Kiểm tra xem ExamSet đã tồn tại trong DB hay chưa
+            //var ckExisExamSets = await _context.ExamSets
+            //    .FirstOrDefaultAsync(es => es.ExamSetId == examSetDto.id || es.ExamSetName == examSetDto.name);
+
+            //if (ckExisExamSets != null)
+            //{
+            //    var errs = new List<ErrorCodes>();
+            //    // Nếu ExamSet đã tồn tại, trả về thông báo tồn tại
+            //    var err = new ErrorCodes
+            //    {
+            //        message = "ExamSet đã tồn tại",
+            //        code = $"exam_set_name"
+            //    };
+
+            //    return new BaseResponseId
+            //    {
+            //        message = "Exam set đã tồn tại",
+            //        errs = errs
+            //    };
+            //}
+
+            // Kiểm tra phần tử trùng lặp trong mảng Exams
+            //for (int i = 0; i < examSetDto.exams.ToList().Count; i++)
+            //{
+            //    var exam = examSetDto?.exams.ToList()[i];
+
+            //    // Kiểm tra trùng lặp dựa trên ExamCode hoặc tiêu chí khác
+            //    var existingExamCode = await _context.Exams
+            //        .FirstOrDefaultAsync(e => e.ExamCode == exam.code);
+
+            //    var existingExamName = await _context.Exams
+            //   .FirstOrDefaultAsync(e => e.ExamName == exam.name);
+
+            //    if (existingExamCode != null)
+            //    {
+            //        var errs = new List<ErrorCodes>();
+            //        // Trả về index của phần tử bị trùng
+            //        var err = new ErrorCodes
+            //        {
+            //            message = "Exam đã tồn tại",
+            //            code = $"exam_set.{i}.code"
+            //        };
+            //        return new BaseResponseId
+            //        {
+            //            errs = errs,
+            //        };
+            //    }
+
+            //    if (existingExamName != null)
+            //    {
+            //        var errs = new List<ErrorCodes>();
+            //        // Trả về index của phần tử bị trùng
+            //        var err = new ErrorCodes
+            //        {
+            //            message = "Tên Exam đã tồn tại",
+            //            code = $"exam_set.{i}.exam_name"
+            //        };
+            //        return new BaseResponseId
+            //        {
+            //            errs = errs,
+            //        };
+            //    }
+            //}
+
+            //// Nếu không có trùng lặp, tạo mới ExamSet
+            //var newExamSet = new ExamSet
+            //{
+            //    ExamSetName = examSetDto.name,
+            //    Description = examSetDto.description,
+            //    ExamQuantity = examSetDto.exam_quantity,
+            //    Major = examSetDto.major,
+            //    Status = examSetDto.status,
+            //    CourseId = examSetDto.course.id,
+            //    ProposalId = examSetDto?.proposal?.id,
+            //    Department = examSetDto.department,
+
+            //    Exams = examSetDto.exams.Select(e => new Exam
+            //    {
+            //        AttachedFile = e.attached_file,
+            //        Comment = e.comment,
+            //        Description = e.description,
+            //        ExamCode = e.code,
+            //        ExamName = e.name,
+            //        ExamSetId = examSetDto.id,
+            //        Status = e.status,
+            //        AcademicYearId = e.academic_year.id,
+            //        UploadDate = DateOnly.FromDateTime(DateTime.Now),
+            //    }).ToList()
+            //};
+
+            //// Thêm vào context và lưu vào database
+            //_context.ExamSets.Add(newExamSet);
+            //await _context.SaveChangesAsync();
+
+            //// Trả về response thành công
+            //return new BaseResponseId
+            //{
+            //    message = "ExamSet đã được tạo thành công",
+            //    data = new DetailResponse { id = newExamSet.ExamSetId }
+            //};
         }
 
         public Task<BaseResponseId> UpdateExamSetAsync(ExamSetDTO examSetDTO)

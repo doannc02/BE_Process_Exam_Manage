@@ -2,7 +2,6 @@
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.ResponseModels;
 using ExamProcessManage.Utils;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
@@ -27,14 +26,10 @@ namespace ExamProcessManage.Controllers
         {
             var listCourse = await _repository.GetListCourseAsync(majorId, queryObject);
 
-            if (listCourse.content.Any())
+            if (listCourse != null)
             {
                 var commonResponse = _createCommon.CreateResponse("success", HttpContext, listCourse);
                 return Ok(commonResponse);
-            }
-            else if (majorId > 0 && !listCourse.content.Any())
-            {
-                return new CustomJsonResult(404, HttpContext, $"no course with majorid = '{majorId}'");
             }
             else
             {
