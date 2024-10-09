@@ -280,15 +280,15 @@ namespace ExamProcessManage.Repository
                     }
 
                     // Validate exam set
-                    if (!examSetIds.Contains(examDTO.exam_set.id))
-                    {
-                        errors.Add(new ErrorCodes
-                        {
-                            code = $"exams.{i}.exam_set.id",
-                            message = $"ExamSet with id '{examDTO.exam_set.id}' does not exist."
-                        });
-                        examHasErrors = true;
-                    }
+                    //if (!examSetIds.Contains(examDTO.exam_set.id))
+                    //{
+                    //    errors.Add(new ErrorCodes
+                    //    {
+                    //        code = $"exams.{i}.exam_set.id",
+                    //        message = $"ExamSet with id '{examDTO.exam_set.id}' does not exist."
+                    //    });
+                    //    examHasErrors = true;
+                    //}
 
                     // Validate academic year
                     if (!academicYearIds.Contains(examDTO.academic_year.id))
@@ -385,11 +385,11 @@ namespace ExamProcessManage.Repository
                     return GenerateErrorResponse("academic_year", "academicYear khong hop le " + examDTO.academic_year.id, "AcademicYear khong hop le");
                 }
 
-                if (examDTO.exam_set != null && examDTO.exam_set.id <= 0 ||
-                    !await _context.ExamSets.AnyAsync(e => e.ExamSetId == examDTO.exam_set.id))
-                {
-                    return GenerateErrorResponse("exam_set_id", "examSetId khong hop le " + examDTO.exam_set.id, "ExamSet khong hop le");
-                }
+                //if (examDTO.exam_set != null && examDTO.exam_set.id <= 0 ||
+                //    !await _context.ExamSets.AnyAsync(e => e.ExamSetId == examDTO.exam_set.id))
+                //{
+                //    return GenerateErrorResponse("exam_set_id", "examSetId khong hop le " + examDTO.exam_set.id, "ExamSet khong hop le");
+                //}
 
                 existExam.ExamName = examDTO.name != "string" && examDTO.name != existExam.ExamName ?
                     examDTO.name : existExam.ExamName;
