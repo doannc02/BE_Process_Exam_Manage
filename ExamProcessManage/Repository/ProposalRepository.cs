@@ -101,6 +101,7 @@ namespace ExamProcessManage.Repository
         public async Task<BaseResponse<ProposalDTO>> GetDetailProposalAsync(int id)
         {
             var courses = await _context.Courses.AsNoTracking().ToListAsync();
+            var departments = await _context.Departments.AsNoTracking().ToListAsync();
             var majors = await _context.Majors.AsNoTracking().ToListAsync();
             var proposal = await _context.Proposals
             .AsNoTracking()
@@ -138,7 +139,11 @@ namespace ExamProcessManage.Repository
                     },
                     _ => null // Nếu không tìm thấy
                 },
-                department = es.Department,
+                department = departments.Where(m => m.DepartmentId == es.DepartmentId).Select(m => new CommonObject
+                {
+                    id = m.DepartmentId,
+                    name = m.DepartmentName
+                }).FirstOrDefault(),
                 description = es.Description,
                 id = es.ExamSetId,
                 name = es.ExamSetName,

@@ -3,6 +3,7 @@
     public partial class Exam
     {
         public int ExamId { get; set; }
+        public int? CreatorId { get; set; }
         public string ExamCode { get; set; } = null!;
         public string? ExamName { get; set; }
         public int? ExamSetId { get; set; }

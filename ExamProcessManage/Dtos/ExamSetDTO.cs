@@ -11,7 +11,7 @@ namespace ExamProcessManage.Dtos
 
         public int? id { get; set; }
         public string? name { get; set; }
-        public string? department { get; set; }
+        public CommonObject? department { get; set; }
         public CommonObject? major { get; set; }
         public int exam_quantity { get; set; }
         public string? description { get; set; }

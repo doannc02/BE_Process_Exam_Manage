@@ -99,11 +99,14 @@ namespace ExamProcessManage.Data
 
                 entity.HasIndex(e => e.AcademicYearId, "academic_year_id");
 
+                entity.HasIndex(e => e.CreatorId, "creator_id");
+
                 entity.HasIndex(e => e.ExamSetId, "exam_set_id");
 
                 entity.Property(e => e.ExamId).HasColumnName("exam_id");
 
                 entity.Property(e => e.AcademicYearId).HasColumnName("academic_year_id");
+                entity.Property(e => e.CreatorId).HasColumnName("creator_id");
 
                 entity.Property(e => e.AttachedFile)
                     .HasMaxLength(255)
@@ -164,15 +167,19 @@ namespace ExamProcessManage.Data
 
                 entity.HasIndex(e => e.CourseId, "course_id");
 
+                entity.HasIndex(e => e.CreatorId, "creator_id");
+
                 entity.HasIndex(e => e.ProposalId, "proposal_id");
 
                 entity.Property(e => e.ExamSetId).HasColumnName("exam_set_id");
 
                 entity.Property(e => e.CourseId).HasColumnName("course_id");
 
-                entity.Property(e => e.Department)
+                entity.Property(e => e.CreatorId).HasColumnName("creator_id");
+
+                entity.Property(e => e.DepartmentId)
                     .HasMaxLength(50)
-                    .HasColumnName("department");
+                    .HasColumnName("department_id");
 
                 entity.Property(e => e.Description)
                     .HasColumnType("text")
