@@ -67,7 +67,7 @@ namespace ExamProcessManage.Controllers
 
 
             }
-            catch (Exception ex)
+            catch
             {
                 return new CustomJsonResult(500, HttpContext, "Server error!!");
             }
@@ -137,9 +137,9 @@ namespace ExamProcessManage.Controllers
                 if (res != null) return Ok(res);
                 else return new CustomJsonResult(500, HttpContext, "Error");
             }
-            catch
+            catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, "Server error!!");
+                return new CustomJsonResult(500, HttpContext, "Server error: " + ex.Message);
             }
         }
 
