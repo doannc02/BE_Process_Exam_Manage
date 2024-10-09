@@ -84,11 +84,11 @@ namespace ExamProcessManage.Repository
                             code = courses.FirstOrDefault(m => m.CourseId == p.CourseId).CourseCode
                         }
                         : null,
-                    department = departments.Where(m => m.DepartmentId == p.DepartmentId).Select(m => new CommonObject
+                    department = departments.FirstOrDefault(m => m.DepartmentId == p.DepartmentId) != null ? departments.Where(m => m.DepartmentId == p.DepartmentId).Select(m => new CommonObject
                     {
                         id = m.DepartmentId,
                         name = m.DepartmentName
-                    }).FirstOrDefault(),
+                    }).FirstOrDefault() : null ,
                     description = p.Description,
                     status = p.Status,
                     exam_quantity = p.ExamQuantity,
@@ -101,7 +101,7 @@ namespace ExamProcessManage.Repository
                         }
                         : null,
                     name = p.ExamSetName,
-                    user = p.Proposal.TeacherProposals.FirstOrDefault() != null ? p.Proposal.TeacherProposals.Select(tp => new
+                    user = p.Proposal != null ? p.Proposal.TeacherProposals.Select(tp => new
                     {
                         id = (int)tp.UserId,
                         name = users.Where(u => u.Id == (ulong)tp.UserId).FirstOrDefault().Email ?? "",
