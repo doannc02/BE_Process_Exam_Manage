@@ -184,9 +184,9 @@ namespace ExamProcessManage.Data
                     .HasMaxLength(255)
                     .HasColumnName("exam_set_name");
 
-                entity.Property(e => e.Major)
+                entity.Property(e => e.MajorId)
                     .HasMaxLength(50)
-                    .HasColumnName("major");
+                    .HasColumnName("major_id");
 
                 entity.Property(e => e.ProposalId).HasColumnName("proposal_id");
 

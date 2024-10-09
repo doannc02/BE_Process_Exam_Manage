@@ -34,7 +34,7 @@ namespace ExamProcessManage.Controllers
 
                 if (roleClaim == null || userId == null)
                 {
-                    return new CustomJsonResult(StatusCodes.Status403Forbidden, HttpContext, "Unauthorized!!");
+                    return Forbid();
                 }
                 else
                 {

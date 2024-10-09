@@ -13,7 +13,7 @@ namespace ExamProcessManage.Models
         public int ExamSetId { get; set; }
         public string? ExamSetName { get; set; }
         public string Department { get; set; } = null!;
-        public string Major { get; set; } = null!;
+        public int? MajorId { get; set; } = null!;
         public int ExamQuantity { get; set; }
         public string? Description { get; set; }
         public string Status { get; set; } = null!;

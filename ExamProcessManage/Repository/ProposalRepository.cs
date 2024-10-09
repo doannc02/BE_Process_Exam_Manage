@@ -100,6 +100,8 @@ namespace ExamProcessManage.Repository
 
         public async Task<BaseResponse<ProposalDTO>> GetDetailProposalAsync(int id)
         {
+            var courses = await _context.Courses.AsNoTracking().ToListAsync();
+            var majors = await _context.Majors.AsNoTracking().ToListAsync();
             var proposal = await _context.Proposals
             .AsNoTracking()
             .Include(p => p.ExamSets)
@@ -120,11 +122,21 @@ namespace ExamProcessManage.Repository
 
             var examSetDTOs = proposal.ExamSets.Select(es => new ExamSetDTO
             {
-                course = new CommonObject
+                //course = new CommonObject
+                //{
+                //    name = es.Course?.CourseName ?? string.Empty,
+                //    code = es.Course?.CourseCode ?? string.Empty,
+                //    id = es.Course?.CourseId ?? 0
+                //},
+                course = courses.FirstOrDefault(m => m.CourseId == es.CourseId) switch
                 {
-                    name = es.Course?.CourseName ?? string.Empty,
-                    code = es.Course?.CourseCode ?? string.Empty,
-                    id = es.Course?.CourseId ?? 0
+                    var courseObj when courseObj != null => new CommonObject
+                    {
+                        id = courseObj.CourseId,
+                        name = courseObj.CourseName,
+                        code = courseObj.CourseCode
+                    },
+                    _ => null // Nếu không tìm thấy
                 },
                 department = es.Department,
                 description = es.Description,
@@ -132,13 +144,21 @@ namespace ExamProcessManage.Repository
                 name = es.ExamSetName,
                 exam_quantity = es.ExamQuantity,
                 status = es.Status,
-                exams = es.Exams.Select(e => new CommonObject
+                exams = es.Exams.Select(e => new ExamDTO
                 {
                     code = e.ExamCode,
                     id = e.ExamId,
                     name = e.ExamName
                 }).ToList(),
-                major = es.Major,
+                major = majors.FirstOrDefault(m => m.MajorId == es.MajorId) switch
+                {
+                    var majorObj when majorObj != null => new CommonObject
+                    {
+                        id = majorObj.MajorId,
+                        name = majorObj.MajorName
+                    },
+                    _ => null // Nếu không tìm thấy
+                }
             }).ToList();
 
             var teacherProposal = proposal.TeacherProposals.FirstOrDefault();
