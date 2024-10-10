@@ -323,7 +323,7 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         message = "Kế hoạch đã phê duyệt không được sửa",
-                        errs = new List<ErrorDetail>()
+                        errors = new List<ErrorDetail>()
                         {
                             new()
                             {

@@ -164,9 +164,9 @@ namespace ExamProcessManage.Controllers
 
                     if (updatedExamSet != null)
                     {
-                        if (updatedExamSet.errorCode != null && updatedExamSet.errs != null && updatedExamSet.errs.Any())
+                        if (updatedExamSet.status != null && updatedExamSet.errors != null && updatedExamSet.errors.Any())
                         {
-                            return new CustomJsonResult((int)updatedExamSet.errorCode, HttpContext, updatedExamSet.message, (List<ErrorDetail>?)updatedExamSet.errs);
+                            return new CustomJsonResult((int)updatedExamSet.status, HttpContext, updatedExamSet.message, (List<ErrorDetail>?)updatedExamSet.errors);
                         }
                         else
                         {

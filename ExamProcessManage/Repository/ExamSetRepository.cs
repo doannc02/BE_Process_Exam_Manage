@@ -5,7 +5,6 @@ using ExamProcessManage.Interfaces;
 using ExamProcessManage.Models;
 using ExamProcessManage.RequestModels;
 using Microsoft.EntityFrameworkCore;
-using Mysqlx;
 
 namespace ExamProcessManage.Repository
 {
@@ -130,7 +129,6 @@ namespace ExamProcessManage.Repository
             }
         }
 
-
         public async Task<BaseResponse<ExamSetDTO>> GetDetailExamSetAsync(int? userId, int id)
         {
             try
@@ -233,7 +231,7 @@ namespace ExamProcessManage.Repository
             {
                 if (examSetDTO == null)
                 {
-                    return new BaseResponseId { errorCode = 400, message = "Bộ đề rỗng" };
+                    return new BaseResponseId { status = 400, message = "Bộ đề rỗng" };
                 }
 
                 var errors = new List<ErrorDetail>();
@@ -323,9 +321,9 @@ namespace ExamProcessManage.Repository
                 {
                     return new BaseResponseId
                     {
-                        errorCode = 400,
+                        status = 400,
                         message = "Validation Failed",
-                        errs = errors
+                        errors = errors
                     };
                 }
 
@@ -357,7 +355,7 @@ namespace ExamProcessManage.Repository
             {
                 return new BaseResponseId
                 {
-                    errorCode = 500,
+                    status = 500,
                     message = "Có lỗi xảy ra: " + ex.Message
                 };
             }
@@ -407,9 +405,9 @@ namespace ExamProcessManage.Repository
 
                 if (errorList.Any()) return new BaseResponseId
                 {
-                    errorCode = 400,
+                    status = 400,
                     message = "Du lieu khong hop le",
-                    errs = errorList
+                    errors = errorList
                 };
 
                 try
@@ -511,9 +509,9 @@ namespace ExamProcessManage.Repository
 
                         if (errorList.Any()) return new BaseResponseId
                         {
-                            errorCode = 400,
+                            status = 400,
                             message = "Du lieu khong hop le",
-                            errs = errorList
+                            errors = errorList
                         };
 
                         if (examIds != null && examList.Count == examIds.Count) existExamSet.Exams = examList;
@@ -530,7 +528,7 @@ namespace ExamProcessManage.Repository
                     {
                         message = "Co loi xay ra: " + ex.Message + "\n" + ex.InnerException
                     });
-                    response.errs = errorList;
+                    response.errors = errorList;
                 }
             }
 
@@ -541,7 +539,6 @@ namespace ExamProcessManage.Repository
         {
             try
             {
-                var validStatuses = new List<string> { "in_progress", "rejected", "approved", "pending_approval" };
                 var findExam = await _context.Exams.FindAsync(id);
 
                 if (findExam == null)
@@ -549,7 +546,7 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         message = $"Không tìm thấy bài thi",
-                        errs = new List<ErrorDetail>
+                        errors = new List<ErrorDetail>
                         {
                             new()
                             {
@@ -560,12 +557,12 @@ namespace ExamProcessManage.Repository
                     };
                 }
 
-                if (!validStatuses.Contains(status))
+                if (!validStatus.Contains(status))
                 {
                     return new BaseResponseId
                     {
                         message = $"Không hợp lệ",
-                        errs = new List<ErrorDetail>
+                        errors = new List<ErrorDetail>
                         {
                             new()
                             {
@@ -581,7 +578,7 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         message = $"Không có thay đổi",
-                        errs = new List<ErrorDetail>
+                        errors = new List<ErrorDetail>
                         {
                             new()
                             {

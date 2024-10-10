@@ -124,17 +124,20 @@ namespace ExamProcessManage.Controllers
         {
             try
             {
-                var updateExam = await _examRepository.UpdateStateAsync(examId, status, comment);
+                var updateStatus = await _examRepository.UpdateStateAsync(examId, status, comment);
 
-                if (updateExam != null && updateExam.data != null)
+                if (updateStatus != null && updateStatus.data != null)
                 {
-                    var response = _createCommon.CreateResponse(updateExam.message, HttpContext, updateExam.data);
+                    var response = _createCommon.CreateResponse(updateStatus.message, HttpContext, updateStatus.data);
                     return Ok(response);
+                }
+                else if (updateStatus != null)
+                {
+                    return new CustomJsonResult((int)updateStatus.status, HttpContext, updateStatus.message, (List<ErrorDetail>)updateStatus.errors);
                 }
                 else
                 {
-                    var response = _createCommon.CreateResponse(updateExam.message, HttpContext, updateExam);
-                    return Ok(response);
+                    return new CustomJsonResult(400, HttpContext, "Error");
                 }
             }
             catch
