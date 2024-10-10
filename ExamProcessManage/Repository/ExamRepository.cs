@@ -180,8 +180,9 @@ namespace ExamProcessManage.Repository
                 var errors = new List<ErrorDetail>();
 
                 // Fetch existing codes, names, and attached files in one query each
+                var examCodes = exams.Select(x => x.code).ToList();
                 var existingCodes = await _context.Exams.AsNoTracking()
-                                          .Where(e => exams.Select(x => x.code).Contains(e.ExamCode))
+                                          .Where(e => examCodes.Contains(e.ExamCode))
                                           .Select(e => e.ExamCode)
                                           .ToListAsync();
 
@@ -424,59 +425,101 @@ namespace ExamProcessManage.Repository
 
         public async Task<BaseResponseId> UpdateStateAsync(int examId, string status, string? comment = null)
         {
-            var findExam = await _context.Exams.FindAsync(examId);
-            if (findExam == null)
-            {
-                return new BaseResponseId
-                {
-                    status = 404,
-                    message = "Không tìm thấy bài thi",
-                    errors = new List<ErrorDetail>
-                    {
-                        new()
-                        {
-                            field = "exam_id",
-                            message = $"Không tìm thấy bài thi {examId}"
-                        }
-                    }
-                };
-            }
-
-            if (!validStatus.Contains(status))
-            {
-                return new BaseResponseId
-                {
-                    status = 400,
-                    message = "Không hợp lệ",
-                    errors = new List<ErrorDetail>
-                    {
-                        new()
-                        {
-                            field = "status",
-                            message = "status nhập vào không hợp lệ"
-                        }
-                    }
-                };
-            }
-
             try
             {
-                findExam.Status = status;
-                if (!string.IsNullOrEmpty(comment) && comment != "string") findExam.Comment = comment;
-
-                await _context.SaveChangesAsync();
-                return new BaseResponseId
+                var findExam = await _context.Exams.FindAsync(examId);
+                if (findExam == null)
                 {
-                    data = new DetailResponse { id = findExam.ExamId },
-                    message = "Thành công",
-                };
+                    return new BaseResponseId
+                    {
+                        status = 404,
+                        message = "Không tìm thấy bài thi",
+                        errors = new List<ErrorDetail> { new() { field = "exam_id", message = $"Không tìm thấy bài thi {examId}" } }
+                    };
+                }
+                else
+                {
+                    if (!validStatus.Contains(status))
+                    {
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Không hợp lệ",
+                            errors = new List<ErrorDetail> { new() { field = "status", message = "status nhập vào không hợp lệ" } }
+                        };
+                    }
+
+                    if (findExam.Status == "approved")
+                    {
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Đề thi đã được duyệt, không được phép sửa"
+                        };
+                    }
+
+                    if (!string.IsNullOrEmpty(status))
+                    {
+                        // Xử lý logic thay đổi trạng thái dựa trên trạng thái hiện tại và trạng thái mới
+                        switch (status)
+                        {
+                            case "approved":
+                                if (findExam.Status == "pending_approval")
+                                {
+                                    findExam.Status = status;
+                                }
+                                else
+                                {
+                                    return new BaseResponseId
+                                    {
+                                        status = 400,
+                                        message = "Trạng thái không hợp lệ"
+                                    };
+                                }
+                                break;
+
+                            case "rejected":
+                                if (findExam.Status == "pending_approval")
+                                {
+                                    findExam.Status = status;
+                                }
+                                else
+                                {
+                                    return new BaseResponseId
+                                    {
+                                        status = 400,
+                                        message = "Trạng thái không hợp lệ"
+                                    };
+                                }
+                                break;
+
+                            default:
+                                findExam.Status = status; // Các trạng thái khác được phép thay đổi trực tiếp
+                                break;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(comment) && comment != "string")
+                    {
+                        findExam.Comment = comment;
+                    }
+
+                    await _context.SaveChangesAsync();
+
+                    return new BaseResponseId
+                    {
+                        data = new DetailResponse { id = findExam.ExamId },
+                        message = "Cập nhật thành công"
+                    };
+                }
             }
             catch (Exception ex)
             {
                 return new BaseResponseId
                 {
                     status = 500,
-                    message = "Có lỗi xảy ra: " + ex.Message + "\n" + ex.InnerException
+                    message = "Có lỗi xảy ra: " + ex.Message,
+                    errors = new List<ErrorDetail> { new() { field = "exception", message = ex.InnerException?.Message ?? ex.Message } }
                 };
             }
         }

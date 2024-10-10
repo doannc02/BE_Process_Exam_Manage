@@ -89,9 +89,9 @@ namespace ExamProcessManage.Controllers
                     return Ok(response);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, "Internal Server Error");
+                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message}\n{ex.InnerException}");
             }
         }
 
@@ -122,6 +122,12 @@ namespace ExamProcessManage.Controllers
         [HttpPut("update-state")]
         public async Task<IActionResult> UpdateStateAsync([Required] int examId, [Required] string status, string? comment)
         {
+            if (!ModelState.IsValid)
+            {
+                // Xử lý trường hợp các tham số không hợp lệ
+                return new CustomJsonResult(400, HttpContext, "Thông tin không hợp lệ");
+            }
+
             try
             {
                 var updateStatus = await _examRepository.UpdateStateAsync(examId, status, comment);
@@ -129,20 +135,22 @@ namespace ExamProcessManage.Controllers
                 if (updateStatus != null && updateStatus.data != null)
                 {
                     var response = _createCommon.CreateResponse(updateStatus.message, HttpContext, updateStatus.data);
-                    return Ok(response);
+                    return Ok(response); // Trả về kết quả thành công
                 }
                 else if (updateStatus != null)
                 {
+                    // Phản hồi lại lỗi từ UpdateStateAsync
                     return new CustomJsonResult((int)updateStatus.status, HttpContext, updateStatus.message, (List<ErrorDetail>)updateStatus.errors);
                 }
                 else
                 {
-                    return new CustomJsonResult(400, HttpContext, "Error");
+                    return new CustomJsonResult(400, HttpContext, "Không thể cập nhật trạng thái");
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, "Internal Server Error");
+                // Xử lý ngoại lệ nếu có lỗi trong quá trình cập nhật
+                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message}");
             }
         }
 

@@ -1,10 +1,13 @@
 ﻿using ExamProcessManage.Dtos;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
+using ExamProcessManage.Models;
+using ExamProcessManage.Repository;
 using ExamProcessManage.RequestModels;
 using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 
 namespace ExamProcessManage.Controllers
@@ -191,9 +194,29 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpPut("update-state")]
-        public async Task<IActionResult> UpdateStateAsync([FromQuery] int id, string status, string? comment)
+        public async Task<IActionResult> UpdateStateAsync([FromQuery][Required] int examSetId,[Required] string status, string? comment)
         {
-            return NotFound();
+            try
+            {
+                var updState = await _repository.UpdateStateAsync(examSetId, status, comment);
+                if (updState != null && updState.data != null)
+                {
+                    var response = _createCommonResponse.CreateResponse(updState.message, HttpContext, updState.data);
+                    return Ok(response);
+                }
+                else if (updState != null)
+                {
+                    return new CustomJsonResult((int)updState.status, HttpContext, updState.message, (List<ErrorDetail>)updState.errors);
+                }
+                else
+                {
+                    return new CustomJsonResult(400, HttpContext, "Error");
+                }
+            }
+            catch (Exception ex)
+            {
+                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message}: {ex.InnerException}" );
+            }
         }
 
         [HttpPut("remove-child")]

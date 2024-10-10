@@ -1,6 +1,4 @@
-﻿using ExamProcessManage.Dtos;
-
-namespace ExamProcessManage.Helpers
+﻿namespace ExamProcessManage.Helpers
 {
     public class BaseResponse<T>
     {
