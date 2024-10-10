@@ -86,11 +86,11 @@ namespace ExamProcessManage.Repository
                             code = courses.FirstOrDefault(m => m.CourseId == p.CourseId).CourseCode
                         }
                         : null,
-                    department = departments.Where(m => m.DepartmentId == p.DepartmentId).Select(m => new CommonObject
+                    department = departments.FirstOrDefault(m => m.DepartmentId == p.DepartmentId) != null ? departments.Where(m => m.DepartmentId == p.DepartmentId).Select(m => new CommonObject
                     {
                         id = m.DepartmentId,
                         name = m.DepartmentName
-                    }).FirstOrDefault(),
+                    }).FirstOrDefault() : null,
                     description = p.Description,
                     status = p.Status,
                     exam_quantity = p.ExamQuantity,
@@ -103,7 +103,7 @@ namespace ExamProcessManage.Repository
                         }
                         : null,
                     name = p.ExamSetName,
-                    user = p.Proposal.TeacherProposals.FirstOrDefault() != null ? p.Proposal.TeacherProposals.Select(tp => new
+                    user = p.Proposal != null ? p.Proposal.TeacherProposals.Select(tp => new
                     {
                         id = (int)tp.UserId,
                         name = users.Where(u => u.Id == (ulong)tp.UserId).FirstOrDefault().Email ?? "",
@@ -369,6 +369,8 @@ namespace ExamProcessManage.Repository
             if (examSet == null) errorList.Add(new() { message = "Bo de rong" });
             else
             {
+
+
                 if (examSet.id <= 0) errorList.Add(new()
                 {
                     field = "exam_set.id",
@@ -391,6 +393,7 @@ namespace ExamProcessManage.Repository
                 });
 
                 var examIds = examSet.exams?.ToList();
+
                 if (examIds?.Count > 0)
                 {
                     for (int i = 0; i < examIds.Count; i++)
@@ -412,7 +415,7 @@ namespace ExamProcessManage.Repository
 
                 try
                 {
-                    var existExamSet = await _context.ExamSets.FirstOrDefaultAsync(e => e.ExamSetId == examSet.id);
+                    var existExamSet = await _context.ExamSets.Include(t => t.Exams).FirstOrDefaultAsync(e => e.ExamSetId == examSet.id);
                     if (existExamSet == null)
                     {
                         errorList.Add(new()
@@ -472,16 +475,26 @@ namespace ExamProcessManage.Repository
                         existExamSet.Description = examSet.description == "string" || string.IsNullOrEmpty(examSet.description)
                             ? existExamSet.Description : examSet.description;
                         existExamSet.Status = examSet.status;
-                        existExamSet.CreatorId = userId;
+                        //existExamSet.CreatorId = userId;
 
                         var examList = new List<Exam>();
                         if (examSet.exams != null && examSet.exams.Any())
                         {
-                            var examListId = examSet.exams.Select(e => e.id).ToList();
-                            var existingExams = await _context.Exams.Where(e => examListId.Contains(e.ExamId)).ToListAsync();
+                            var examsListId = examSet.exams.Select(e => e.id).ToList();
+                            var existingExams = await _context.Exams.Where(e => examsListId.Contains(e.ExamId)).ToListAsync();
                             var examCodeSet = new HashSet<int>();
+                            var examsToRemove = existingExams.Where(e => !examsListId.Contains(e.ExamId)).ToList();
+                            if(examsToRemove.Count > 0 && examsToRemove.Any())
+                            {
 
-                            foreach (var examId in examListId)
+                                foreach (var examToRemove in examsToRemove)
+                                {
+                                    examToRemove.ExamSetId = null;
+                                }
+
+                            }
+
+                            foreach (var examId in examsListId)
                             {
                                 if (!examCodeSet.Add(examId))
                                 {
