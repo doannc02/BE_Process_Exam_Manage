@@ -9,19 +9,20 @@ namespace ExamProcessManage.Helpers
         private readonly int _status;
         private readonly string _traceId;
         private readonly string _title;
-        private readonly ErrorDetail? _errorDetail;
+        private readonly List<ErrorDetail>? _errorDetail;
 
-        public CustomJsonResult(int status, HttpContext httpContext, string title, ErrorDetail? errorDetail = null)
+        public CustomJsonResult(int status, HttpContext httpContext, string title, List<ErrorDetail>? errorDetails = null)
         {
             _status = status;
             _traceId = Activity.Current?.Id ?? httpContext.TraceIdentifier;
             _title = title;
-            _errorDetail = errorDetail;
+            _errorDetail = errorDetails;
         }
 
         public async Task ExecuteResultAsync(ActionContext context)
         {
             var response = context.HttpContext.Response;
+            response.StatusCode = _status;
             response.ContentType = "application/json";
 
             if (_status == StatusCodes.Status401Unauthorized ||
@@ -46,7 +47,7 @@ namespace ExamProcessManage.Helpers
                 statusCode = _status,
                 traceId = _traceId,
                 title = _title,
-                error = _errorDetail == null ? new ErrorDetail() : _errorDetail
+                error = _errorDetail
             });
 
             await response.WriteAsync(jsonResponse);

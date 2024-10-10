@@ -5,12 +5,15 @@ using ExamProcessManage.Interfaces;
 using ExamProcessManage.Models;
 using ExamProcessManage.RequestModels;
 using Microsoft.EntityFrameworkCore;
+using Mysqlx;
 
 namespace ExamProcessManage.Repository
 {
     public class ExamSetRepository : IExamSetRepository
     {
         private readonly ApplicationDbContext _context;
+        private readonly List<string> validStatus = new() { "in_progress", "rejected", "approved", "pending_approval" };
+
         public ExamSetRepository(ApplicationDbContext context)
         {
             _context = context;
@@ -233,9 +236,7 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId { errorCode = 400, message = "Bộ đề rỗng" };
                 }
 
-                var errors = new List<ErrorCodes>();
-                var validStatus = new List<string> { "in_progress", "rejected", "approved", "pending_approval" };
-                var examList = new List<Exam>();
+                var errors = new List<ErrorDetail>();
 
                 // Kiểm tra tên bộ đề
                 if (!string.IsNullOrEmpty(examSetDTO.name) && examSetDTO.name != "string")
@@ -244,14 +245,14 @@ namespace ExamProcessManage.Repository
                         .AnyAsync(e => examSetDTO.name == e.ExamSetName);
                     if (isExistingName)
                     {
-                        errors.Add(new ErrorCodes { code = "exam_set.name", message = "Tên bộ đề đã tồn tại" });
+                        errors.Add(new ErrorDetail { field = "exam_set.name", message = "Tên bộ đề đã tồn tại" });
                     }
                 }
 
                 // Kiểm tra trạng thái bộ đề
                 if (!validStatus.Contains(examSetDTO.status))
                 {
-                    errors.Add(new ErrorCodes { code = "exam_set.status", message = "Trạng thái bộ đề không hợp lệ" });
+                    errors.Add(new ErrorDetail { field = "exam_set.status", message = "Trạng thái bộ đề không hợp lệ" });
                 }
 
                 // Kiểm tra học phần
@@ -261,15 +262,15 @@ namespace ExamProcessManage.Repository
 
                 if (course == null)
                 {
-                    errors.Add(new ErrorCodes { code = "exam_set.course", message = "Học phần không hợp lệ" });
+                    errors.Add(new ErrorDetail { field = "exam_set.course", message = "Học phần không hợp lệ" });
                 }
                 else if (course.Major == null)
                 {
-                    errors.Add(new ErrorCodes { code = "exam_set.major", message = "Chuyên ngành không hợp lệ" });
+                    errors.Add(new ErrorDetail { field = "exam_set.major", message = "Chuyên ngành không hợp lệ" });
                 }
                 else if (course.Major.Department == null)
                 {
-                    errors.Add(new ErrorCodes { code = "exam_set.department", message = "Khoa không hợp lệ" });
+                    errors.Add(new ErrorDetail { field = "exam_set.department", message = "Khoa không hợp lệ" });
                 }
 
                 // Kiểm tra đề xuất
@@ -279,11 +280,12 @@ namespace ExamProcessManage.Repository
                         .AnyAsync(p => p.ProposalId == examSetDTO.proposal.id || p.PlanCode == examSetDTO.proposal.code);
                     if (!isExistingProposal)
                     {
-                        errors.Add(new ErrorCodes { code = "exam_set.proposal", message = "Không tìm thấy Đề xuất" });
+                        errors.Add(new ErrorDetail { field = "exam_set.proposal", message = "Không tìm thấy Đề xuất" });
                     }
                 }
 
                 // Kiểm tra các bài thi
+                var examList = new List<Exam>();
                 if (examSetDTO.exams != null && examSetDTO.exams.Any())
                 {
                     var examIds = examSetDTO.exams.Select(e => e.id).ToList();
@@ -294,17 +296,17 @@ namespace ExamProcessManage.Repository
                     {
                         if (!examCodeSet.Add(examId))
                         {
-                            errors.Add(new ErrorCodes
+                            errors.Add(new ErrorDetail
                             {
-                                code = $"exam_set.exams.{examId}",
+                                field = $"exam_set.exams.{examId}",
                                 message = $"Bài thi bị trùng lặp {examId}"
                             });
                         }
                         else if (!existingExams.Any(e => e.ExamId == examId))
                         {
-                            errors.Add(new ErrorCodes
+                            errors.Add(new ErrorDetail
                             {
-                                code = $"exam_set.exams.{examId}",
+                                field = $"exam_set.exams.{examId}",
                                 message = $"Không tồn tại bài thi {examId}"
                             });
                         }
@@ -361,12 +363,181 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public Task<BaseResponseId> UpdateExamSetAsync(ExamSetDTO examSetDTO)
+        public async Task<BaseResponseId> UpdateExamSetAsync(int userId, ExamSetDTO examSet)
         {
-            throw new NotImplementedException();
+            var response = new BaseResponseId();
+            var errorList = new List<ErrorDetail>();
+
+            if (examSet == null) errorList.Add(new() { message = "Bo de rong" });
+            else
+            {
+                if (examSet.id <= 0) errorList.Add(new()
+                {
+                    field = "exam_set.id",
+                    message = "Ma bo de da nhap khong hop le"
+                });
+                if (!validStatus.Contains(examSet.status)) errorList.Add(new()
+                {
+                    field = "exam_set.major.id",
+                    message = "Trang thai bo de da nhap khong hop le"
+                });
+                if (examSet.course.id <= 0) errorList.Add(new()
+                {
+                    field = "exam_set.course.id",
+                    message = "Ma hoc phan da nhap khong hop le"
+                });
+                if (userId <= 0) errorList.Add(new()
+                {
+                    field = "exam_set.user",
+                    message = "Nguoi dung khong hop le"
+                });
+
+                var examIds = examSet.exams?.ToList();
+                if (examIds?.Count > 0)
+                {
+                    for (int i = 0; i < examIds.Count; i++)
+                    {
+                        if (examIds[i].id <= 0) errorList.Add(new()
+                        {
+                            field = $"exam_set.exams.{i}",
+                            message = "Ma de thi khong hop le"
+                        });
+                    }
+                }
+
+                if (errorList.Any()) return new BaseResponseId
+                {
+                    errorCode = 400,
+                    message = "Du lieu khong hop le",
+                    errs = errorList
+                };
+
+                try
+                {
+                    var existExamSet = await _context.ExamSets.FirstOrDefaultAsync(e => e.ExamSetId == examSet.id);
+                    if (existExamSet == null)
+                    {
+                        errorList.Add(new()
+                        {
+                            message = $"Khong tim thay bo de voi ma : {examSet.id}"
+                        });
+                    }
+                    else
+                    {
+                        if (examSet.department != null && examSet.department.id > 0)
+                        {
+                            if (!await _context.Departments.AnyAsync(d => d.DepartmentId == examSet.department.id)) errorList.Add(new()
+                            {
+                                field = "exam_set.department",
+                                message = $"Khong tim thay khoa: {examSet.department.id}"
+                            });
+                            else existExamSet.DepartmentId = examSet.department.id;
+                        }
+                        if (examSet.major != null && examSet.major.id > 0)
+                        {
+                            if (!await _context.Majors.AnyAsync(m => m.MajorId == examSet.major.id)) errorList.Add(new()
+                            {
+                                field = "exam_set.major",
+                                message = $"Khong tim thay chuyen nganh: {examSet.major.id}"
+                            });
+                            else existExamSet.MajorId = examSet.major.id;
+                        }
+                        if (examSet.proposal != null && examSet.proposal.id > 0)
+                        {
+                            if (!await _context.Proposals.AnyAsync(p => p.ProposalId == examSet.proposal.id)) errorList.Add(new()
+                            {
+                                field = "exam_set.proposal",
+                                message = $"Khong tim thay de xuat: {examSet.proposal.id}"
+                            });
+                            else existExamSet.ProposalId = examSet.proposal.id;
+                        }
+                        if (examSet.course != null && examSet.course.id > 0)
+                        {
+                            if (!await _context.Courses.AnyAsync(c => c.CourseId == examSet.course.id))
+                            {
+                                errorList.Add(new()
+                                {
+                                    field = "exam_set.proposal",
+                                    message = $"Khong tim thay hoc phan: {examSet.course.id}"
+                                });
+                            }
+                            else
+                            {
+                                ///////////////////////////
+
+                                existExamSet.CourseId = examSet.course.id;
+                            }
+                        }
+
+                        existExamSet.ExamSetName = examSet.name == "string" || string.IsNullOrEmpty(examSet.name) ? existExamSet.ExamSetName : examSet.name;
+                        existExamSet.ExamQuantity = examIds != null ? examIds.Count : existExamSet.ExamQuantity;
+                        existExamSet.Description = examSet.description == "string" || string.IsNullOrEmpty(examSet.description)
+                            ? existExamSet.Description : examSet.description;
+                        existExamSet.Status = examSet.status;
+                        existExamSet.CreatorId = userId;
+
+                        var examList = new List<Exam>();
+                        if (examSet.exams != null && examSet.exams.Any())
+                        {
+                            var examListId = examSet.exams.Select(e => e.id).ToList();
+                            var existingExams = await _context.Exams.Where(e => examListId.Contains(e.ExamId)).ToListAsync();
+                            var examCodeSet = new HashSet<int>();
+
+                            foreach (var examId in examListId)
+                            {
+                                if (!examCodeSet.Add(examId))
+                                {
+                                    errorList.Add(new ErrorDetail
+                                    {
+                                        field = $"exam_set.exams.{examId}",
+                                        message = $"Bài thi bị trùng lặp {examId}"
+                                    });
+                                }
+                                else if (!existingExams.Any(e => e.ExamId == examId))
+                                {
+                                    errorList.Add(new ErrorDetail
+                                    {
+                                        field = $"exam_set.exams.{examId}",
+                                        message = $"Không tồn tại bài thi {examId}"
+                                    });
+                                }
+                                else
+                                {
+                                    var exam = existingExams.First(e => e.ExamId == examId);
+                                    examList.Add(exam);
+                                }
+                            }
+                        }
+
+                        if (errorList.Any()) return new BaseResponseId
+                        {
+                            errorCode = 400,
+                            message = "Du lieu khong hop le",
+                            errs = errorList
+                        };
+
+                        if (examIds != null && examList.Count == examIds.Count) existExamSet.Exams = examList;
+
+                        response.message = "Cap nhat thanh cong";
+                        response.data = new DetailResponse { id = existExamSet.ExamSetId };
+
+                        await _context.SaveChangesAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errorList.Add(new()
+                    {
+                        message = "Co loi xay ra: " + ex.Message + "\n" + ex.InnerException
+                    });
+                    response.errs = errorList;
+                }
+            }
+
+            return response;
         }
 
-        public async Task<BaseResponseId> UpdateStateAsync(int id, string status, string? comment)
+        public async Task<BaseResponseId> UpdateStateAsync(int id, string status, string? comment = null)
         {
             try
             {
@@ -378,11 +549,11 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         message = $"Không tìm thấy bài thi",
-                        errs = new List<ErrorCodes>
+                        errs = new List<ErrorDetail>
                         {
                             new()
                             {
-                                code = "exam_id",
+                                field = "exam_id",
                                 message = $"Không tìm thấy bài thi {id}"
                             }
                         }
@@ -394,11 +565,11 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         message = $"Không hợp lệ",
-                        errs = new List<ErrorCodes>
+                        errs = new List<ErrorDetail>
                         {
                             new()
                             {
-                                code = "status",
+                                field = "status",
                                 message = $"status nhập vào không hợp lệ"
                             }
                         }
@@ -410,16 +581,16 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         message = $"Không có thay đổi",
-                        errs = new List<ErrorCodes>
+                        errs = new List<ErrorDetail>
                         {
                             new()
                             {
-                                code = "status",
+                                field = "status",
                                 message = "status không thay đổi"
                             },
                             new()
                             {
-                                code = "comment",
+                                field = "comment",
                                 message = "comment không thay đổi"
                             }
                         }

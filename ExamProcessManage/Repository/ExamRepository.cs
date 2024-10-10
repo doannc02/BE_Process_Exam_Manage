@@ -176,7 +176,7 @@ namespace ExamProcessManage.Repository
                 }
 
                 var listExam = new List<Exam>();
-                var errors = new List<ErrorCodes>();
+                var errors = new List<ErrorDetail>();
 
                 // Fetch existing codes, names, and attached files in one query each
                 var existingCodes = await _context.Exams.AsNoTracking()
@@ -210,18 +210,18 @@ namespace ExamProcessManage.Repository
                     // Validate code
                     if (IsInvalidString(examDTO.code))
                     {
-                        errors.Add(new ErrorCodes
+                        errors.Add(new()
                         {
-                            code = $"exams.{i}.code",
+                            field = $"exams.{i}.code",
                             message = $"Exam with code '{examDTO.code}' invalid."
                         });
                         examHasErrors = true;
                     }
                     else if (existingCodes.Contains(examDTO.code))
                     {
-                        errors.Add(new ErrorCodes
+                        errors.Add(new()
                         {
-                            code = $"exams.{i}.code",
+                            field = $"exams.{i}.code",
                             message = $"Exam with code '{examDTO.code}' already exists."
                         });
                         examHasErrors = true;
@@ -230,18 +230,18 @@ namespace ExamProcessManage.Repository
                     // Validate name
                     if (IsInvalidString(examDTO.name))
                     {
-                        errors.Add(new ErrorCodes
+                        errors.Add(new()
                         {
-                            code = $"exams.{i}.name",
+                            field = $"exams.{i}.name",
                             message = $"Exam with name '{examDTO.name}' invalid."
                         });
                         examHasErrors = true;
                     }
                     else if (existingNames.Contains(examDTO.name))
                     {
-                        errors.Add(new ErrorCodes
+                        errors.Add(new()
                         {
-                            code = $"exams.{i}.name",
+                            field = $"exams.{i}.name",
                             message = $"Exam with name '{examDTO.name}' already exists."
                         });
                         examHasErrors = true;
@@ -250,18 +250,18 @@ namespace ExamProcessManage.Repository
                     // Validate attached file
                     if (IsInvalidString(examDTO.attached_file))
                     {
-                        errors.Add(new ErrorCodes
+                        errors.Add(new()
                         {
-                            code = $"exams.{i}.attached_file",
+                            field = $"exams.{i}.attached_file",
                             message = $"Exam with attached_file '{examDTO.attached_file}' invalid."
                         });
                         examHasErrors = true;
                     }
                     else if (existingFiles.Contains(examDTO.attached_file))
                     {
-                        errors.Add(new ErrorCodes
+                        errors.Add(new()
                         {
-                            code = $"exams.{i}.attached_file",
+                            field = $"exams.{i}.attached_file",
                             message = $"Exam with file '{examDTO.attached_file}' already exists."
                         });
                         examHasErrors = true;
@@ -272,9 +272,9 @@ namespace ExamProcessManage.Repository
                     // Validate status
                     if (IsInvalidString(examDTO.status) || !validStatus.Contains(examDTO.status))
                     {
-                        errors.Add(new ErrorCodes
+                        errors.Add(new()
                         {
-                            code = $"exams.{i}.status",
+                            field = $"exams.{i}.status",
                             message = $"Exam with status '{examDTO.status}' is invalid."
                         });
                         examHasErrors = true;
@@ -294,9 +294,9 @@ namespace ExamProcessManage.Repository
                     // Validate academic year
                     if (!academicYearIds.Contains(examDTO.academic_year.id))
                     {
-                        errors.Add(new ErrorCodes
+                        errors.Add(new()
                         {
-                            code = $"exams.{i}.academic_year.id",
+                            field = $"exams.{i}.academic_year.id",
                             message = $"AcademicYear with id '{examDTO.academic_year.id}' does not exist."
                         });
                         examHasErrors = true;
@@ -473,11 +473,11 @@ namespace ExamProcessManage.Repository
 
         private static BaseResponseId GenerateErrorResponse(string code, string errorMessage, string userMessage, string? extraCode = null, string? extraMessage = null)
         {
-            var errorList = new List<ErrorCodes> { new() { code = code, message = errorMessage } };
+            var errorList = new List<ErrorDetail> { new() { field = code, message = errorMessage } };
 
             if (extraCode != null && extraMessage != null)
             {
-                errorList.Add(new ErrorCodes { code = extraCode, message = extraMessage });
+                errorList.Add(new() { field = extraCode, message = extraMessage });
             }
 
             return new BaseResponseId
@@ -503,11 +503,11 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         message = "Thất bại",
-                        errs = new List<ErrorCodes>
+                        errs = new List<ErrorDetail>
                             {
                                 new()
                                 {
-                                    code = $"exam.exam_id",
+                                    field = $"exam.exam_id",
                                     message = "Không tìm thấy bài thi"
                                 }
                             }
@@ -547,11 +547,11 @@ namespace ExamProcessManage.Repository
                     return new BaseResponse<string>
                     {
                         message = $"Không tìm thấy bài thi với ID {examId}",
-                        errs = new List<ErrorCodes>
+                        errs = new List<ErrorDetail>
                 {
-                    new ErrorCodes
+                    new()
                     {
-                        code = "exam_id",
+                        field = "exam_id",
                         message = $"Exam with ID {examId} not found."
                     }
                 }

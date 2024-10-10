@@ -1,4 +1,6 @@
-﻿namespace ExamProcessManage.Helpers
+﻿using ExamProcessManage.Dtos;
+
+namespace ExamProcessManage.Helpers
 {
     public class ErrorResponse
     {
@@ -9,7 +11,7 @@
 
     public class ErrorDetail
     {
-        public List<string> fields { get; set; }
+        public string field { get; set; }
         public string message { get; set; }
     }
 }
