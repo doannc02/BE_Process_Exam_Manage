@@ -155,7 +155,39 @@ namespace ExamProcessManage.Controllers
         [HttpPut]
         public async Task<IActionResult> PutExamSetAsync([FromBody] ExamSetDTO examSet)
         {
-            return NotFound();
+            try
+            {
+                var uID = User.Claims.FirstOrDefault(c => c.Type == "userId");
+                if (uID != null)
+                {
+                    var updatedExamSet = await _repository.UpdateExamSetAsync(int.Parse(uID.Value), examSet);
+
+                    if (updatedExamSet != null)
+                    {
+                        if (updatedExamSet.errorCode != null && updatedExamSet.errs != null && updatedExamSet.errs.Any())
+                        {
+                            return new CustomJsonResult((int)updatedExamSet.errorCode, HttpContext, updatedExamSet.message, (List<ErrorDetail>?)updatedExamSet.errs);
+                        }
+                        else
+                        {
+                            var response = _createCommonResponse.CreateResponse(updatedExamSet.message, HttpContext, updatedExamSet.data);
+                            return Ok(response);
+                        }
+                    }
+                    else
+                    {
+                        return new CustomJsonResult(400, HttpContext, "Error");
+                    }
+                }
+                else
+                {
+                    return Forbid();
+                }
+            }
+            catch (Exception ex)
+            {
+                return new CustomJsonResult(500, HttpContext, "Server error: " + ex.Message + "\n" + ex.InnerException);
+            }
         }
 
         [HttpPut("update-state")]

@@ -323,11 +323,11 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         message = "Kế hoạch đã phê duyệt không được sửa",
-                        errs = new List<ErrorCodes>()
+                        errs = new List<ErrorDetail>()
                         {
                             new()
                             {
-                                code = "proposal.new_state",
+                                field = "proposal.new_state",
                                 message = "không được sửa"
                             }
                         }

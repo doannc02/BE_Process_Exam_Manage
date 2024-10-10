@@ -8,7 +8,7 @@ namespace ExamProcessManage.Helpers
         public string? traceId { get; set; }
         public string? message { get; set; }
         public T data { get; set; }
-        public IEnumerable<ErrorCodes>? errs { get; set; }
+        public IEnumerable<ErrorDetail>? errs { get; set; }
     }
 
     public class DetailResponse
