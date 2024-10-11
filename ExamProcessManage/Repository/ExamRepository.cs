@@ -17,7 +17,7 @@ namespace ExamProcessManage.Repository
             _context = context;
         }
 
-        public async Task<PageResponse<ExamDTO>> GetListExamsAsync(ExamRequestParams query)
+        public async Task<PageResponse<ExamDTO>> GetListExamsAsync(ExamRequestParams query, int? userId)
         {
             var startRow = (query.page.Value - 1) * query.size;
             var baseQuery = _context.Exams.AsNoTracking().AsQueryable();
@@ -49,6 +49,12 @@ namespace ExamProcessManage.Repository
                 baseQuery = baseQuery.Where(e => e.UploadDate.Value.Month == query.month_upload);
             }
 
+            // Apply userId filter if provided
+            if (userId.HasValue)
+            {
+                baseQuery = baseQuery.Where(e => e.CreatorId == userId.Value);
+            }
+
             // Apply sorting
             if (!string.IsNullOrEmpty(query.sort))
             {
@@ -72,32 +78,32 @@ namespace ExamProcessManage.Repository
             // Fetch distinct AcademicYearIds
             var academicYearIds = await baseQuery.Select(p => p.AcademicYearId).Distinct().ToListAsync();
             var academicYears = await _context.AcademicYears
-                .Where(a => academicYearIds.Contains(a.AcademicYearId))
-                .ToDictionaryAsync(a => a.AcademicYearId, a => a.YearName);
+            .Where(a => academicYearIds.Contains(a.AcademicYearId))
+            .ToDictionaryAsync(a => a.AcademicYearId, a => a.YearName);
 
             // Fetch paginated exam list
             var exams = await baseQuery
-                .OrderBy(p => p.ExamId)
-                .Skip(startRow)
-                .Take(query.size)
-                .Select(p => new ExamDTO
-                {
-                    comment = p.Comment,
-                    attached_file = p.AttachedFile,
-                    description = p.Description,
-                    code = p.ExamCode,
-                    id = p.ExamId,
-                    name = p.ExamName,
-                    status = p.Status,
-                    upload_date = p.UploadDate.ToString(),
-                    academic_year = p.AcademicYearId.HasValue && academicYears.ContainsKey(p.AcademicYearId.Value) ?
-                        new CommonObject
-                        {
-                            id = p.AcademicYearId.Value,
-                            name = academicYears[p.AcademicYearId.Value]
-                        }
-                        : null
-                }).ToListAsync();
+            .OrderBy(p => p.ExamId)
+            .Skip(startRow)
+            .Take(query.size)
+            .Select(p => new ExamDTO
+            {
+                comment = p.Comment,
+                attached_file = p.AttachedFile,
+                description = p.Description,
+                code = p.ExamCode,
+                id = p.ExamId,
+                name = p.ExamName,
+                status = p.Status,
+                upload_date = p.UploadDate.ToString(),
+                academic_year = p.AcademicYearId.HasValue && academicYears.ContainsKey(p.AcademicYearId.Value) ?
+            new CommonObject
+            {
+                id = p.AcademicYearId.Value,
+                name = academicYears[p.AcademicYearId.Value]
+            }
+            : null
+            }).ToListAsync();
 
             // Return paginated result
             return new PageResponse<ExamDTO>
@@ -109,7 +115,6 @@ namespace ExamProcessManage.Repository
                 content = exams,
             };
         }
-
         public async Task<BaseResponse<ExamDTO>> GetDetailExamAsync(int examId)
         {
             try
@@ -162,7 +167,7 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public async Task<BaseResponse<List<DetailResponse>>> CreateExamsAsync(List<ExamDTO> exams)
+        public async Task<BaseResponse<List<DetailResponse>>> CreateExamsAsync(List<ExamDTO> exams, int userId)
         {
             try
             {
@@ -312,10 +317,11 @@ namespace ExamProcessManage.Repository
                             ExamSetId = examDTO.exam_set?.id,
                             AcademicYearId = examDTO.academic_year?.id,
                             AttachedFile = examDTO.attached_file,
-                            Comment = examDTO.comment == "string" ? string.Empty : examDTO.comment,
+                            //Comment = examDTO.comment == "string" ? string.Empty : examDTO.comment,
                             Description = examDTO.description == "string" ? string.Empty : examDTO.description,
                             UploadDate = DateTimeFormat.ConvertToDateOnly(examDTO.upload_date),
                             Status = examDTO.status,
+                            CreatorId = userId
                         });
                     }
                 }
@@ -354,11 +360,21 @@ namespace ExamProcessManage.Repository
             return string.IsNullOrEmpty(input) || input == "string";
         }
 
-        public async Task<BaseResponseId> UpdateExamAsync(ExamDTO examDTO)
+        public async Task<BaseResponseId> UpdateExamAsync(ExamDTO examDTO, int userId)
         {
             try
             {
                 var existExam = await _context.Exams.FirstOrDefaultAsync(e => e.ExamId == examDTO.id || e.ExamCode == examDTO.code);
+
+                if(existExam.CreatorId != userId)
+                {
+                 
+                       return new BaseResponseId
+                       {
+                           message = "Không có quyền xóa đề này",
+                       };
+                }
+                
 
                 if (existExam == null)
                 {

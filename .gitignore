@@ -8,6 +8,9 @@
 /ExamProcessManage/obj
 /ExamProcessManage/appsettings.json
 
+# Ignore the wwwroot directory
+wwwroot/
+
 # Build Folders / Files
 bin/
 obj/

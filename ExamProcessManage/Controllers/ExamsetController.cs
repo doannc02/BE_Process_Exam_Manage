@@ -84,7 +84,7 @@ namespace ExamProcessManage.Controllers
 
                 if (roleClaim == null || userId == null)
                 {
-                    return new CustomJsonResult(StatusCodes.Status403Forbidden, HttpContext, "Fib!!");
+                    return Forbid();
                 }
                 else
                 {
@@ -93,7 +93,7 @@ namespace ExamProcessManage.Controllers
                         var t = await _repository.GetDetailExamSetAsync(null, req);
                         if (t.data == null && t.message == "403")
                         {
-                            return new CustomJsonResult(StatusCodes.Status403Forbidden, HttpContext, "Unauthorized!");
+                            return Forbid();
                         }
                         if (t.data != null)
                         {
@@ -133,10 +133,16 @@ namespace ExamProcessManage.Controllers
         {
             try
             {
-                var uID = User.Claims.FirstOrDefault(c => c.Type == "userId");
-                if (uID != null)
+                var roleClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
+                var userId = User.Claims.FirstOrDefault(c => c.Type == "userId");
+
+                if (roleClaim == null || userId == null)
                 {
-                    var res = await _repository.CreateExamSetAsync(int.Parse(uID.Value), examSetDTO);
+                    return Forbid();
+                }
+                if (userId != null)
+                {
+                    var res = await _repository.CreateExamSetAsync(int.Parse(userId.Value), examSetDTO);
 
                     if (res != null) { return Ok(res); }
                     else return new CustomJsonResult(500, HttpContext, "Error");

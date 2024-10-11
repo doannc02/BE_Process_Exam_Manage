@@ -6,6 +6,7 @@ using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -30,17 +31,25 @@ namespace ExamProcessManage.Controllers
         {
             try
             {
-                var exams = await _examRepository.GetListExamsAsync(examRequest);
+                var roleClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
+                var userId = User.Claims.FirstOrDefault(c => c.Type == "userId");
+                
+                if (roleClaim == null || userId == null)
+                {
+                    return Forbid();
+                }
+                if(userId != null && roleClaim.Value != "Admin")
+                {
+                    var exams1 = await _examRepository.GetListExamsAsync(examRequest, int.Parse(userId.Value));
 
-                if (exams != null && exams.content.Any())
-                {
-                    var response = _createCommon.CreateResponse("Lấy danh sách bài thi thành công", HttpContext, exams);
-                    return Ok(response);
+                   var res  = _createCommon.CreateResponse("Lấy danh sách bài thi thành công", HttpContext, exams1);
+                    return Ok(res);
                 }
-                else
-                {
-                    return new CustomJsonResult(404, HttpContext, "Không tìm thấy bài thi nào");
-                }
+                var exams = await _examRepository.GetListExamsAsync(examRequest, null);
+
+                var response = _createCommon.CreateResponse("Lấy danh sách bài thi thành công", HttpContext, exams);
+                return Ok(response);
+                
             }
             catch (Exception ex)
             {
@@ -72,22 +81,33 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> PostExamAsync([FromBody] List<ExamDTO> examDTOs)
+        public async Task<IActionResult> PostExamAsync([FromBody] IEnumerable<ExamDTO> examDTOs)
         {
             try
             {
-                var createExam = await _examRepository.CreateExamsAsync(examDTOs);
+                var roleClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
+                var userId = User.Claims.FirstOrDefault(c => c.Type == "userId");
 
-                if (createExam != null && createExam.data != null)
-                {
-                    var response = _createCommon.CreateResponse(createExam.message, HttpContext, createExam.data);
-                    return Ok(response);
+                if(roleClaim == null) {
+                    return Forbid();
                 }
-                else
+                if(userId != null && roleClaim.Value != "Admin")
                 {
-                    var response = _createCommon.CreateResponse(createExam.message, HttpContext, createExam);
-                    return Ok(response);
+                    var createExam = await _examRepository.CreateExamsAsync(examDTOs.ToList(), int.Parse(userId.Value));
+
+                    if (createExam != null && createExam.data != null)
+                    {
+                        var response = _createCommon.CreateResponse(createExam.message, HttpContext, createExam.data);
+                        return Ok(response);
+                    }
+                    else
+                    {
+                        var response = _createCommon.CreateResponse(createExam.message, HttpContext, createExam);
+                        return BadRequest(response);
+                    }
                 }
+                return Unauthorized();
+
             }
             catch
             {
@@ -100,18 +120,32 @@ namespace ExamProcessManage.Controllers
         {
             try
             {
-                var updateExam = await _examRepository.UpdateExamAsync(examDTO);
+                var roleClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
+                var userId = User.Claims.FirstOrDefault(c => c.Type == "userId");
 
-                if (updateExam != null && updateExam.data != null)
+                if (roleClaim == null)
                 {
-                    var response = _createCommon.CreateResponse(updateExam.message, HttpContext, updateExam.data);
-                    return Ok(response);
+                    return Forbid();
                 }
-                else
+                if (userId != null && roleClaim.Value != "Admin")
                 {
-                    var response = _createCommon.CreateResponse(updateExam.message, HttpContext, updateExam);
-                    return Ok(response);
+                    var updateExam = await _examRepository.UpdateExamAsync(examDTO, int.Parse(userId.Value));
+
+                    if (updateExam != null && updateExam.data != null)
+                    {
+                        var response = _createCommon.CreateResponse(updateExam.message, HttpContext, updateExam.data);
+                        return Ok(response);
+                    }
+                    else
+                    {
+                        var response = _createCommon.CreateResponse(updateExam.message, HttpContext, updateExam);
+                        return Ok(response);
+                    }
                 }
+                return Unauthorized();
+
+
+               
             }
             catch
             {
