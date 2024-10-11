@@ -18,12 +18,12 @@ namespace ExamProcessManage.Controllers
     public class ExamSetController : ControllerBase
     {
         private readonly IExamSetRepository _repository;
-        private readonly CreateCommonResponse _createCommonResponse;
+        private readonly CreateCommonResponse _createResponse;
 
         public ExamSetController(IExamSetRepository repository)
         {
             _repository = repository;
-            _createCommonResponse = new CreateCommonResponse();
+            _createResponse = new CreateCommonResponse();
         }
 
         [HttpGet]
@@ -46,7 +46,7 @@ namespace ExamProcessManage.Controllers
                         var t = await _repository.GetListExamSetAsync(null, req);
                         if (t != null)
                         {
-                            var res = _createCommonResponse.CreateResponse("Thành công", HttpContext, t);
+                            var res = _createResponse.CreateResponse("Thành công", HttpContext, t);
                             return Ok(res);
                         }
                         return new CustomJsonResult(500, HttpContext, $"Server error");
@@ -58,7 +58,7 @@ namespace ExamProcessManage.Controllers
 
                         if (examSets != null)
                         {
-                            var commonResponse = _createCommonResponse.CreateResponse("success", HttpContext, examSets);
+                            var commonResponse = _createResponse.CreateResponse("success", HttpContext, examSets);
                             return Ok(commonResponse);
                         }
                         else
@@ -100,7 +100,7 @@ namespace ExamProcessManage.Controllers
                         }
                         if (t.data != null)
                         {
-                            var res = _createCommonResponse.CreateResponse("Thành công", HttpContext, t);
+                            var res = _createResponse.CreateResponse("Thành công", HttpContext, t);
                             return Ok(res);
                         }
                         return new CustomJsonResult(500, HttpContext, $"Server error");
@@ -112,7 +112,7 @@ namespace ExamProcessManage.Controllers
 
                         if (examSets != null)
                         {
-                            var commonResponse = _createCommonResponse.CreateResponse("success", HttpContext, examSets);
+                            var commonResponse = _createResponse.CreateResponse("success", HttpContext, examSets);
                             return Ok(commonResponse);
                         }
                         else
@@ -173,7 +173,7 @@ namespace ExamProcessManage.Controllers
                         }
                         else
                         {
-                            var response = _createCommonResponse.CreateResponse(updatedExamSet.message, HttpContext, updatedExamSet.data);
+                            var response = _createResponse.CreateResponse(updatedExamSet.message, HttpContext, updatedExamSet.data);
                             return Ok(response);
                         }
                     }
@@ -196,26 +196,35 @@ namespace ExamProcessManage.Controllers
         [HttpPut("update-state")]
         public async Task<IActionResult> UpdateStateAsync([FromQuery][Required] int examSetId,[Required] string status, string? comment)
         {
+            if (!ModelState.IsValid)
+            {
+                // Xử lý trường hợp các tham số không hợp lệ
+                return new CustomJsonResult(400, HttpContext, "Thông tin không hợp lệ");
+            }
+
             try
             {
-                var updState = await _repository.UpdateStateAsync(examSetId, status, comment);
-                if (updState != null && updState.data != null)
+                var updateStatus = await _repository.UpdateStateAsync(examSetId, status, comment);
+
+                if (updateStatus != null && updateStatus.data != null)
                 {
-                    var response = _createCommonResponse.CreateResponse(updState.message, HttpContext, updState.data);
-                    return Ok(response);
+                    var response = _createResponse.CreateResponse(updateStatus.message, HttpContext, updateStatus.data);
+                    return Ok(response); // Trả về kết quả thành công
                 }
-                else if (updState != null)
+                else if (updateStatus != null)
                 {
-                    return new CustomJsonResult((int)updState.status, HttpContext, updState.message, (List<ErrorDetail>)updState.errors);
+                    // Phản hồi lại lỗi từ UpdateStateAsync
+                    return new CustomJsonResult((int)updateStatus.status, HttpContext, updateStatus.message, (List<ErrorDetail>)updateStatus.errors);
                 }
                 else
                 {
-                    return new CustomJsonResult(400, HttpContext, "Error");
+                    return new CustomJsonResult(400, HttpContext, "Không thể cập nhật trạng thái");
                 }
             }
             catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message}: {ex.InnerException}" );
+                // Xử lý ngoại lệ nếu có lỗi trong quá trình cập nhật
+                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message}");
             }
         }
 
