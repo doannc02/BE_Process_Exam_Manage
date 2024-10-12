@@ -16,6 +16,7 @@ namespace ExamProcessManage.Dtos
         public int? exam_quantity { get; set; }
         public string? description { get; set; }
         public string status { get; set; }
+        public Boolean? isGetForAddProposal { get; set; } = false;
         public CommonObject course { get; set; }
         public CommonObject? proposal { get; set; }
         public virtual object? user { get; set; }

@@ -29,7 +29,10 @@ namespace ExamProcessManage.Repository
             {
                 baseQuery = baseQuery.Where(e => e.ExamCode.Contains(query.search) || e.ExamName.Contains(query.search));
             }
-
+            if((bool)query.isGetForAddExamSet)
+            {
+                baseQuery = baseQuery.Where(e => e.ExamSetId == null);
+            }
             // Apply filters based on query parameters
             if (query.exam_set_id != null)
             {

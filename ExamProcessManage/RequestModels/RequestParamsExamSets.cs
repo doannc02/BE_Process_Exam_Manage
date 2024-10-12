@@ -10,6 +10,8 @@ namespace ExamProcessManage.RequestModels
         public string? endDate { get; set; }
         public int? courseId { get; set; }
         public int? academicYearId { get; set; }
+
+        public Boolean? isParamAddProposal { get; set; } = false;
         public int? proposalId { get; set; }
 
     }

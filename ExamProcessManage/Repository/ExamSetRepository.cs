@@ -52,7 +52,10 @@ namespace ExamProcessManage.Repository
                         query = query.Where(p => p.ProposalId.HasValue && proposalIds.Contains(p.ProposalId.Value));
                     }
                 }
-
+                if ((bool)queryObject.isParamAddProposal)
+                {
+                    query = query.Where(e => e.ProposalId == null);
+                }
                 if (queryObject.proposalId.HasValue)
                 {
                     query = query.Where(p => p.ProposalId == queryObject.proposalId);
@@ -590,7 +593,7 @@ namespace ExamProcessManage.Repository
                 }
 
                 // Kiểm tra điều kiện thay đổi trạng thái của ExamSet
-                if ((status == "approved" || status == "rejected") && findExamSet.Status != "pending_approval")
+                if ((status != "approved" && status != "rejected") && findExamSet.Status != "pending_approval")
                 {
                     return new BaseResponseId
                     {
