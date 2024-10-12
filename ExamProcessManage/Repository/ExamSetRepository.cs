@@ -52,7 +52,10 @@ namespace ExamProcessManage.Repository
                         query = query.Where(p => p.ProposalId.HasValue && proposalIds.Contains(p.ProposalId.Value));
                     }
                 }
-
+                if ((bool)queryObject.isParamAddProposal)
+                {
+                    query = query.Where(e => e.ProposalId == null);
+                }
                 if (queryObject.proposalId.HasValue)
                 {
                     query = query.Where(p => p.ProposalId == queryObject.proposalId);
@@ -149,7 +152,7 @@ namespace ExamProcessManage.Repository
                 var examSet = await _context.ExamSets
                .AsNoTracking().Include(p => p.Proposal).ThenInclude(p => p.TeacherProposals)
                .FirstOrDefaultAsync(p => p.ExamSetId == id);
-                var exams = _context.Exams.Where(ex => ex.CreatorId == userId).AsNoTracking().AsQueryable();
+                var exams = _context.Exams.Where(ex => ex.ExamSetId== examSet.ExamSetId).AsNoTracking().AsQueryable();
                 // var userIds = examSet.Proposal != null ? examSet.Proposal.TeacherProposals.Select(tp => tp.UserId).ToList() : null;
               //  var userIds = users.Where(e => e. == (ulong)examSet.CreatorId);
 
@@ -590,7 +593,7 @@ namespace ExamProcessManage.Repository
                 }
 
                 // Kiểm tra điều kiện thay đổi trạng thái của ExamSet
-                if ((status == "approved" || status == "rejected") && findExamSet.Status != "pending_approval")
+                if ((status != "approved" && status != "rejected") && findExamSet.Status != "pending_approval")
                 {
                     return new BaseResponseId
                     {

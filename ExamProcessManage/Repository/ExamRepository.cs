@@ -22,13 +22,17 @@ namespace ExamProcessManage.Repository
         {
             var startRow = (query.page.Value - 1) * query.size;
             var baseQuery = _context.Exams.AsNoTracking().AsQueryable();
-
+            var users = await _context.Users.AsNoTracking().ToDictionaryAsync(u => u.Id);
+            var teachers = await _context.Teachers.AsNoTracking().ToDictionaryAsync(t => t.Id);
             // Apply search filter
             if (!string.IsNullOrEmpty(query.search))
             {
                 baseQuery = baseQuery.Where(e => e.ExamCode.Contains(query.search) || e.ExamName.Contains(query.search));
             }
-
+            if((bool)query.isGetForAddExamSet)
+            {
+                baseQuery = baseQuery.Where(e => e.ExamSetId == null);
+            }
             // Apply filters based on query parameters
             if (query.exam_set_id != null)
             {
@@ -84,27 +88,31 @@ namespace ExamProcessManage.Repository
 
             // Fetch paginated exam list
             var exams = await baseQuery
-            .OrderBy(p => p.ExamId)
-            .Skip(startRow)
-            .Take(query.size)
-            .Select(p => new ExamDTO
-            {
-                comment = p.Comment,
-                attached_file = p.AttachedFile,
-                description = p.Description,
-                code = p.ExamCode,
-                id = p.ExamId,
-                name = p.ExamName,
-                status = p.Status,
-                upload_date = p.UploadDate.ToString(),
-                academic_year = p.AcademicYearId.HasValue && academicYears.ContainsKey(p.AcademicYearId.Value) ?
-            new CommonObject
-            {
-                id = p.AcademicYearId.Value,
-                name = academicYears[p.AcademicYearId.Value]
-            }
-            : null
-            }).ToListAsync();
+          .OrderBy(p => p.ExamId)
+          .Skip(startRow)
+           .Take(query.size)
+          .Select(p => new ExamDTO
+          {
+              comment = p.Comment,
+              attached_file = p.AttachedFile,
+              description = p.Description,
+              code = p.ExamCode,
+              id = p.ExamId,
+              name = p.ExamName,
+              status = p.Status,
+              user = p.CreatorId.HasValue && users.ContainsKey((ulong)p.CreatorId.Value) ? new
+              {
+                  id = (int)users[(ulong)p.CreatorId.Value].Id,
+                  name = users[(ulong)p.CreatorId.Value].Email ?? "",
+                  fullname = users[(ulong)p.CreatorId.Value].TeacherId.HasValue && teachers.ContainsKey(users[(ulong)p.CreatorId.Value].TeacherId.Value) ? teachers[users[(ulong)p.CreatorId.Value].TeacherId.Value].Name : ""
+              } : null,
+              upload_date = p.UploadDate.ToString(),
+              academic_year = p.AcademicYearId.HasValue && academicYears.ContainsKey(p.AcademicYearId.Value) ? new CommonObject
+              {
+                  id = p.AcademicYearId.Value,
+                  name = academicYears[p.AcademicYearId.Value]
+              } : null
+          }).ToListAsync();
 
             // Return paginated result
             return new PageResponse<ExamDTO>
@@ -120,6 +128,8 @@ namespace ExamProcessManage.Repository
         {
             try
             {
+                var users = await _context.Users.AsNoTracking().ToDictionaryAsync(u => u.Id);
+                var teachers = await _context.Teachers.AsNoTracking().ToDictionaryAsync(t => t.Id);
                 var exam = await _context.Exams.FindAsync(examId);
                 if (exam == null)
                 {
@@ -142,6 +152,12 @@ namespace ExamProcessManage.Repository
                     code = exam.ExamCode,
                     id = exam.ExamId,
                     name = exam.ExamName,
+                    user = exam.CreatorId.HasValue && users.TryGetValue((ulong)exam.CreatorId.Value, out var user) ? new
+                    {
+                        id = (int)user.Id,
+                        name = user.Email ?? "",
+                        fullname = user.TeacherId.HasValue && teachers.TryGetValue(user.TeacherId.Value, out var teacher) ? teacher.Name : ""
+                    } : null,
                     status = exam.Status,
                     upload_date = exam.UploadDate.ToString(),
                     academic_year = academicYears.TryGetValue((int)exam.AcademicYearId, out var yearName)
@@ -366,15 +382,15 @@ namespace ExamProcessManage.Repository
             {
                 var existExam = await _context.Exams.FirstOrDefaultAsync(e => e.ExamId == examDTO.id || e.ExamCode == examDTO.code);
 
-                if(existExam.CreatorId != userId)
+                if (existExam.CreatorId != userId)
                 {
-                 
-                       return new BaseResponseId
-                       {
-                           message = "Không có quyền xóa đề này",
-                       };
+
+                    return new BaseResponseId
+                    {
+                        message = "Không có quyền xóa đề này",
+                    };
                 }
-                
+
 
                 if (existExam == null)
                 {

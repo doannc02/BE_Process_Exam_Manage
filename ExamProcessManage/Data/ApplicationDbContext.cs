@@ -411,7 +411,7 @@ namespace ExamProcessManage.Data
                 entity.HasIndex(e => e.UserId, "user_id");
 
                 entity.Property(e => e.Id)
-                    .ValueGeneratedNever()
+                    .ValueGeneratedOnAdd()
                     .HasColumnName("id");
 
                 entity.Property(e => e.ProposalId).HasColumnName("proposal_id");
