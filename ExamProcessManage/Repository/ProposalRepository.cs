@@ -454,69 +454,65 @@ namespace ExamProcessManage.Repository
                 }
 
                 // Update ExamSet status
-                var listExam = await _context.ExamSets.Where(e => e.ProposalId == findProposal.ProposalId).ToListAsync();
+                var listExamSet = await _context.ExamSets.Where(e => e.ProposalId == findProposal.ProposalId).ToListAsync();
                 var errorList = new List<ErrorDetail>();
 
-                if (!listExam.Any())
+                if (!listExamSet.Any())
                 {
                     return new BaseResponseId
                     {
-                        status = 400,
+                        status = 404,
                         message = "Invalid exam list",
-                        errors = new List<ErrorDetail> { new() { field = "exam_set.exams", message = "No exams found" } }
+                        errors = new List<ErrorDetail> { new() { field = "exam_sets", message = "No exam set found" } }
                     };
                 }
 
-                for (int i = 0; i < listExam.Count; i++)
+                for (int i = 0; i < listExamSet.Count; i++)
                 {
-                    if (listExam[i].Status != "approved")
+                    var examSet = listExamSet[i];
+                    if (examSet.Status != "approved")
                     {
-                        // Check and update status of each Exam
-                        if ((status == "approved" || status == "rejected") && listExam[i].Status != "pending_approval")
+                        // Only proceed if status is "approved" or "rejected" and current status is not "pending_approval"
+                        if ((status == "approved" || status == "rejected") && examSet.Status != "pending_approval")
                         {
-                            errorList.Add(new ErrorDetail
-                            {
-                                field = $"exam_set.exams.{i}",
-                                message = "Invalid status"
-                            });
+                            errorList.Add(new() { field = $"exam_set.{i}", message = "Invalid status" });
+                            continue;
                         }
-                        else
+
+                        examSet.Status = status; // Update status
+
+                        // Retrieve all exams in one query before loop
+                        var listExam = await _context.Exams
+                            .Where(e => e.ExamSetId == examSet.ExamSetId).ToListAsync();
+
+                        if (!listExam.Any())
+                            return new BaseResponseId
+                            {
+                                status = 404,
+                                message = "Invalid exam list",
+                                errors = new List<ErrorDetail> { new() {
+                                    field = $"exam_set.{i}.exams",
+                                    message = $"No exams found for exam set {examSet.ExamSetId}" } }
+                            };
+
+                        if (listExam.Count < examSet.ExamQuantity)
+                            return new BaseResponseId
+                            {
+                                status = 400,
+                                message = "Not enough exams",
+                                errors = new List<ErrorDetail> { new() {
+                                    field = $"exam_set.{i}.exams",
+                                    message = $"Not enough exams: id = {examSet.ExamSetId} ({listExam.Count}/{examSet.ExamQuantity})" } }
+                            };
+
+                        for (int j = 0; j < listExam.Count; j++)
                         {
-                            listExam[i].Status = status; // Update status
-
-                            // Update ExamSet status
-                            var listExam = await _context.Exams.Where(e => e.ExamSetId == findExamSet.ExamSetId).ToListAsync();
-                            var errorList = new List<ErrorDetail>();
-
-                            if (!listExam.Any())
-                            {
-                                return new BaseResponseId
-                                {
-                                    status = 400,
-                                    message = "Invalid exam list",
-                                    errors = new List<ErrorDetail> { new() { field = "exam_set.exams", message = "No exams found" } }
-                                };
-                            }
-
-                            for (int i = 0; i < listExam.Count; i++)
-                            {
-                                if (listExam[i].Status != "approved")
-                                {
-                                    // Check and update status of each Exam
-                                    if ((status == "approved" || status == "rejected") && listExam[i].Status != "pending_approval")
-                                    {
-                                        errorList.Add(new ErrorDetail
-                                        {
-                                            field = $"exam_set.exams.{i}",
-                                            message = "Invalid status"
-                                        });
-                                    }
-                                    else
-                                    {
-                                        listExam[i].Status = status; // Update status
-                                    }
-                                }
-                            }
+                            var exam = listExam[j];
+                            if (exam.Status != "approved")
+                                if ((status == "approved" || status == "rejected") && exam.Status != "pending_approval")
+                                    errorList.Add(new() { field = $"exam_set.{i}.exams.{j}", message = "Invalid status" });
+                                else
+                                    exam.Status = status; // Update status
                         }
                     }
                 }
