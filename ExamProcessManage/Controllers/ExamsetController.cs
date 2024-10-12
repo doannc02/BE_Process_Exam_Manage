@@ -14,7 +14,6 @@ namespace ExamProcessManage.Controllers
 {
     [Route("api/v1/exam-set")]
     [ApiController]
-    [AllowAnonymous]
     public class ExamSetController : ControllerBase
     {
         private readonly IExamSetRepository _repository;

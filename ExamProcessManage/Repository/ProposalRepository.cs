@@ -10,6 +10,7 @@ namespace ExamProcessManage.Repository
     public class ProposalRepository : IProposalRepository
     {
         private readonly ApplicationDbContext _context;
+        private readonly List<string> validStatus = new() { "in_progress", "rejected", "approved", "pending_approval" };
 
         public ProposalRepository(ApplicationDbContext context)
         {
@@ -67,10 +68,10 @@ namespace ExamProcessManage.Repository
                             name = p.AcademicYear
                         },
                         content = p.Content,
-                        end_date = p.EndDate,
+                        end_date = p.EndDate.ToString(),
                         code = p.PlanCode,
                         semester = p.Semester,
-                        start_date = p.StartDate,
+                        start_date = p.StartDate.ToString(),
                         status = p.Status,
                         // total_exam_set = p.TeacherProposals.Count(),
                         user = p.TeacherProposals.Select(tp => new CommonObject
@@ -180,8 +181,8 @@ namespace ExamProcessManage.Repository
                         name = proposal.AcademicYear
                     },
                     content = proposal.Content,
-                    end_date = proposal.EndDate,
-                    start_date = proposal.StartDate,
+                    end_date = proposal.EndDate.ToString(),
+                    start_date = proposal.StartDate.ToString(),
                     code = proposal.PlanCode,
                     status = proposal.Status,
                     semester = proposal.Semester,
@@ -195,57 +196,176 @@ namespace ExamProcessManage.Repository
             };
         }
 
-        public async Task<BaseResponseId> CreateProposalAsync(ProposalDTO proposalDTO)
+        //public async Task<BaseResponseId> CreateProposalAsync(int userId, ProposalDTO proposalDTO)
+        //{
+        //    try
+        //    {
+        //        var existProposal = await _context.Proposals.FirstOrDefaultAsync(p => p.PlanCode == proposalDTO.code);
+        //        if (existProposal != null) return new BaseResponseId { message = $"A similar record already exists: {proposalDTO.code}" };
+        //        else
+        //        {
+        //            var examSets = new List<ExamSet>();
+        //            var errors = new List<ErrorDetail>();
+
+        //            if (string.IsNullOrEmpty(proposalDTO.code) || proposalDTO.code == "string")
+        //                errors.Add(new() { field = "proposal.code", message = "In valid plan code" });
+
+        //            if (string.IsNullOrEmpty(proposalDTO.semester) || proposalDTO.semester == "string")
+        //                errors.Add(new() { field = "proposal.semester", message = "Invalid semester" });
+
+        //            if (!validStatus.Contains(proposalDTO.status))
+        //                errors.Add(new() { field = "proposal.status", message = "Invalid status" });
+
+        //            // Lay ten nam hoc, vd: '2022-2023'
+        //            var isAcademicYear = await _context.AcademicYears.AnyAsync(a => a.YearName == proposalDTO.academic_year.name);
+        //            if (!isAcademicYear)
+        //                errors.Add(new() { field = "proposal.academic_year", message = "Invalid academic year" });
+
+        //            if (proposalDTO.exam_sets != null && proposalDTO.exam_sets.Any())
+        //            {
+        //                var examSetIds = proposalDTO.exam_sets.Select(e => e.id).ToList();
+        //                var existExamSets = await _context.ExamSets.Where(e => examSetIds.Contains(e.ExamSetId)).ToListAsync();
+        //                var examSetIdSets = new HashSet<int>();
+
+        //                foreach (var examSetIdSet in examSetIds)
+        //                {
+        //                    if (!examSetIdSets.Add(examSetIdSet))
+        //                        errors.Add(new() { field = $"proposal.exam_sets.{examSetIdSet}", message = $"Duplicate exam set: {examSetIdSet}" });
+        //                    else if (!existExamSets.Any(e => e.ExamSetId == examSetIdSet))
+        //                        errors.Add(new() { field = $"proposal.exam_sets.{examSetIdSet}", message = $"Exam set not found: {examSetIdSet}" });
+        //                    else
+        //                        examSets.Add(existExamSets.First(e => e.ExamSetId == examSetIdSet));
+        //                }
+        //            }
+
+        //            if (errors.Any())
+        //                return new BaseResponseId
+        //                {
+        //                    status = 400,
+        //                    message = "Validation failed",
+        //                    errors = errors
+        //                };
+
+        //            var newProposal = new Proposal
+        //            {
+        //                PlanCode = proposalDTO.code,
+        //                Semester = proposalDTO.semester,
+        //                StartDate = DateOnly.TryParse(proposalDTO.start_date, out var parseStart) ? parseStart : default,
+        //                EndDate = DateOnly.TryParse(proposalDTO.end_date, out var parseEnd) ? parseEnd : default,
+        //                Content = string.IsNullOrEmpty(proposalDTO.content) || proposalDTO.content == "string" ? string.Empty : proposalDTO.content,
+        //                Status = proposalDTO.status,
+        //                AcademicYear = proposalDTO.academic_year.name ?? "",
+        //                ExamSets = examSets,
+        //            };
+
+        //            await _context.Proposals.AddAsync(newProposal);
+        //            await _context.SaveChangesAsync();
+
+        //            return new BaseResponseId { message = "Thành công", data = new DetailResponse { id = newProposal.ProposalId } };
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return new BaseResponseId { status = 500, message = "An error occurred: " + ex.Message + "\n" + ex.InnerException };
+        //    }
+        //}
+
+        public async Task<BaseResponseId> CreateProposalAsync(int userId, ProposalDTO proposalDTO)
         {
             try
             {
-                var ckExistProposal = await _context.Proposals.FirstOrDefaultAsync(id => id.ProposalId == proposalDTO.id || id.PlanCode == proposalDTO.code);
-                if (ckExistProposal == null)
+                var examSets = new List<ExamSet>();
+                var errors = new List<ErrorDetail>();
+
+                var existProposal = await _context.Proposals.FirstOrDefaultAsync(p => p.PlanCode == proposalDTO.code);
+                if (existProposal != null)
+                    errors.Add(new() { field = "proposal.code", message = $"A similar record already exists: {proposalDTO.code}" });
+
+                if (string.IsNullOrEmpty(proposalDTO.code) || proposalDTO.code == "string")
+                    errors.Add(new() { field = "proposal.code", message = "Invalid plan code" });
+
+                if (string.IsNullOrEmpty(proposalDTO.semester) || proposalDTO.semester == "string")
+                    errors.Add(new() { field = "proposal.semester", message = "Invalid semester" });
+
+                if (!validStatus.Contains(proposalDTO.status))
+                    errors.Add(new() { field = "proposal.status", message = "Invalid status" });
+
+                var isAcademicYear = await _context.AcademicYears.AnyAsync(a => a.YearName == proposalDTO.academic_year.name);
+                if (!isAcademicYear)
+                    errors.Add(new() { field = "proposal.academic_year", message = "Invalid academic year" });
+
+                if (!DateOnly.TryParse(proposalDTO.start_date, out var parseStart))
+                    errors.Add(new() { field = "proposal.start_date", message = "Invalid start date format" });
+
+                if (!DateOnly.TryParse(proposalDTO.end_date, out var parseEnd))
+                    errors.Add(new() { field = "proposal.end_date", message = "Invalid end date format" });
+
+                if (proposalDTO.exam_sets != null && proposalDTO.exam_sets.Any())
                 {
-                    var newProposal = new Proposal
+                    var examSetIds = proposalDTO.exam_sets.Select(e => e.id).ToList();
+                    var existExamSets = await _context.ExamSets.Where(e => examSetIds.Contains(e.ExamSetId)).ToDictionaryAsync(e => e.ExamSetId);
+                    var examSetIdSets = new HashSet<int>();
+
+                    foreach (var item in examSetIds)
                     {
-                        AcademicYear = proposalDTO.academic_year.name,
-                        Content = proposalDTO.content,
-                        EndDate = proposalDTO.end_date,
-                        PlanCode = proposalDTO.code,
-                        StartDate = proposalDTO.start_date,
-                        Semester = proposalDTO.semester,
-                        Status = proposalDTO.status,
-                        //ExamSets = (ICollection<ExamSet>)proposalDTO.exam_sets,
-                        //TeacherProposals = (ICollection<TeacherProposal>)proposalDTO.teacher_roposals
+                        if (!examSetIdSets.Add(item))
+                            errors.Add(new() { field = $"proposal.exam_sets.{item}", message = $"Duplicate exam set: {item}" });
+                        else if (!existExamSets.ContainsKey(item))
+                            errors.Add(new() { field = $"proposal.exam_sets.{item}", message = $"Exam set not found: {item}" });
+                        else
+                        {
+                            var examSet = existExamSets[item];
+                            if (examSet.ProposalId == null)
+                                examSets.Add(examSet);
+                            else
+                                errors.Add(new() { field = $"proposal.exam_sets.{item}", message = $"The exam set has been assigned to another proposal" });
+                        }
+                    }
+                }
+
+                var isExistUser = await _context.Users.AnyAsync(u => u.Id == (ulong)userId);
+                if (!isExistUser) errors.Add(new() { field = "proposal.user", message = $"User does not exist: {proposalDTO.user.id}" });
+
+                if (errors.Any())
+                    return new BaseResponseId
+                    {
+                        status = 400,
+                        message = "Validation failed",
+                        errors = errors
                     };
 
-                    _ = await _context.Proposals.AddAsync(newProposal);
-                    _ = await _context.SaveChangesAsync();
-
-                    var detailResponse = new DetailResponse { id = newProposal.ProposalId };
-                    var baseResponseId = new BaseResponseId
-                    {
-                        message = "Thành công",
-                        data = detailResponse
-                    };
-                    return baseResponseId;
-                }
-                else
+                var newProposal = new Proposal
                 {
-                    var detailResponse = new DetailResponse { id = ckExistProposal.ProposalId };
-                    var baseResponseId = new BaseResponseId
-                    {
-                        message = "Đã tồn tại",
-                        data = detailResponse
-                    };
-                    return baseResponseId;
+                    PlanCode = proposalDTO.code,
+                    Semester = proposalDTO.semester,
+                    StartDate = parseStart,
+                    EndDate = parseEnd,
+                    Content = string.IsNullOrEmpty(proposalDTO.content) || proposalDTO.content == "string" ? string.Empty : proposalDTO.content,
+                    Status = proposalDTO.status,
+                    AcademicYear = proposalDTO.academic_year.name ?? string.Empty,
+                    ExamSets = examSets
+                };
+
+                await _context.Proposals.AddAsync(newProposal);
+                await _context.SaveChangesAsync();
+
+                var justProposal = await _context.Proposals.FirstOrDefaultAsync(p => p.PlanCode == newProposal.PlanCode);
+                if (justProposal != null)
+                {
+                    var newTeacherProposal = new TeacherProposal { UserId = (ulong)userId, ProposalId = justProposal.ProposalId };
+                    await _context.TeacherProposals.AddAsync(newTeacherProposal);
+                    await _context.SaveChangesAsync();
                 }
+
+                return new BaseResponseId { status = 200, message = "Success", data = new DetailResponse { id = newProposal.ProposalId } };
+            }
+            catch (DbUpdateException dbEx)
+            {
+                return new BaseResponseId { status = 500, message = $"Database error: {dbEx.Message} \n {dbEx.InnerException}" };
             }
             catch (Exception ex)
             {
-                var detailResponse = new DetailResponse { id = null };
-                var baseResponseId = new BaseResponseId
-                {
-                    message = ex.Message,
-                    data = detailResponse
-                };
-                return baseResponseId;
+                return new BaseResponseId { status = 500, message = $"An error occurred: {ex.Message} \n {ex.InnerException}" };
             }
         }
 
@@ -259,9 +379,9 @@ namespace ExamProcessManage.Repository
                 {
                     existingProposal.AcademicYear = proposalDTO.academic_year.name;
                     existingProposal.Content = proposalDTO.content;
-                    existingProposal.EndDate = proposalDTO.end_date;
+                    existingProposal.EndDate = DateOnly.Parse(proposalDTO.end_date);
                     existingProposal.PlanCode = proposalDTO.code;
-                    existingProposal.StartDate = proposalDTO.start_date;
+                    existingProposal.StartDate = DateOnly.Parse(proposalDTO.start_date);
                     existingProposal.Semester = proposalDTO.semester;
                     existingProposal.Status = proposalDTO.status;
                     // Update other properties as needed
