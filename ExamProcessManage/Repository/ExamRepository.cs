@@ -24,6 +24,10 @@ namespace ExamProcessManage.Repository
             var baseQuery = _context.Exams.AsNoTracking().AsQueryable();
             var users = await _context.Users.AsNoTracking().ToDictionaryAsync(u => u.Id);
             var teachers = await _context.Teachers.AsNoTracking().ToDictionaryAsync(t => t.Id);
+            if (query.exceptValues != null && query.exceptValues.Any())
+            {
+                baseQuery = baseQuery.Where(p => !query.exceptValues.Contains(p.ExamId));
+            }
             // Apply search filter
             if (!string.IsNullOrEmpty(query.search))
             {

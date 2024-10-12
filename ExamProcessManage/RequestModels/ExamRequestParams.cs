@@ -8,6 +8,7 @@ namespace ExamProcessManage.RequestModels
         public int? academic_year_id { get; set; }
         public int? month_upload { get; set; }
         public Boolean? isGetForAddExamSet { get; set; } = false;
+        public IEnumerable<int>? exceptValues { get; set; }
         public int? exam_set_id { get; set; }
     }
 }
