@@ -1,11 +1,8 @@
 ﻿using ExamProcessManage.Dtos;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
-using ExamProcessManage.Models;
-using ExamProcessManage.Repository;
 using ExamProcessManage.RequestModels;
 using ExamProcessManage.Utils;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
@@ -199,14 +196,8 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpPut("update-state")]
-        public async Task<IActionResult> UpdateStateAsync([FromQuery][Required] int examSetId,[Required] string status, string? comment)
+        public async Task<IActionResult> UpdateStateAsync([FromQuery][Required] int examSetId, [Required] string status, string? comment)
         {
-            if (!ModelState.IsValid)
-            {
-                // Xử lý trường hợp các tham số không hợp lệ
-                return new CustomJsonResult(400, HttpContext, "Thông tin không hợp lệ");
-            }
-
             try
             {
                 var updateStatus = await _repository.UpdateStateAsync(examSetId, status, comment);
@@ -236,7 +227,7 @@ namespace ExamProcessManage.Controllers
         [HttpPut("remove-child")]
         public async Task<IActionResult> RemoveChildAsync([FromQuery] int parentId, int childId, string? comment)
         {
-            return NotFound();
+            return new CustomJsonResult(204, HttpContext, "K.O");
         }
 
         [HttpDelete]

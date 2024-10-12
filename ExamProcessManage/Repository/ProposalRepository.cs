@@ -196,80 +196,6 @@ namespace ExamProcessManage.Repository
             };
         }
 
-        //public async Task<BaseResponseId> CreateProposalAsync(int userId, ProposalDTO proposalDTO)
-        //{
-        //    try
-        //    {
-        //        var existProposal = await _context.Proposals.FirstOrDefaultAsync(p => p.PlanCode == proposalDTO.code);
-        //        if (existProposal != null) return new BaseResponseId { message = $"A similar record already exists: {proposalDTO.code}" };
-        //        else
-        //        {
-        //            var examSets = new List<ExamSet>();
-        //            var errors = new List<ErrorDetail>();
-
-        //            if (string.IsNullOrEmpty(proposalDTO.code) || proposalDTO.code == "string")
-        //                errors.Add(new() { field = "proposal.code", message = "In valid plan code" });
-
-        //            if (string.IsNullOrEmpty(proposalDTO.semester) || proposalDTO.semester == "string")
-        //                errors.Add(new() { field = "proposal.semester", message = "Invalid semester" });
-
-        //            if (!validStatus.Contains(proposalDTO.status))
-        //                errors.Add(new() { field = "proposal.status", message = "Invalid status" });
-
-        //            // Lay ten nam hoc, vd: '2022-2023'
-        //            var isAcademicYear = await _context.AcademicYears.AnyAsync(a => a.YearName == proposalDTO.academic_year.name);
-        //            if (!isAcademicYear)
-        //                errors.Add(new() { field = "proposal.academic_year", message = "Invalid academic year" });
-
-        //            if (proposalDTO.exam_sets != null && proposalDTO.exam_sets.Any())
-        //            {
-        //                var examSetIds = proposalDTO.exam_sets.Select(e => e.id).ToList();
-        //                var existExamSets = await _context.ExamSets.Where(e => examSetIds.Contains(e.ExamSetId)).ToListAsync();
-        //                var examSetIdSets = new HashSet<int>();
-
-        //                foreach (var examSetIdSet in examSetIds)
-        //                {
-        //                    if (!examSetIdSets.Add(examSetIdSet))
-        //                        errors.Add(new() { field = $"proposal.exam_sets.{examSetIdSet}", message = $"Duplicate exam set: {examSetIdSet}" });
-        //                    else if (!existExamSets.Any(e => e.ExamSetId == examSetIdSet))
-        //                        errors.Add(new() { field = $"proposal.exam_sets.{examSetIdSet}", message = $"Exam set not found: {examSetIdSet}" });
-        //                    else
-        //                        examSets.Add(existExamSets.First(e => e.ExamSetId == examSetIdSet));
-        //                }
-        //            }
-
-        //            if (errors.Any())
-        //                return new BaseResponseId
-        //                {
-        //                    status = 400,
-        //                    message = "Validation failed",
-        //                    errors = errors
-        //                };
-
-        //            var newProposal = new Proposal
-        //            {
-        //                PlanCode = proposalDTO.code,
-        //                Semester = proposalDTO.semester,
-        //                StartDate = DateOnly.TryParse(proposalDTO.start_date, out var parseStart) ? parseStart : default,
-        //                EndDate = DateOnly.TryParse(proposalDTO.end_date, out var parseEnd) ? parseEnd : default,
-        //                Content = string.IsNullOrEmpty(proposalDTO.content) || proposalDTO.content == "string" ? string.Empty : proposalDTO.content,
-        //                Status = proposalDTO.status,
-        //                AcademicYear = proposalDTO.academic_year.name ?? "",
-        //                ExamSets = examSets,
-        //            };
-
-        //            await _context.Proposals.AddAsync(newProposal);
-        //            await _context.SaveChangesAsync();
-
-        //            return new BaseResponseId { message = "Thành công", data = new DetailResponse { id = newProposal.ProposalId } };
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new BaseResponseId { status = 500, message = "An error occurred: " + ex.Message + "\n" + ex.InnerException };
-        //    }
-        //}
-
         public async Task<BaseResponseId> CreateProposalAsync(int userId, ProposalDTO proposalDTO)
         {
             try
@@ -279,26 +205,26 @@ namespace ExamProcessManage.Repository
 
                 var existProposal = await _context.Proposals.FirstOrDefaultAsync(p => p.PlanCode == proposalDTO.code);
                 if (existProposal != null)
-                    errors.Add(new() { field = "proposal.code", message = $"A similar record already exists: {proposalDTO.code}" });
+                    errors.Add(new() { field = "code", message = $"A similar record already exists: {proposalDTO.code}" });
 
                 if (string.IsNullOrEmpty(proposalDTO.code) || proposalDTO.code == "string")
-                    errors.Add(new() { field = "proposal.code", message = "Invalid plan code" });
+                    errors.Add(new() { field = "code", message = "Invalid plan code" });
 
                 if (string.IsNullOrEmpty(proposalDTO.semester) || proposalDTO.semester == "string")
-                    errors.Add(new() { field = "proposal.semester", message = "Invalid semester" });
+                    errors.Add(new() { field = "semester", message = "Invalid semester" });
 
                 if (!validStatus.Contains(proposalDTO.status))
-                    errors.Add(new() { field = "proposal.status", message = "Invalid status" });
+                    errors.Add(new() { field = "status", message = "Invalid status" });
 
                 var isAcademicYear = await _context.AcademicYears.AnyAsync(a => a.YearName == proposalDTO.academic_year.name);
                 if (!isAcademicYear)
-                    errors.Add(new() { field = "proposal.academic_year", message = "Invalid academic year" });
+                    errors.Add(new() { field = "academic_year", message = "Invalid academic year" });
 
                 if (!DateOnly.TryParse(proposalDTO.start_date, out var parseStart))
-                    errors.Add(new() { field = "proposal.start_date", message = "Invalid start date format" });
+                    errors.Add(new() { field = "start_date", message = "Invalid start date format" });
 
                 if (!DateOnly.TryParse(proposalDTO.end_date, out var parseEnd))
-                    errors.Add(new() { field = "proposal.end_date", message = "Invalid end date format" });
+                    errors.Add(new() { field = "end_date", message = "Invalid end date format" });
 
                 if (proposalDTO.exam_sets != null && proposalDTO.exam_sets.Any())
                 {
@@ -309,22 +235,22 @@ namespace ExamProcessManage.Repository
                     foreach (var item in examSetIds)
                     {
                         if (!examSetIdSets.Add(item))
-                            errors.Add(new() { field = $"proposal.exam_sets.{item}", message = $"Duplicate exam set: {item}" });
+                            errors.Add(new() { field = $"exam_sets.{item}", message = $"Duplicate exam set: {item}" });
                         else if (!existExamSets.ContainsKey(item))
-                            errors.Add(new() { field = $"proposal.exam_sets.{item}", message = $"Exam set not found: {item}" });
+                            errors.Add(new() { field = $"exam_sets.{item}", message = $"Exam set not found: {item}" });
                         else
                         {
                             var examSet = existExamSets[item];
                             if (examSet.ProposalId == null)
                                 examSets.Add(examSet);
                             else
-                                errors.Add(new() { field = $"proposal.exam_sets.{item}", message = $"The exam set has been assigned to another proposal" });
+                                errors.Add(new() { field = $"exam_sets.{item}", message = $"The exam set has been assigned to another proposal" });
                         }
                     }
                 }
 
                 var isExistUser = await _context.Users.AnyAsync(u => u.Id == (ulong)userId);
-                if (!isExistUser) errors.Add(new() { field = "proposal.user", message = $"User does not exist: {proposalDTO.user.id}" });
+                if (!isExistUser) errors.Add(new() { field = "user", message = $"User does not exist: {proposalDTO.user.id}" });
 
                 if (errors.Any())
                     return new BaseResponseId
@@ -432,65 +358,198 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public async Task<BaseResponseId> UpdateStateProposalAsync(int proposalId, string newState)
+        public async Task<BaseResponseId> UpdateStateProposalAsync(int proposalId, string status, string? comment = null)
         {
             try
             {
-                var existProposal = await _context.Proposals.FirstOrDefaultAsync(p => p.ProposalId == proposalId);
-
-                if (existProposal != null && existProposal.Status == "approved")
+                var findProposal = await _context.Proposals.FindAsync(proposalId);
+                if (findProposal == null)
                 {
                     return new BaseResponseId
                     {
-                        message = "Kế hoạch đã phê duyệt không được sửa",
-                        errors = new List<ErrorDetail>()
+                        status = 404,
+                        message = "Exam set not found",
+                        errors = new List<ErrorDetail> { new() { field = "exam_id", message = $"Exam set not found: {proposalId}" } }
+                    };
+                }
+
+                if (!validStatus.Contains(status))
+                {
+                    return new BaseResponseId
+                    {
+                        status = 400,
+                        message = "Invalid",
+                        errors = new List<ErrorDetail> { new() { field = "status", message = "Input status is invalid" } }
+                    };
+                }
+
+                // Check if the input status is the same as the current status
+                if (findProposal.Status == status)
+                {
+                    return new BaseResponseId
+                    {
+                        status = 204, // No Content
+                        message = "No changes made as the status is the same."
+                    };
+                }
+
+                if (findProposal.Status == "approved")
+                {
+                    return new BaseResponseId
+                    {
+                        status = 400,
+                        message = "Exam set has been approved, cannot be modified"
+                    };
+                }
+
+                // Check conditions for changing the ExamSet status
+                switch (findProposal.Status)
+                {
+                    case "in_progress":
+                        if (status == "pending_approval")
                         {
-                            new()
+                            findProposal.Status = status; // Update status
+                            break; // Exit switch
+                        }
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Invalid status",
+                            errors = new List<ErrorDetail> { new() { field = "status", message = "Can only update from 'in_progress' to 'pending_approval'." } }
+                        };
+
+                    case "pending_approval":
+                        if (status == "approved" || status == "rejected" || status == "in_progress")
+                        {
+                            findProposal.Status = status; // Update status
+                            break; // Exit switch
+                        }
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Invalid status",
+                            errors = new List<ErrorDetail> { new() { field = "status", message = "Can only update from 'pending_approval' to 'approved', 'rejected', or 'in_progress'." } }
+                        };
+
+                    case "rejected":
+                        if (status == "in_progress" || status == "pending_approval")
+                        {
+                            findProposal.Status = status; // Update status
+                            break; // Exit switch
+                        }
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Invalid status",
+                            errors = new List<ErrorDetail> { new() { field = "status", message = "Can only update from 'rejected' to 'in_progress' or 'pending_approval'." } }
+                        };
+
+                    default:
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Invalid status",
+                            errors = new List<ErrorDetail> { new() { field = "status", message = "Unexpected status." } }
+                        };
+                }
+
+                // Update ExamSet status
+                var listExam = await _context.ExamSets.Where(e => e.ProposalId == findProposal.ProposalId).ToListAsync();
+                var errorList = new List<ErrorDetail>();
+
+                if (!listExam.Any())
+                {
+                    return new BaseResponseId
+                    {
+                        status = 400,
+                        message = "Invalid exam list",
+                        errors = new List<ErrorDetail> { new() { field = "exam_set.exams", message = "No exams found" } }
+                    };
+                }
+
+                for (int i = 0; i < listExam.Count; i++)
+                {
+                    if (listExam[i].Status != "approved")
+                    {
+                        // Check and update status of each Exam
+                        if ((status == "approved" || status == "rejected") && listExam[i].Status != "pending_approval")
+                        {
+                            errorList.Add(new ErrorDetail
                             {
-                                field = "proposal.new_state",
-                                message = "không được sửa"
+                                field = $"exam_set.exams.{i}",
+                                message = "Invalid status"
+                            });
+                        }
+                        else
+                        {
+                            listExam[i].Status = status; // Update status
+
+                            // Update ExamSet status
+                            var listExam = await _context.Exams.Where(e => e.ExamSetId == findExamSet.ExamSetId).ToListAsync();
+                            var errorList = new List<ErrorDetail>();
+
+                            if (!listExam.Any())
+                            {
+                                return new BaseResponseId
+                                {
+                                    status = 400,
+                                    message = "Invalid exam list",
+                                    errors = new List<ErrorDetail> { new() { field = "exam_set.exams", message = "No exams found" } }
+                                };
+                            }
+
+                            for (int i = 0; i < listExam.Count; i++)
+                            {
+                                if (listExam[i].Status != "approved")
+                                {
+                                    // Check and update status of each Exam
+                                    if ((status == "approved" || status == "rejected") && listExam[i].Status != "pending_approval")
+                                    {
+                                        errorList.Add(new ErrorDetail
+                                        {
+                                            field = $"exam_set.exams.{i}",
+                                            message = "Invalid status"
+                                        });
+                                    }
+                                    else
+                                    {
+                                        listExam[i].Status = status; // Update status
+                                    }
+                                }
                             }
                         }
-                    };
+                    }
                 }
-                else if (existProposal != null && existProposal.Status == newState)
-                {
-                    return new BaseResponseId
-                    {
-                        message = "Không có thay đổi",
-                        data = new DetailResponse { id = existProposal.ProposalId },
-                    };
-                }
-                else if (existProposal != null)
-                {
-                    existProposal.Status = newState;
 
-                    //await _context.SaveChangesAsync();
-
-                    return new BaseResponseId
-                    {
-                        message = "Cập nhật trạng thái thành công",
-                        data = new DetailResponse { id = existProposal.ProposalId }
-                    };
-                }
-                else
+                // If there are errors in updating the Exams
+                if (errorList.Any())
                 {
                     return new BaseResponseId
                     {
-                        message = "Không tìm thấy đề xuất",
-                        data = new DetailResponse { id = null }
+                        status = 400,
+                        message = "An error occurred",
+                        errors = errorList
                     };
                 }
+
+                // Save changes to the database
+                await _context.SaveChangesAsync();
+
+                return new BaseResponseId
+                {
+                    status = 200,
+                    message = "Update successful",
+                    data = new DetailResponse { id = findProposal.ProposalId }
+                };
             }
             catch (Exception ex)
             {
-                var baseResponseId = new BaseResponseId
+                return new BaseResponseId
                 {
+                    status = 500,
                     message = "An error occurred: " + ex.Message,
-                    data = new DetailResponse { id = null }
+                    errors = new List<ErrorDetail> { new() { field = "exception", message = ex.InnerException?.Message ?? ex.Message } }
                 };
-
-                return baseResponseId;
             }
         }
 

@@ -568,8 +568,8 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         status = 404,
-                        message = "Không tìm thấy bộ đề",
-                        errors = new List<ErrorDetail> { new() { field = "exam_id", message = $"Không tìm thấy bộ đề {examSetId}" } }
+                        message = "Exam set not found",
+                        errors = new List<ErrorDetail> { new() { field = "exam_id", message = $"Exam set not found: {examSetId}" } }
                     };
                 }
 
@@ -578,8 +578,18 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         status = 400,
-                        message = "Không hợp lệ",
-                        errors = new List<ErrorDetail> { new() { field = "status", message = "Trạng thái nhập vào không hợp lệ" } }
+                        message = "Invalid",
+                        errors = new List<ErrorDetail> { new() { field = "status", message = "Input status is invalid" } }
+                    };
+                }
+
+                // Check if the input status is the same as the current status
+                if (findExamSet.Status == status)
+                {
+                    return new BaseResponseId
+                    {
+                        status = 204, // No Content
+                        message = "No changes made as the status is the same."
                     };
                 }
 
@@ -588,23 +598,62 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         status = 400,
-                        message = "Bộ đề đã được duyệt, không thể sửa"
+                        message = "Exam set has been approved, cannot be modified"
                     };
                 }
 
-                // Kiểm tra điều kiện thay đổi trạng thái của ExamSet
-                if ((status != "approved" && status != "rejected") && findExamSet.Status != "pending_approval")
+                // Check conditions for changing the ExamSet status
+                switch (findExamSet.Status)
                 {
-                    return new BaseResponseId
-                    {
-                        status = 400,
-                        message = "Trạng thái không hợp lệ"
-                    };
+                    case "in_progress":
+                        if (status == "pending_approval")
+                        {
+                            findExamSet.Status = status; // Update status
+                            break; // Exit switch
+                        }
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Invalid status",
+                            errors = new List<ErrorDetail> { new() { field = "status", message = "Can only update from 'in_progress' to 'pending_approval'." } }
+                        };
+
+                    case "pending_approval":
+                        if (status == "approved" || status == "rejected" || status == "in_progress")
+                        {
+                            findExamSet.Status = status; // Update status
+                            break; // Exit switch
+                        }
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Invalid status",
+                            errors = new List<ErrorDetail> { new() { field = "status", message = "Can only update from 'pending_approval' to 'approved', 'rejected', or 'in_progress'." } }
+                        };
+
+                    case "rejected":
+                        if (status == "in_progress" || status == "pending_approval")
+                        {
+                            findExamSet.Status = status; // Update status
+                            break; // Exit switch
+                        }
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Invalid status",
+                            errors = new List<ErrorDetail> { new() { field = "status", message = "Can only update from 'rejected' to 'in_progress' or 'pending_approval'." } }
+                        };
+
+                    default:
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Invalid status",
+                            errors = new List<ErrorDetail> { new() { field = "status", message = "Unexpected status." } }
+                        };
                 }
 
-                // Cập nhật trạng thái của ExamSet
-                findExamSet.Status = status;
-
+                // Update ExamSet status
                 var listExam = await _context.Exams.Where(e => e.ExamSetId == findExamSet.ExamSetId).ToListAsync();
                 var errorList = new List<ErrorDetail>();
 
@@ -613,8 +662,8 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         status = 400,
-                        message = "Danh sách đề thi không hợp lệ",
-                        errors = new List<ErrorDetail> { new() { field = "exam_set.exams", message = "Không có đề thi nào" } }
+                        message = "Invalid exam list",
+                        errors = new List<ErrorDetail> { new() { field = "exam_set.exams", message = "No exams found" } }
                     };
                 }
 
@@ -622,40 +671,41 @@ namespace ExamProcessManage.Repository
                 {
                     if (listExam[i].Status != "approved")
                     {
-                        // Kiểm tra và cập nhật trạng thái của từng Exam
+                        // Check and update status of each Exam
                         if ((status == "approved" || status == "rejected") && listExam[i].Status != "pending_approval")
                         {
                             errorList.Add(new ErrorDetail
                             {
                                 field = $"exam_set.exams.{i}",
-                                message = "Trạng thái không hợp lệ"
+                                message = "Invalid status"
                             });
                         }
                         else
                         {
-                            listExam[i].Status = status;
+                            listExam[i].Status = status; // Update status
                         }
                     }
                 }
 
-                // Nếu có lỗi xảy ra trong quá trình cập nhật các Exam
+                // If there are errors in updating the Exams
                 if (errorList.Any())
                 {
                     return new BaseResponseId
                     {
                         status = 400,
-                        message = "Có lỗi xảy ra",
+                        message = "An error occurred",
                         errors = errorList
                     };
                 }
 
-                // Lưu thay đổi vào cơ sở dữ liệu
+                // Save changes to the database
                 await _context.SaveChangesAsync();
 
                 return new BaseResponseId
                 {
-                    data = new DetailResponse { id = findExamSet.ExamSetId },
-                    message = "Cập nhật thành công"
+                    status = 200,
+                    message = "Update successful",
+                    data = new DetailResponse { id = findExamSet.ExamSetId }
                 };
             }
             catch (Exception ex)
@@ -663,7 +713,7 @@ namespace ExamProcessManage.Repository
                 return new BaseResponseId
                 {
                     status = 500,
-                    message = "Có lỗi xảy ra: " + ex.Message,
+                    message = "An error occurred: " + ex.Message,
                     errors = new List<ErrorDetail> { new() { field = "exception", message = ex.InnerException?.Message ?? ex.Message } }
                 };
             }

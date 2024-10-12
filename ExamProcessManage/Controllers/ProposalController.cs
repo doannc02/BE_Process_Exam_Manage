@@ -93,30 +93,34 @@ namespace ExamProcessManage.Controllers
 
             try
             {
+                // Lấy thông tin quyền (role) và userId từ các claim
                 var roleClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
                 var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "userId");
 
+                // Nếu không tìm thấy role hoặc userId, trả về lỗi
                 if (roleClaim == null || userIdClaim == null)
                     return Forbid();
 
+                // Chuyển userId từ string thành int
                 var userId = int.Parse(userIdClaim.Value);
-                var isAdmin = roleClaim.Value == "Admin";
+                var isAdmin = roleClaim.Value == "Admin"; // Xác định có phải admin không
 
-                // Nếu là Admin nhưng user.id == 0, trả về lỗi
+                // Nếu là admin nhưng proposal.user.id không hợp lệ (tức là bằng 0), trả về lỗi
                 if (isAdmin && (proposal.user?.id ?? 0) == 0)
-                    return BadRequest(new { status = 400, title = "Admin must specify a valid user ID", field = "proposal.user" });
+                    return BadRequest(new
+                    {
+                        status = 400,
+                        title = "Admin must specify a valid user ID",
+                        field = "user"
+                    });
 
-                // Check if the user is not an Admin but attempts to create a proposal for another user
-                if (!isAdmin && proposal.user?.id > 0 && proposal.user.id != userId)
-                    return Forbid();
+                // Nếu không phải admin, bỏ qua proposal.user.id và sử dụng userId hiện tại
+                var targetUserId = isAdmin ? (proposal.user?.id ?? userId) : userId;
 
-                // Use the correct userId for proposal creation
-                var targetUserId = isAdmin && proposal.user?.id > 0 ? proposal.user.id : userId;
-
-                // Create proposal
+                // Tạo proposal cho user xác định
                 var newProposal = await _repository.CreateProposalAsync(targetUserId, proposal);
 
-                // Return appropriate response
+                // Trả về kết quả phù hợp
                 if (newProposal.data != null)
                     return Ok(_createCommonResponse.CreateResponse("Success", HttpContext, newProposal.data));
                 else
@@ -124,40 +128,43 @@ namespace ExamProcessManage.Controllers
             }
             catch (ArgumentException ex)
             {
+                // Bắt lỗi và trả về BadRequest nếu có exception liên quan đến tham số không hợp lệ
                 return BadRequest(new { status = 400, message = $"Bad request: {ex.Message}" });
-            }
-            catch (DbUpdateException ex)
-            {
-                return StatusCode(500, new { status = 500, message = $"Database error: {ex.Message}" });
-            }
-            catch (Exception ex)
-            {
-                return new CustomJsonResult(500, HttpContext, "An error occurred: " + ex.Message + "\n" + ex.InnerException);
             }
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdateStateProposalAsync([FromQuery][Required] int proposalId, [Required] string newState)
+        public async Task<IActionResult> UpdateProposalAsync([FromBody] ProposalDTO proposalDTO)
         {
             try
             {
-                var status = new List<string> { "in_progress", "pending_approval", "approved", "rejected" };
-
-                if (status.Contains(newState))
-                {
-                    var response = await _repository.UpdateStateProposalAsync(proposalId, newState);
-
-                    if (response != null) return Ok(response);
-                    else return new CustomJsonResult(500, HttpContext, "Error");
-                }
-                else
-                {
-                    return new CustomJsonResult(400, HttpContext, "newState không hợp lệ");
-                }
+                return NotFound();
             }
             catch
             {
                 return new CustomJsonResult(500, HttpContext, "Server error");
+            }
+        }
+
+        [HttpPut("update-state")]
+        public async Task<IActionResult> UpdateStateProposalAsync([Required] int proposalId, [Required] string status, string comment)
+        {
+            try
+            {
+                var updateStatus = await _repository.UpdateStateProposalAsync(proposalId, status, comment);
+                if (updateStatus != null && updateStatus.data != null)
+                {
+                    var response = _createCommonResponse.CreateResponse(updateStatus.message, HttpContext, updateStatus.data);
+                    return Ok(response);
+                }
+                else if (updateStatus != null)
+                    return new CustomJsonResult((int)updateStatus.status, HttpContext, updateStatus.message, updateStatus.errors);
+                else
+                    return new CustomJsonResult(400, HttpContext, "Unable to update state");
+            }
+            catch (Exception ex)
+            {
+                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message}");
             }
         }
     }
