@@ -44,7 +44,7 @@ namespace ExamProcessManage.Helpers
 
             var jsonResponse = System.Text.Json.JsonSerializer.Serialize(new
             {
-                statusCode = _status,
+                status = _status,
                 traceId = _traceId,
                 title = _title,
                 error = _errorDetail

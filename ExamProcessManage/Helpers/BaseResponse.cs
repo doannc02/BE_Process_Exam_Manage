@@ -6,7 +6,7 @@
         public string? traceId { get; set; }
         public string? message { get; set; }
         public T data { get; set; }
-        public IEnumerable<ErrorDetail>? errors { get; set; }
+        public List<ErrorDetail>? errors { get; set; }
     }
 
     public class DetailResponse
