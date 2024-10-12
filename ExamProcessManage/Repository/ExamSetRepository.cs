@@ -395,8 +395,6 @@ namespace ExamProcessManage.Repository
             if (examSet == null) errorList.Add(new() { message = "Bo de rong" });
             else
             {
-
-
                 if (examSet.id <= 0) errorList.Add(new()
                 {
                     field = "exam_set.id",
@@ -490,8 +488,6 @@ namespace ExamProcessManage.Repository
                             }
                             else
                             {
-                                ///////////////////////////
-
                                 existExamSet.CourseId = examSet.course.id;
                             }
                         }
@@ -501,7 +497,6 @@ namespace ExamProcessManage.Repository
                         existExamSet.Description = examSet.description == "string" || string.IsNullOrEmpty(examSet.description)
                             ? existExamSet.Description : examSet.description;
                         existExamSet.Status = examSet.status;
-                        //existExamSet.CreatorId = userId;
 
                         var examList = new List<Exam>();
                         if (examSet.exams != null && examSet.exams.Any())
@@ -517,7 +512,6 @@ namespace ExamProcessManage.Repository
                                 {
                                     examToRemove.ExamSetId = null;
                                 }
-
                             }
 
                             foreach (var examId in examsListId)
@@ -541,10 +535,50 @@ namespace ExamProcessManage.Repository
                                 else
                                 {
                                     var exam = existingExams.First(e => e.ExamId == examId);
+
+                                    switch (examSet.status)
+                                    {
+                                        case "approved":
+                                            if (exam.Status == "pending_approval")
+                                            {
+                                                exam.Status = examSet.status;
+                                            }
+                                            else
+                                            {
+                                                return new BaseResponseId
+                                                {
+                                                    status = 400,
+                                                    message = "Trạng thái không hợp lệ"
+                                                };
+                                            }
+                                            break;
+
+                                        case "rejected":
+                                            if (exam.Status == "pending_approval")
+                                            {
+                                                exam.Status = examSet.status;
+                                            }
+                                            else
+                                            {
+                                                return new BaseResponseId
+                                                {
+                                                    status = 400,
+                                                    message = "Trạng thái không hợp lệ"
+                                                };
+                                            }
+                                            break;
+
+                                        default:
+                                            exam.Status = examSet.status; // Các trạng thái khác được phép thay đổi trực tiếp
+                                            break;
+                                    }
+
                                     examList.Add(exam);
                                 }
                             }
                         }
+
+                        // var updateState = UpdateStateAsync((int)examSet.id, examSet.status);
 
                         if (errorList.Any()) return new BaseResponseId
                         {
@@ -555,10 +589,10 @@ namespace ExamProcessManage.Repository
 
                         if (examIds != null && examList.Count == examIds.Count) existExamSet.Exams = examList;
 
+                        await _context.SaveChangesAsync();
+
                         response.message = "Cap nhat thanh cong";
                         response.data = new DetailResponse { id = existExamSet.ExamSetId };
-
-                        await _context.SaveChangesAsync();
                     }
                 }
                 catch (Exception ex)
@@ -600,14 +634,14 @@ namespace ExamProcessManage.Repository
                 }
 
                 // Check if the input status is the same as the current status
-                if (findExamSet.Status == status)
-                {
-                    return new BaseResponseId
-                    {
-                        status = 204, // No Content
-                        message = "No changes made as the status is the same."
-                    };
-                }
+                //if (findExamSet.Status == status)
+                //{
+                //    return new BaseResponseId
+                //    {
+                //        status = 204, // No Content
+                //        message = "No changes made as the status is the same."
+                //    };
+                //}
 
                 if (findExamSet.Status == "approved")
                 {
@@ -686,8 +720,8 @@ namespace ExamProcessManage.Repository
                     {
                         status = 400,
                         message = "Not enough exams",
-                        errors = new List<ErrorDetail> { new() { 
-                            field = "exam_set.exams", 
+                        errors = new List<ErrorDetail> { new() {
+                            field = "exam_set.exams",
                             message = $"Not enough exams: {listExam.Count}/{findExamSet.ExamQuantity}" } }
                     };
 
