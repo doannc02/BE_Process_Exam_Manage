@@ -1,4 +1,5 @@
-﻿using ExamProcessManage.Dtos;
+﻿using BCrypt.Net;
+using ExamProcessManage.Dtos;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.Models;
@@ -91,7 +92,7 @@ namespace ExamProcessManage.Controllers
         {
             if (proposal == null)
                 return new CustomJsonResult(400, HttpContext, "Null proposal");
-
+            
             try
             {
                 // Lấy thông tin quyền (role) và userId từ các claim

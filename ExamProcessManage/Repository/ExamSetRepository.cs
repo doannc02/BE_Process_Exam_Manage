@@ -5,8 +5,6 @@ using ExamProcessManage.Interfaces;
 using ExamProcessManage.Models;
 using ExamProcessManage.RequestModels;
 using Microsoft.EntityFrameworkCore;
-using Mysqlx;
-using System.Linq;
 
 namespace ExamProcessManage.Repository
 {
@@ -676,14 +674,22 @@ namespace ExamProcessManage.Repository
                 var errorList = new List<ErrorDetail>();
 
                 if (!listExam.Any())
-                {
                     return new BaseResponseId
                     {
                         status = 400,
                         message = "Invalid exam list",
                         errors = new List<ErrorDetail> { new() { field = "exam_set.exams", message = "No exams found" } }
                     };
-                }
+
+                if (listExam.Count < findExamSet.ExamQuantity)
+                    return new BaseResponseId
+                    {
+                        status = 400,
+                        message = "Not enough exams",
+                        errors = new List<ErrorDetail> { new() { 
+                            field = "exam_set.exams", 
+                            message = $"Not enough exams: {listExam.Count}/{findExamSet.ExamQuantity}" } }
+                    };
 
                 for (int i = 0; i < listExam.Count; i++)
                 {
