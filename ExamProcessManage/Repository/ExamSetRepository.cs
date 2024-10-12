@@ -149,7 +149,7 @@ namespace ExamProcessManage.Repository
                 var examSet = await _context.ExamSets
                .AsNoTracking().Include(p => p.Proposal).ThenInclude(p => p.TeacherProposals)
                .FirstOrDefaultAsync(p => p.ExamSetId == id);
-                var exams = _context.Exams.Where(ex => ex.CreatorId == userId).AsNoTracking().AsQueryable();
+                var exams = _context.Exams.Where(ex => ex.ExamSetId== examSet.ExamSetId).AsNoTracking().AsQueryable();
                 // var userIds = examSet.Proposal != null ? examSet.Proposal.TeacherProposals.Select(tp => tp.UserId).ToList() : null;
               //  var userIds = users.Where(e => e. == (ulong)examSet.CreatorId);
 
