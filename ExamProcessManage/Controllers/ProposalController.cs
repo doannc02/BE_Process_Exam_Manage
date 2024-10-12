@@ -1,6 +1,7 @@
 ﻿using ExamProcessManage.Dtos;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
+using ExamProcessManage.Models;
 using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -134,15 +135,40 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdateProposalAsync([FromBody] ProposalDTO proposalDTO)
+        public async Task<IActionResult> UpdateProposalAsync([FromBody] ProposalDTO proposal)
         {
+            if (proposal == null)
+                return new CustomJsonResult(400, HttpContext, "Null proposal");
+
             try
             {
-                return NotFound();
+                // Lấy thông tin quyền (role) và userId từ các claim
+                var roleClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
+                var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "userId");
+
+                // Nếu không tìm thấy role hoặc userId, trả về lỗi
+                if (roleClaim == null || userIdClaim == null)
+                    return Forbid();
+
+                // Chuyển userId từ string thành int
+                var userId = int.Parse(userIdClaim.Value);
+                var isAdmin = roleClaim.Value == "Admin"; // Xác định có phải admin không
+
+                var findProp = await _repository.GetDetailProposalAsync((int)proposal.id);
+                if (findProp == null) return new CustomJsonResult(500, HttpContext, "Khong tim thay de xuat");
+                if (findProp.data?.user.id != userId) return Forbid();
+                var newProposal = await _repository.UpdateProposalAsync(proposal);
+
+                // Trả về kết quả phù hợp
+                if (newProposal.data != null)
+                    return Ok(_createCommonResponse.CreateResponse("Success", HttpContext, newProposal.data));
+                else
+                    return new CustomJsonResult((int)newProposal.status, HttpContext, newProposal.message, newProposal.errors);
             }
-            catch
+            catch (ArgumentException ex)
             {
-                return new CustomJsonResult(500, HttpContext, "Server error");
+                // Bắt lỗi và trả về BadRequest nếu có exception liên quan đến tham số không hợp lệ
+                return BadRequest(new { status = 400, message = $"Bad request: {ex.Message}" });
             }
         }
 

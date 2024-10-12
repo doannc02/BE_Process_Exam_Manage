@@ -736,12 +736,6 @@ namespace ExamProcessManage.Repository
                 };
             }
         }
-
-        public Task<BaseResponseId> RemoveChildAsync(int proposalId, int examSetId, string? comment)
-        {
-            throw new NotImplementedException();
-        }
-
         public Task<BaseResponse<string>> DeleteExamSetAsync(int id)
         {
             throw new NotImplementedException();

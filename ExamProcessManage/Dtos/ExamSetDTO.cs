@@ -9,7 +9,7 @@ namespace ExamProcessManage.Dtos
             exams = new HashSet<ExamDTO>();
         }
 
-        public int id { get; set; }
+        public int? id { get; set; }
         public string? name { get; set; }
         public CommonObject? department { get; set; }
         public CommonObject? major { get; set; }

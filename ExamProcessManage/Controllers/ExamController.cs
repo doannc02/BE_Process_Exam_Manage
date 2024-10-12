@@ -187,29 +187,6 @@ namespace ExamProcessManage.Controllers
             }
         }
 
-        [HttpPut("remove-exam")]
-        public async Task<IActionResult> RemoveExamAsync([Required] int examSetId, [Required] int examId, string? comment)
-        {
-            try
-            {
-                var updateExam = await _examRepository.RemoveChildAsync(examSetId, examId, comment);
-
-                if (updateExam != null && updateExam.data != null)
-                {
-                    var response = _createCommon.CreateResponse(updateExam.message, HttpContext, updateExam.data);
-                    return Ok(response);
-                }
-                else
-                {
-                    var response = _createCommon.CreateResponse(updateExam.message, HttpContext, updateExam);
-                    return Ok(response);
-                }
-            }
-            catch
-            {
-                return new CustomJsonResult(500, HttpContext, "Internal Server Error");
-            }
-        }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteExamAsync(int id)
