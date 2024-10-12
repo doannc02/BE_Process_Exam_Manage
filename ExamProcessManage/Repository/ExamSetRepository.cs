@@ -29,7 +29,10 @@ namespace ExamProcessManage.Repository
                 // Build base query for ExamSets
                 var query = _context.ExamSets.AsNoTracking().AsQueryable();
                 var exams = _context.Exams.AsNoTracking().AsQueryable();
-
+                if (queryObject.exceptValues != null && queryObject.exceptValues.Any())
+                {
+                    query = query.Where(p => !queryObject.exceptValues.Contains(p.ExamSetId));
+                }
                 // Apply filters
                 if (!string.IsNullOrEmpty(queryObject.search))
                 {
