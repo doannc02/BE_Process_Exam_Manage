@@ -33,7 +33,7 @@ namespace ExamProcessManage.Repository
             {
                 baseQuery = baseQuery.Where(e => e.ExamCode.Contains(query.search) || e.ExamName.Contains(query.search));
             }
-            if((bool)query.isGetForAddExamSet)
+            if ((bool)query.isGetForAddExamSet)
             {
                 baseQuery = baseQuery.Where(e => e.ExamSetId == null);
             }
@@ -133,6 +133,7 @@ namespace ExamProcessManage.Repository
                 content = exams,
             };
         }
+
         public async Task<BaseResponse<ExamDTO>> GetDetailExamAsync(int examId)
         {
             try
@@ -645,25 +646,9 @@ namespace ExamProcessManage.Repository
                     return new BaseResponse<string>
                     {
                         message = $"Không tìm thấy bài thi với ID {examId}",
-                        errors = new List<ErrorDetail>
-                {
-                    new()
-                    {
-                        field = "exam_id",
-                        message = $"Exam with ID {examId} not found."
-                    }
-                }
-                    };
-                }
-
-                // Kiểm tra trạng thái bài thi đã phê duyệt (approved)
-                if (existExam.Status == "approved")
-                {
-                    // Không cho phép xóa nếu bài thi đã phê duyệt
-                    return new BaseResponse<string>
-                    {
-                        message = "Bài thi đã phê duyệt, không thể xóa",
-                        data = null
+                        errors = new List<ErrorDetail> { new() {
+                            field = "exam_id",
+                            message = $"Exam with ID {examId} not found." } }
                     };
                 }
 

@@ -14,6 +14,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Remove="wwwroot\files\3ed6db7a-daf3-44f5-a37c-e4438ffafefa_APznzabViRdGnY2CfC-b2cIXw_H8kI7hOAQyvApNX8fFpDwH0QKAwrhicVmaDTdAJZHY7rUXT1fcTJYyEtmKqGTD2nx5z45FgCy4iqJNB6KTWX8UBD47PGO-cq9XZ1g3tIlVxjKYxd0Y6JSCWBsFfCVfb8SvCPHcP70ebdxmp9ozqknocz8SAPknJd7gKeSDa-d1GAD1dvvgqdIw_gTqQe.pdf" />
+    <Content Remove="wwwroot\files\83ca9645-870b-4c17-a887-b8cd1d692cb8_APznzabViRdGnY2CfC-b2cIXw_H8kI7hOAQyvApNX8fFpDwH0QKAwrhicVmaDTdAJZHY7rUXT1fcTJYyEtmKqGTD2nx5z45FgCy4iqJNB6KTWX8UBD47PGO-cq9XZ1g3tIlVxjKYxd0Y6JSCWBsFfCVfb8SvCPHcP70ebdxmp9ozqknocz8SAPknJd7gKeSDa-d1GAD1dvvgqdIw_gTqQe.pdf" />
+    <Content Remove="wwwroot\files\b6e7632b-7b62-4d43-b948-560ab8756a78_APznzabViRdGnY2CfC-b2cIXw_H8kI7hOAQyvApNX8fFpDwH0QKAwrhicVmaDTdAJZHY7rUXT1fcTJYyEtmKqGTD2nx5z45FgCy4iqJNB6KTWX8UBD47PGO-cq9XZ1g3tIlVxjKYxd0Y6JSCWBsFfCVfb8SvCPHcP70ebdxmp9ozqknocz8SAPknJd7gKeSDa-d1GAD1dvvgqdIw_gTqQe.pdf" />
+    <Content Remove="wwwroot\files\d2b34e6e-aecf-487c-8657-ce333e3eab50_APznzabViRdGnY2CfC-b2cIXw_H8kI7hOAQyvApNX8fFpDwH0QKAwrhicVmaDTdAJZHY7rUXT1fcTJYyEtmKqGTD2nx5z45FgCy4iqJNB6KTWX8UBD47PGO-cq9XZ1g3tIlVxjKYxd0Y6JSCWBsFfCVfb8SvCPHcP70ebdxmp9ozqknocz8SAPknJd7gKeSDa-d1GAD1dvvgqdIw_gTqQe.pdf" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="6.0.0" />

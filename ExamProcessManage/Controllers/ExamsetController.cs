@@ -6,6 +6,7 @@ using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using ZstdSharp.Unsafe;
 
 namespace ExamProcessManage.Controllers
 {
@@ -224,16 +225,28 @@ namespace ExamProcessManage.Controllers
             }
         }
 
-        [HttpPut("remove-child")]
-        public async Task<IActionResult> RemoveChildAsync([FromQuery] int parentId, int childId, string? comment)
-        {
-            return new CustomJsonResult(204, HttpContext, "K.O");
-        }
-
         [HttpDelete]
-        public async Task<IActionResult> DeleteExamSetAsync([FromQuery] int examSetId)
+        public async Task<IActionResult> DeleteExamSetAsync([FromQuery][Required] int examSetId)
         {
-            return NotFound();
+            try
+            {
+                var user = User.Claims.FirstOrDefault(c => c.Type == "userId");
+                if (user != null)
+                {
+                    var delExamSet = await _repository.DeleteExamSetAsync(int.Parse(user.Value), examSetId);
+                    if (delExamSet.data != null)
+                    {
+                        var response = _createResponse.CreateResponse(delExamSet.message, HttpContext, delExamSet.data);
+                        return Ok(response);
+                    }
+                    else return new CustomJsonResult((int)delExamSet.status, HttpContext, delExamSet.message);
+                }
+                else return new CustomJsonResult(403, HttpContext, string.Empty);
+            }
+            catch
+            {
+                return new CustomJsonResult(500, HttpContext, "Server error");
+            }
         }
     }
 }

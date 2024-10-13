@@ -649,43 +649,23 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public async Task<BaseResponse<string>> DeleteProposalAsync(int proposalId)
+        public async Task<BaseResponseId> DeleteProposalAsync(int proposalId)
         {
             try
             {
                 var proposal = await _context.Proposals.FirstOrDefaultAsync(p => p.ProposalId == proposalId);
 
-                if (proposal != null)
-                {
+                if (proposal == null)
+                    return new BaseResponseId { status = 404, message = $"Proposal not found {proposalId}" };
+
                     _context.Proposals.Remove(proposal);
                     await _context.SaveChangesAsync();
 
-
-                    var baseResponseId = new BaseResponse<string>
-                    {
-                        message = "Xóa thành công",
-                    };
-                    return baseResponseId;
-                }
-                else
-                {
-
-                    var baseResponseId = new BaseResponse<string>
-                    {
-                        message = "Không tìm thấy đề xuất",
-                    };
-                    return baseResponseId;
-                }
+                return new BaseResponseId { status = 200, message = "Delete proposal successfully", data = new() { id = proposalId } };
             }
             catch (Exception ex)
             {
-
-                var baseResponseId = new BaseResponse<string>
-                {
-                    message = ex.Message,
-
-                };
-                return baseResponseId;
+                return new BaseResponseId { status = 500, message = $"An error occurred: {ex.Message} {ex.InnerException}" };
             }
         }
     }
