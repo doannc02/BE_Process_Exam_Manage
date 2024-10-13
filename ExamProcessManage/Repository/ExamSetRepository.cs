@@ -776,9 +776,47 @@ namespace ExamProcessManage.Repository
                 };
             }
         }
-        public Task<BaseResponse<string>> DeleteExamSetAsync(int id)
+
+        public async Task<BaseResponseId> DeleteExamSetAsync(int userId, int examSetId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var findExamSet = await _context.ExamSets
+                    .Include(es => es.Exams) // Include related exams in the same query
+                    .FirstOrDefaultAsync(es => es.ExamSetId == examSetId);
+
+                if (findExamSet == null)
+                    return new BaseResponseId { status = 404, message = $"Exam set not found {examSetId}" };
+
+                if (userId != findExamSet.CreatorId)
+                    return new BaseResponseId { status = 403 };
+
+                var exams = findExamSet.Exams;
+
+                if (exams.Any())
+                {
+                    var examIds = exams.Select(e => e.ExamId).ToList();
+
+                    await _context.Exams
+                        .Where(e => examIds.Contains(e.ExamId))
+                        .ForEachAsync(e => e.ExamSetId = null); // Batch update using ForEachAsync
+                }
+
+                // Remove the exam set after nullifying exam references
+                _context.ExamSets.Remove(findExamSet);
+                await _context.SaveChangesAsync();
+
+                return new BaseResponseId
+                {
+                    status = 200,
+                    message = "Delete exam set successfully",
+                    data = new() { id = findExamSet.ExamSetId }
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BaseResponseId { status = 500, message = $"An error occurred: {ex.Message} {ex.InnerException}" };
+            }
         }
     }
 }
