@@ -5,6 +5,7 @@ using ExamProcessManage.Interfaces;
 using ExamProcessManage.Models;
 using ExamProcessManage.RequestModels;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace ExamProcessManage.Repository
 {
@@ -36,6 +37,17 @@ namespace ExamProcessManage.Repository
                 {
                     query = query.Where(p => p.ExamSetName.Contains(queryObject.search));
                 }
+                if (!string.IsNullOrEmpty(queryObject.stateExamSet))
+                {
+                    query = query.Where(e => e.Status == queryObject.stateExamSet);
+                }
+
+                if (queryObject.courseId > 0)
+                {
+                    query = query.Where(e => e.CourseId == queryObject.courseId);
+                }
+
+               
 
                 if (userId.HasValue)
                 {
@@ -104,7 +116,11 @@ namespace ExamProcessManage.Repository
                         id = department.DepartmentId,
                         name = department.DepartmentName
                     } : null,
-
+                    proposal = p.ProposalId != null ? new CommonObject
+                    {
+                        id = (int)p.ProposalId,
+                        code = p.Proposal.PlanCode
+                    } : null,
                     description = p.Description,
                     status = p.Status,
                     exam_quantity = p.ExamQuantity,
@@ -200,6 +216,9 @@ namespace ExamProcessManage.Repository
                         name = m.CourseName,
                         code = m.CourseCode
                     }).FirstOrDefault(),
+                    proposal = examSet.ProposalId != null ? new CommonObject {
+                        id = (int)examSet.ProposalId
+                    } : null,
                     user = examSet.CreatorId.HasValue && users.TryGetValue((ulong)examSet.CreatorId.Value, out var user) ? new
                     {
                         id = (int)user.Id,
@@ -493,7 +512,7 @@ namespace ExamProcessManage.Repository
                         }
 
                         existExamSet.ExamSetName = examSet.name == "string" || string.IsNullOrEmpty(examSet.name) ? existExamSet.ExamSetName : examSet.name;
-
+                        existExamSet.ExamQuantity = (int)examSet.exam_quantity;
                         existExamSet.Description = examSet.description == "string" || string.IsNullOrEmpty(examSet.description)
                             ? existExamSet.Description : examSet.description;
                         existExamSet.Status = examSet.status;
@@ -501,13 +520,20 @@ namespace ExamProcessManage.Repository
                         var examList = new List<Exam>();
                         if (examSet.exams != null && examSet.exams.Any())
                         {
-                            var examsListId = examSet.exams.Select(e => e.id).ToList();
+                            // Tạo từ điển để ánh xạ ExamId với comment từ examDTO
+                            var examComments = examSet.exams.ToDictionary(e => e.id, e => e.comment);
+
+                            // Lấy danh sách ExamId từ examSet.exams và chuyển thành HashSet để cải thiện hiệu suất
+                            var examsListId = examComments.Keys.ToHashSet();
+
+                            // Tìm các exam có ExamId trùng với các examId trong examsListId
                             var existingExams = await _context.Exams.Where(e => examsListId.Contains(e.ExamId)).ToListAsync();
+
                             var examCodeSet = new HashSet<int>();
                             var examsToRemove = existingExams.Where(e => !examsListId.Contains(e.ExamId)).ToList();
-                            if (examsToRemove.Count > 0 && examsToRemove.Any())
-                            {
 
+                            if (examsToRemove.Any())
+                            {
                                 foreach (var examToRemove in examsToRemove)
                                 {
                                     examToRemove.ExamSetId = null;
@@ -535,6 +561,9 @@ namespace ExamProcessManage.Repository
                                 else
                                 {
                                     var exam = existingExams.First(e => e.ExamId == examId);
+
+                                    // Gán giá trị comment từ examDTO vào exam
+                                    exam.Comment = examComments[examId];
 
                                     switch (examSet.status)
                                     {
@@ -577,6 +606,7 @@ namespace ExamProcessManage.Repository
                                 }
                             }
                         }
+
 
                         // var updateState = UpdateStateAsync((int)examSet.id, examSet.status);
 

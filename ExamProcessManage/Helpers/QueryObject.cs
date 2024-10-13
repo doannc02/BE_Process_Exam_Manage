@@ -16,10 +16,8 @@
          public string? startDate { get; set; }      
          public string? endDate { get; set; }
          public  int? semester { get; set; }
-         public int? status { get; set; }
+         public string? status { get; set; }
+         public int? month_end { get; set; }
     }
 
-    public class QueryObjectCourse : QueryObject
-    {
-    }
 }

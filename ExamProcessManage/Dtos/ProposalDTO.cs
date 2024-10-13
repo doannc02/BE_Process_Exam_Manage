@@ -20,7 +20,7 @@ namespace ExamProcessManage.Dtos
         public string status { get; set; } = null!;
         public  CommonObject academic_year { get; set; } = null!;
         public CommonObject user { get; set; }
-
+        public int? total_exam_set { get; set; }
         public virtual ICollection<ExamSetDTO>? exam_sets { get; set; }
         public virtual ICollection<TeacherProposalDTO>? teacher_roposals { get; set; }
     }

@@ -18,7 +18,7 @@ namespace ExamProcessManage.Repository
             _context = context;
         }
 
-        public async Task<PageResponse<ProposalDTO>> GetListProposalsAsync(int? userId, QueryObject queryObject)
+        public async Task<PageResponse<ProposalDTO>> GetListProposalsAsync(int? userId, QueryObjectProposal queryObject)
         {
             try
             {
@@ -29,7 +29,19 @@ namespace ExamProcessManage.Repository
                 {
                     query = query.Where(p => p.PlanCode.Contains(queryObject.search));
                 }
+                if (!string.IsNullOrEmpty(queryObject.status))
+                {
+                    query = query.Where(e => e.Status == queryObject.status);
+                }
 
+                if (queryObject.semester > 0)
+                {
+                    query = query.Where(e => e.Semester == queryObject.semester.ToString());
+                }
+                if (queryObject.month_end > 0)
+                {
+                    query = query.Where(e => e.EndDate.Value.Month == queryObject.month_end);
+                }
                 if (userId.HasValue)
                 {
                     var proposalIds = _context.TeacherProposals
@@ -74,7 +86,7 @@ namespace ExamProcessManage.Repository
                         semester = p.Semester,
                         start_date = p.StartDate.ToString(),
                         status = p.Status,
-                        // total_exam_set = p.TeacherProposals.Count(),
+                        total_exam_set = p.ExamSets.Count(),
                         user = p.TeacherProposals.Select(tp => new CommonObject
                         {
                             id = (int)tp.User.Id,
@@ -155,7 +167,10 @@ namespace ExamProcessManage.Repository
                 {
                     code = e.ExamCode,
                     id = e.ExamId,
-                    name = e.ExamName
+                    name = e.ExamName,
+                    comment = e.Comment,
+                    description = e.Description,
+                    attached_file = e.AttachedFile,
                 }).ToList(),
                 major = majors.FirstOrDefault(m => m.MajorId == es.MajorId) switch
                 {
@@ -330,7 +345,7 @@ namespace ExamProcessManage.Repository
                     if (proposalDTO.exam_sets != null && proposalDTO.exam_sets.Any())
                     {
                         var examSetsListId = proposalDTO.exam_sets.Select(e => e.id).ToList();
-                        var existingExamSets = await _context.ExamSets.ToListAsync();
+                        var existingExamSets = await _context.ExamSets.Where(e => examSetsListId.Contains(e.ExamSetId)).ToListAsync();
                         var examCodeSet = new HashSet<int>();
                         var examsToRemove = existingExamSets.Where(e => !examSetsListId.Contains(e.ExamSetId)).ToList();
 
@@ -342,28 +357,48 @@ namespace ExamProcessManage.Repository
                             }
                         }
 
-                        foreach (var examSetId in examSetsListId)
+                        foreach (var examSet in proposalDTO.exam_sets)
                         {
-                            if (!examCodeSet.Add((int)examSetId))
+                            if (!examCodeSet.Add((int)examSet.id))
                             {
                                 errorList.Add(new ErrorDetail
                                 {
-                                    field = $"exam_set.exams.{examSetId}",
-                                    message = $"Bài thi bị trùng lặp {examSetId}"
+                                    field = $"exam_set.exams.{examSet.id}",
+                                    message = $"Bài thi bị trùng lặp {examSet.id}"
                                 });
                             }
-                            else if (!existingExamSets.Any(e => e.ExamSetId == examSetId))
+                            else if (!existingExamSets.Any(e => e.ExamSetId == examSet.id))
                             {
                                 errorList.Add(new ErrorDetail
                                 {
-                                    field = $"exam_set.exams.{examSetId}",
-                                    message = $"Không tồn tại bài thi {examSetId}"
+                                    field = $"exam_set.exams.{examSet.id}",
+                                    message = $"Không tồn tại bài thi {examSet.id}"
                                 });
                             }
                             else
                             {
-                                var exam = existingExamSets.First(e => e.ExamSetId == examSetId);
-                                examSetList.Add(exam);
+                                var existingExamSet = existingExamSets.First(e => e.ExamSetId == examSet.id);
+                                existingExamSet.Status = proposalDTO.status; // Cập nhật trạng thái của examSet
+
+                                foreach (var examDTO in examSet.exams)
+                                {
+                                    var existingExam = await _context.Exams.FirstOrDefaultAsync(e => e.ExamId == examDTO.id);
+                                    if (existingExam != null)
+                                    {
+                                        existingExam.Comment = examDTO.comment;
+                                        existingExam.Status = proposalDTO.status; // Cập nhật trạng thái của exam theo examSet
+                                    }
+                                    else
+                                    {
+                                        errorList.Add(new ErrorDetail
+                                        {
+                                            field = $"exam_set.exams.{examDTO.id}",
+                                            message = $"Không tồn tại bài thi {examDTO.id}"
+                                        });
+                                    }
+                                }
+
+                                examSetList.Add(existingExamSet);
                             }
                         }
                     }
@@ -378,10 +413,7 @@ namespace ExamProcessManage.Repository
                         };
                     }
 
-                    if (examSetList.Count == proposalDTO.exam_sets.Count)
-                    {
-                        existingProposal.ExamSets = examSetList;
-                    }
+                    existingProposal.ExamSets = examSetList;
 
                     await _context.SaveChangesAsync();
 

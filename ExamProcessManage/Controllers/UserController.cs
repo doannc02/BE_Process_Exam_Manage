@@ -2,6 +2,7 @@
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.Repository;
 using ExamProcessManage.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
@@ -20,7 +21,7 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpGet]
-        //[Authorize(Roles = "Admin")]
+       // [Authorize(Roles = "Admin")]
         //[AllowAnonymous]
         [Route("/api/v1/user/list")]
         public async Task<IActionResult> GetListUserAsync([FromQuery] QueryObject query)
@@ -38,12 +39,17 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpGet]
-        //[Authorize(Roles = "Admin")]
+       // [Authorize(Roles = "Admin")]
         //[AllowAnonymous]
         [Route("/api/v1/user/detail")]
-        public async Task<IActionResult> GetUserDetail([FromQuery][Required] int user_id)
+        public async Task<IActionResult> GetUserDetail()
         {
-            var baseResUser = await _userRepository.GetDetailUserAsync(user_id);
+            var userId = User.Claims.FirstOrDefault(c => c.Type == "userId");
+            if(userId == null)
+            {
+                return Unauthorized();
+            }
+            var baseResUser = await _userRepository.GetDetailUserAsync(int.Parse(userId.Value));
             if (baseResUser != null)
             {
                 var response = _createCommonResponse.CreateResponse(baseResUser.message, HttpContext, baseResUser);

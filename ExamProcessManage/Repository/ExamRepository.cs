@@ -104,6 +104,11 @@ namespace ExamProcessManage.Repository
               id = p.ExamId,
               name = p.ExamName,
               status = p.Status,
+              exam_set = p.ExamSetId != null ? new CommonObject
+              {
+                  id = (int)p.ExamSetId,
+                  name= p.ExamSet.ExamSetName
+              } : null,
               user = p.CreatorId.HasValue && users.ContainsKey((ulong)p.CreatorId.Value) ? new
               {
                   id = (int)users[(ulong)p.CreatorId.Value].Id,
@@ -156,6 +161,10 @@ namespace ExamProcessManage.Repository
                     code = exam.ExamCode,
                     id = exam.ExamId,
                     name = exam.ExamName,
+                    exam_set = exam.ExamSetId != null ? new CommonObject
+                    {
+                        id = (int)exam.ExamSetId
+                    } : null,
                     user = exam.CreatorId.HasValue && users.TryGetValue((ulong)exam.CreatorId.Value, out var user) ? new
                     {
                         id = (int)user.Id,

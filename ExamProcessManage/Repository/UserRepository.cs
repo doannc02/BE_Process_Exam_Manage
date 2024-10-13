@@ -13,16 +13,38 @@ namespace ExamProcessManage.Repository
         public UserRepository(ApplicationDbContext context) {
             _context = context;
         }
-        public Task<BaseResponse<UserDTO>> GetDetailUserAsync(int userID)
+        public async Task<BaseResponse<UserDTO>> GetDetailUserAsync(int userID)
         {
-            throw new NotImplementedException();
+            var findUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == (ulong)userID);
+            if (findUser == null)
+            {
+                return new BaseResponse<UserDTO>
+                {
+                    data = null,
+                    message = "Khong tim thay user"
+                };
+            }
+            var teachers = _context.Teachers.Where(t => t.Id == findUser.TeacherId).AsNoTracking().FirstOrDefault();
+            var userDTO = new UserDTO
+            {
+               avatarPath = findUser?.AvatarPath,
+               email = findUser?.Email,
+               fullname = teachers?.Name,
+               name = findUser?.Name,
+            };
+            return new BaseResponse<UserDTO>
+            {
+                message = "Thành công",
+                data = userDTO
+            };
+
         }
 
         public async Task<PageResponse<UserDTO>> GetListUsersAsync(QueryObject queryObject)
         {
             var startRow = (queryObject.page.Value - 1) * queryObject.size;
 
-            var yearResponses = new List<UserDTO>();
+            var userDTOs = new List<UserDTO>();
             var teachers = _context.Teachers.AsNoTracking().ToList();
             var queryAcademicYears = _context.Users.AsNoTracking().AsQueryable();
 
@@ -30,6 +52,7 @@ namespace ExamProcessManage.Repository
             {
                 queryAcademicYears = queryAcademicYears.Where(p => p.Email.Contains(queryObject.search));
             }
+            queryAcademicYears = queryAcademicYears.Where(u => u.RoleId != 1);
             var totalCount = await queryAcademicYears.CountAsync();
             var listAcademicYears = await queryAcademicYears
                 .Skip(startRow).Take(queryObject.size)
@@ -44,17 +67,17 @@ namespace ExamProcessManage.Repository
                     fullname = teachers.FirstOrDefault(i => i.Id == item.TeacherId)?.Name ?? "",
                 };
 
-                yearResponses.Add(academic);
+                userDTOs.Add(academic);
             }
 
             return new PageResponse<UserDTO>()
             {
-                content = yearResponses,
+                content = userDTOs,
                 totalElements = totalCount,
                 totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
                 size = queryObject.size,
                 page = queryObject.page.Value,
-                numberOfElements = yearResponses.Count
+                numberOfElements = userDTOs.Count
             };
         }
     }

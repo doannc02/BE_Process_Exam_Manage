@@ -25,7 +25,7 @@ namespace ExamProcessManage.Controllers
 
         [HttpGet]
         [Route("list")]
-        public async Task<IActionResult> GetProposalAsync([FromQuery] QueryObject queryObject)
+        public async Task<IActionResult> GetProposalAsync([FromQuery] QueryObjectProposal queryObject)
         {
             try
             {
@@ -157,7 +157,7 @@ namespace ExamProcessManage.Controllers
 
                 var findProp = await _repository.GetDetailProposalAsync((int)proposal.id);
                 if (findProp == null) return new CustomJsonResult(500, HttpContext, "Khong tim thay de xuat");
-                if (findProp.data?.user.id != userId) return Forbid();
+                if (findProp.data?.user.id != userId && !isAdmin) return Forbid();
                 var newProposal = await _repository.UpdateProposalAsync(proposal);
 
                 // Trả về kết quả phù hợp
