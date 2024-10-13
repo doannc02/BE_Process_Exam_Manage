@@ -1,11 +1,9 @@
-﻿using BCrypt.Net;
-using ExamProcessManage.Dtos;
+﻿using ExamProcessManage.Dtos;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
-using ExamProcessManage.Models;
 using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Bcpg;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 
@@ -92,7 +90,7 @@ namespace ExamProcessManage.Controllers
         {
             if (proposal == null)
                 return new CustomJsonResult(400, HttpContext, "Null proposal");
-            
+
             try
             {
                 // Lấy thông tin quyền (role) và userId từ các claim
@@ -192,6 +190,25 @@ namespace ExamProcessManage.Controllers
             catch (Exception ex)
             {
                 return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message}");
+            }
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteProposalAsync([Required] int proposalId)
+        {
+            try
+            {
+                var delProposal = await _repository.DeleteProposalAsync(proposalId);
+                if (delProposal.data != null)
+                {
+                    var response = _createCommonResponse.CreateResponse(delProposal.message, HttpContext, delProposal.data);
+                    return Ok(response);
+                }
+                else return new CustomJsonResult((int)delProposal.status, HttpContext, delProposal.message);
+            }
+            catch (Exception ex)
+            {
+                return new CustomJsonResult(500, HttpContext, $"An error occurred: {ex.Message} {ex.InnerException}");
             }
         }
     }
