@@ -3,7 +3,6 @@ using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Mvc;
-using Org.BouncyCastle.Bcpg;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 
