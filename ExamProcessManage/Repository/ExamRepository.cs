@@ -55,7 +55,7 @@ namespace ExamProcessManage.Repository
 
             if (query.month_upload > 0)
             {
-                baseQuery = baseQuery.Where(e => e.UploadDate.Value.Month == query.month_upload);
+                baseQuery = baseQuery.Where(e => e.CreateAt.Value.Month == query.month_upload);
             }
 
             // Apply userId filter if provided
@@ -73,8 +73,8 @@ namespace ExamProcessManage.Repository
                     "code_desc" => baseQuery.OrderByDescending(e => e.ExamCode),
                     "name" => baseQuery.OrderBy(e => e.ExamName),
                     "name_desc" => baseQuery.OrderByDescending(e => e.ExamName),
-                    "upload_date" => baseQuery.OrderBy(e => e.UploadDate),
-                    "upload_date_desc" => baseQuery.OrderByDescending(e => e.UploadDate),
+                    "upload_date" => baseQuery.OrderBy(e => e.CreateAt),
+                    "upload_date_desc" => baseQuery.OrderByDescending(e => e.CreateAt),
                     "status" => baseQuery.OrderBy(e => e.Status),
                     "status_desc" => baseQuery.OrderByDescending(e => e.Status),
                     _ => baseQuery.OrderBy(e => e.ExamId)
@@ -115,7 +115,7 @@ namespace ExamProcessManage.Repository
                   name = users[(ulong)p.CreatorId.Value].Email ?? "",
                   fullname = users[(ulong)p.CreatorId.Value].TeacherId.HasValue && teachers.ContainsKey(users[(ulong)p.CreatorId.Value].TeacherId.Value) ? teachers[users[(ulong)p.CreatorId.Value].TeacherId.Value].Name : ""
               } : null,
-              upload_date = p.UploadDate.ToString(),
+              upload_date = p.CreateAt.ToString(),
               academic_year = p.AcademicYearId.HasValue && academicYears.ContainsKey(p.AcademicYearId.Value) ? new CommonObject
               {
                   id = p.AcademicYearId.Value,
@@ -173,7 +173,7 @@ namespace ExamProcessManage.Repository
                         fullname = user.TeacherId.HasValue && teachers.TryGetValue(user.TeacherId.Value, out var teacher) ? teacher.Name : ""
                     } : null,
                     status = exam.Status,
-                    upload_date = exam.UploadDate.ToString(),
+                    upload_date = exam.CreateAt.ToString(),
                     academic_year = academicYears.TryGetValue((int)exam.AcademicYearId, out var yearName)
                         ? new CommonObject
                         {
@@ -349,7 +349,7 @@ namespace ExamProcessManage.Repository
                             AttachedFile = examDTO.attached_file,
                             //Comment = examDTO.comment == "string" ? string.Empty : examDTO.comment,
                             Description = examDTO.description == "string" ? string.Empty : examDTO.description,
-                            UploadDate = DateTimeFormat.ConvertToDateOnly(examDTO.upload_date),
+                            CreateAt = DateTimeFormat.ConvertToDateOnly(examDTO.upload_date),
                             Status = examDTO.status,
                             CreatorId = userId
                         });

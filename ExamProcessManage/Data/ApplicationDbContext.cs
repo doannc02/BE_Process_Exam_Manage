@@ -32,7 +32,7 @@ namespace ExamProcessManage.Data
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseMySql("name=ConnectionStrings:DefaultConnection", Microsoft.EntityFrameworkCore.ServerVersion.Parse("8.0.36-mysql"));
+                optionsBuilder.UseMySql("name=ConnectionStrings:DefaultConnection", ServerVersion.Parse("8.0.36-mysql"));
             }
         }
 
@@ -135,7 +135,9 @@ namespace ExamProcessManage.Data
                     .HasColumnName("status")
                     .HasDefaultValueSql("'in_progress'");
 
-                entity.Property(e => e.UploadDate).HasColumnName("upload_date");
+                entity.Property(e => e.CreateAt).HasColumnName("create_at");
+
+                entity.Property(e => e.UpdateAt).HasColumnName("update_at");
 
                 entity.HasOne(d => d.AcademicYear)
                     .WithMany(p => p.Exams)
@@ -176,6 +178,10 @@ namespace ExamProcessManage.Data
                 entity.Property(e => e.CourseId).HasColumnName("course_id");
 
                 entity.Property(e => e.CreatorId).HasColumnName("creator_id");
+
+                entity.Property(e => e.CreateAt).HasColumnName("create_at");
+
+                entity.Property(e => e.UpdateAt).HasColumnName("update_at");
 
                 entity.Property(e => e.DepartmentId)
                     .HasMaxLength(50)
@@ -291,6 +297,10 @@ namespace ExamProcessManage.Data
                     .HasColumnType("enum('in_progress','pending_approval','approved','rejected')")
                     .HasColumnName("status")
                     .HasDefaultValueSql("'in_progress'");
+
+                entity.Property(e => e.CreateAt).HasColumnName("create_at");
+
+                entity.Property(e => e.UpdateAt).HasColumnName("update_at");
             });
 
             modelBuilder.Entity<Role>(entity =>

@@ -139,7 +139,7 @@ namespace ExamProcessManage.Repository
                         comment = e.Comment,
                         description = e.Description,
                         attached_file = e.AttachedFile,
-                        upload_date = e.UploadDate.ToString(),
+                        upload_date = e.CreateAt.ToString(),
                         status = e.Status,
                         id = e.ExamId,
                         name = e.ExamName
@@ -249,7 +249,7 @@ namespace ExamProcessManage.Repository
                         id = e.ExamId,
                         name = e.ExamName,
                         status = e.Status,
-                        upload_date = e.UploadDate.ToString()
+                        upload_date = e.CreateAt.ToString()
                     }).ToList(),
                     major = majors.Where(m => m.MajorId == examSet.MajorId).Select(m => new CommonObject
                     {

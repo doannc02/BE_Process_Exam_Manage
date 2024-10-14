@@ -23,24 +23,27 @@ namespace ExamProcessManage.Repository
             try
             {
                 var startRow = (queryObject.page.Value - 1) * queryObject.size;
-                var query = _context.Proposals.AsNoTracking().AsQueryable();
+                var baseQuery = _context.Proposals.AsNoTracking().AsQueryable();
 
                 if (!string.IsNullOrEmpty(queryObject.search))
                 {
-                    query = query.Where(p => p.PlanCode.Contains(queryObject.search));
+                    baseQuery = baseQuery.Where(p => p.PlanCode.Contains(queryObject.search));
                 }
                 if (!string.IsNullOrEmpty(queryObject.status))
                 {
-                    query = query.Where(e => e.Status == queryObject.status);
+                    baseQuery = baseQuery.Where(e => e.Status == queryObject.status);
                 }
-
                 if (queryObject.semester > 0)
                 {
-                    query = query.Where(e => e.Semester == queryObject.semester.ToString());
+                    baseQuery = baseQuery.Where(e => e.Semester == queryObject.semester.ToString());
+                }
+                if (queryObject.create_month.HasValue && queryObject.create_month > 0)
+                {
+                    baseQuery = baseQuery.Where(p => p.StartDate.HasValue && p.StartDate.Value.Month == queryObject.create_month);
                 }
                 if (queryObject.month_end > 0)
                 {
-                    query = query.Where(e => e.EndDate.Value.Month == queryObject.month_end);
+                    baseQuery = baseQuery.Where(e => e.EndDate.Value.Month == queryObject.month_end);
                 }
                 if (userId.HasValue)
                 {
@@ -51,7 +54,7 @@ namespace ExamProcessManage.Repository
 
                     if (proposalIds.Any())
                     {
-                        query = query.Where(p => proposalIds.Contains(p.ProposalId));
+                        baseQuery = baseQuery.Where(p => proposalIds.Contains(p.ProposalId));
                     }
                 }
 
@@ -64,13 +67,13 @@ namespace ExamProcessManage.Repository
 
                     if (proposalIds.Any())
                     {
-                        query = query.Where(p => proposalIds.Contains(p.ProposalId));
+                        baseQuery = baseQuery.Where(p => proposalIds.Contains(p.ProposalId));
                     }
                 }
 
-                var totalCount = await query.CountAsync();
+                var totalCount = await baseQuery.CountAsync();
                 var academic_years = _context.AcademicYears.AsNoTracking().ToList();
-                var proposals = await query.OrderBy(p => p.ProposalId).Skip(startRow).Take(queryObject.size).Include(p => p.TeacherProposals)
+                var proposals = await baseQuery.OrderBy(p => p.ProposalId).Skip(startRow).Take(queryObject.size).Include(p => p.TeacherProposals)
                     .ThenInclude(tp => tp.User).ThenInclude(u => u.Teacher)
                     .Select(p => new ProposalDTO
                     {

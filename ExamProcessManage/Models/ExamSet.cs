@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace ExamProcessManage.Models
+﻿namespace ExamProcessManage.Models
 {
     public partial class ExamSet
     {
@@ -20,6 +17,8 @@ namespace ExamProcessManage.Models
         public string Status { get; set; } = null!;
         public int? CourseId { get; set; }
         public int? ProposalId { get; set; }
+        public DateOnly? CreateAt { get; set; }
+        public DateOnly? UpdateAt { get; set; }
 
         public virtual Course? Course { get; set; }
         public virtual Proposal? Proposal { get; set; }
