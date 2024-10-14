@@ -383,7 +383,7 @@ namespace ExamProcessManage.Repository
                     Description = examSetDTO.description ?? string.Empty,
                     Status = examSetDTO.status,
                     CourseId = course?.CourseId,
-                    //ProposalId = examSetDTO.proposal?.id > 0 ? examSetDTO.proposal.id : (int?)null,
+                    ProposalId = examSetDTO.proposal?.id > 0 ? examSetDTO.proposal.id : (int?)null,
                     Exams = examList
                 };
 
@@ -576,7 +576,7 @@ namespace ExamProcessManage.Repository
                                             {
                                                 return new BaseResponseId
                                                 {
-                                                    status = 400,
+                                                    status = 500,
                                                     message = "Trạng thái không hợp lệ"
                                                 };
                                             }
@@ -591,7 +591,7 @@ namespace ExamProcessManage.Repository
                                             {
                                                 return new BaseResponseId
                                                 {
-                                                    status = 400,
+                                                    status = 500,
                                                     message = "Trạng thái không hợp lệ"
                                                 };
                                             }
