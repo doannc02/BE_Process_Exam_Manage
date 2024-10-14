@@ -21,6 +21,8 @@ namespace ExamProcessManage.Dtos
         public  CommonObject academic_year { get; set; } = null!;
         public CommonObject user { get; set; }
         public int? total_exam_set { get; set; }
+        public string? create_at { get; set; }
+        public string? update_at { get; set; }
         public virtual ICollection<ExamSetDTO>? exam_sets { get; set; }
         public virtual ICollection<TeacherProposalDTO>? teacher_roposals { get; set; }
     }

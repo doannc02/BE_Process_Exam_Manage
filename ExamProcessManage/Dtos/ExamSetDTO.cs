@@ -20,6 +20,8 @@ namespace ExamProcessManage.Dtos
         public CommonObject course { get; set; }
         public CommonObject? proposal { get; set; }
         public virtual object? user { get; set; }
+        public string? create_at { get; set; }
+        public string? update_at { get; set; }
         public IEnumerable<ExamDTO>? exams { get; set; }
     }
 }

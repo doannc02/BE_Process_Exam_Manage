@@ -73,8 +73,8 @@ namespace ExamProcessManage.Repository
                     "code_desc" => baseQuery.OrderByDescending(e => e.ExamCode),
                     "name" => baseQuery.OrderBy(e => e.ExamName),
                     "name_desc" => baseQuery.OrderByDescending(e => e.ExamName),
-                    "upload_date" => baseQuery.OrderBy(e => e.CreateAt),
-                    "upload_date_desc" => baseQuery.OrderByDescending(e => e.CreateAt),
+                    "create_at" => baseQuery.OrderBy(e => e.CreateAt),
+                    "create_at_desc" => baseQuery.OrderByDescending(e => e.CreateAt),
                     "status" => baseQuery.OrderBy(e => e.Status),
                     "status_desc" => baseQuery.OrderByDescending(e => e.Status),
                     _ => baseQuery.OrderBy(e => e.ExamId)
@@ -92,36 +92,36 @@ namespace ExamProcessManage.Repository
 
             // Fetch paginated exam list
             var exams = await baseQuery
-          .OrderBy(p => p.ExamId)
-          .Skip(startRow)
-           .Take(query.size)
-          .Select(p => new ExamDTO
-          {
-              comment = p.Comment,
-              attached_file = p.AttachedFile,
-              description = p.Description,
-              code = p.ExamCode,
-              id = p.ExamId,
-              name = p.ExamName,
-              status = p.Status,
-              exam_set = p.ExamSetId != null ? new CommonObject
-              {
-                  id = (int)p.ExamSetId,
-                  name= p.ExamSet.ExamSetName
-              } : null,
-              user = p.CreatorId.HasValue && users.ContainsKey((ulong)p.CreatorId.Value) ? new
-              {
-                  id = (int)users[(ulong)p.CreatorId.Value].Id,
-                  name = users[(ulong)p.CreatorId.Value].Email ?? "",
-                  fullname = users[(ulong)p.CreatorId.Value].TeacherId.HasValue && teachers.ContainsKey(users[(ulong)p.CreatorId.Value].TeacherId.Value) ? teachers[users[(ulong)p.CreatorId.Value].TeacherId.Value].Name : ""
-              } : null,
-              upload_date = p.CreateAt.ToString(),
-              academic_year = p.AcademicYearId.HasValue && academicYears.ContainsKey(p.AcademicYearId.Value) ? new CommonObject
-              {
-                  id = p.AcademicYearId.Value,
-                  name = academicYears[p.AcademicYearId.Value]
-              } : null
-          }).ToListAsync();
+                .OrderBy(p => p.ExamId)
+                .Skip(startRow)
+                .Take(query.size)
+                .Select(p => new ExamDTO
+                {
+                    comment = p.Comment,
+                    attached_file = p.AttachedFile,
+                    description = p.Description,
+                    code = p.ExamCode,
+                    id = p.ExamId,
+                    name = p.ExamName,
+                    status = p.Status,
+                    exam_set = p.ExamSetId != null ? new CommonObject
+                    {
+                        id = (int)p.ExamSetId,
+                        name = p.ExamSet.ExamSetName
+                    } : null,
+                    user = p.CreatorId.HasValue && users.ContainsKey((ulong)p.CreatorId.Value) ? new
+                    {
+                        id = (int)users[(ulong)p.CreatorId.Value].Id,
+                        name = users[(ulong)p.CreatorId.Value].Email ?? "",
+                        fullname = users[(ulong)p.CreatorId.Value].TeacherId.HasValue && teachers.ContainsKey(users[(ulong)p.CreatorId.Value].TeacherId.Value) ? teachers[users[(ulong)p.CreatorId.Value].TeacherId.Value].Name : ""
+                    } : null,
+                    create_at = p.CreateAt.ToString(),
+                    academic_year = p.AcademicYearId.HasValue && academicYears.ContainsKey(p.AcademicYearId.Value) ? new CommonObject
+                    {
+                        id = p.AcademicYearId.Value,
+                        name = academicYears[p.AcademicYearId.Value]
+                    } : null
+                }).ToListAsync();
 
             // Return paginated result
             return new PageResponse<ExamDTO>
@@ -173,7 +173,7 @@ namespace ExamProcessManage.Repository
                         fullname = user.TeacherId.HasValue && teachers.TryGetValue(user.TeacherId.Value, out var teacher) ? teacher.Name : ""
                     } : null,
                     status = exam.Status,
-                    upload_date = exam.CreateAt.ToString(),
+                    create_at = exam.CreateAt.ToString(),
                     academic_year = academicYears.TryGetValue((int)exam.AcademicYearId, out var yearName)
                         ? new CommonObject
                         {
@@ -349,7 +349,7 @@ namespace ExamProcessManage.Repository
                             AttachedFile = examDTO.attached_file,
                             //Comment = examDTO.comment == "string" ? string.Empty : examDTO.comment,
                             Description = examDTO.description == "string" ? string.Empty : examDTO.description,
-                            CreateAt = DateTimeFormat.ConvertToDateOnly(examDTO.upload_date),
+                            CreateAt = DateOnly.FromDateTime(DateTime.Now),
                             Status = examDTO.status,
                             CreatorId = userId
                         });
@@ -448,6 +448,7 @@ namespace ExamProcessManage.Repository
                     examDTO.status : existExam.Status;
                 existExam.ExamSetId = examDTO.exam_set?.id;
                 existExam.AcademicYearId = examDTO.academic_year?.id;
+                existExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
 
                 await _context.SaveChangesAsync();
 

@@ -5,7 +5,6 @@ using ExamProcessManage.Interfaces;
 using ExamProcessManage.Models;
 using ExamProcessManage.RequestModels;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
 
 namespace ExamProcessManage.Repository
 {
@@ -26,33 +25,23 @@ namespace ExamProcessManage.Repository
                 var startRow = (queryObject.page.Value - 1) * queryObject.size;
 
                 // Build base query for ExamSets
-                var query = _context.ExamSets.AsNoTracking().AsQueryable();
-                var exams = _context.Exams.AsNoTracking().AsQueryable();
+                var examSetQuery = _context.ExamSets.AsNoTracking().AsQueryable();
+                var examQuery = _context.Exams.AsNoTracking().AsQueryable();
+
                 if (queryObject.exceptValues != null && queryObject.exceptValues.Any())
-                {
-                    query = query.Where(p => !queryObject.exceptValues.Contains(p.ExamSetId));
-                }
-                // Apply filters
+                    examSetQuery = examSetQuery.Where(p => !queryObject.exceptValues.Contains(p.ExamSetId));
+
                 if (!string.IsNullOrEmpty(queryObject.search))
-                {
-                    query = query.Where(p => p.ExamSetName.Contains(queryObject.search));
-                }
+                    examSetQuery = examSetQuery.Where(p => p.ExamSetName.Contains(queryObject.search));
+
                 if (!string.IsNullOrEmpty(queryObject.stateExamSet))
-                {
-                    query = query.Where(e => e.Status == queryObject.stateExamSet);
-                }
+                    examSetQuery = examSetQuery.Where(e => e.Status == queryObject.stateExamSet);
 
                 if (queryObject.courseId > 0)
-                {
-                    query = query.Where(e => e.CourseId == queryObject.courseId);
-                }
-
-               
+                    examSetQuery = examSetQuery.Where(e => e.CourseId == queryObject.courseId);
 
                 if (userId.HasValue)
-                {
-                    query = query.Where(q => q.CreatorId == userId);
-                }
+                    examSetQuery = examSetQuery.Where(q => q.CreatorId == userId);
 
                 if (queryObject.userId.HasValue && !userId.HasValue)
                 {
@@ -62,31 +51,27 @@ namespace ExamProcessManage.Repository
                     .ToListAsync();
 
                     if (proposalIds.Any())
-                    {
-                        query = query.Where(p => p.ProposalId.HasValue && proposalIds.Contains(p.ProposalId.Value));
-                    }
+                        examSetQuery = examSetQuery.Where(p => p.ProposalId.HasValue && proposalIds.Contains(p.ProposalId.Value));
                 }
 
                 if ((bool)queryObject.isParamAddProposal)
                 {
-                    query = query.Where(e => e.ProposalId == null);
+                    examSetQuery = examSetQuery.Where(e => e.ProposalId == null);
 
-                    // Lọc các bài thi dựa trên ExamSetId
-                    var examSetIds = await query.Select(e => e.ExamSetId).ToListAsync();
+                    // Filter exams by ExamSetId
+                    var examSetIds = await examSetQuery.Select(e => e.ExamSetId).ToListAsync();
 
-                    exams = exams.Where(p => p.ExamSetId.HasValue && examSetIds.Contains(p.ExamSetId.Value));
+                    examQuery = examQuery.Where(p => p.ExamSetId.HasValue && examSetIds.Contains(p.ExamSetId.Value));
                 }
 
                 if (queryObject.proposalId.HasValue)
-                {
-                    query = query.Where(p => p.ProposalId == queryObject.proposalId);
-                }
+                    examSetQuery = examSetQuery.Where(p => p.ProposalId == queryObject.proposalId);
 
                 // Count total elements before pagination
-                var totalCount = await query.CountAsync();
+                var totalCount = await examSetQuery.CountAsync();
 
                 // Fetch paginated data
-                var examSets = await query
+                var examSets = await examSetQuery
                 .OrderBy(p => p.ExamSetId)
                 .Skip(startRow)
                 .Take(queryObject.size)
@@ -94,7 +79,7 @@ namespace ExamProcessManage.Repository
                 .ThenInclude(tp => tp.TeacherProposals)
                 .ToListAsync();
 
-                // Fetch additional data for DTO mapping
+                // Preload related data for DTO mapping
                 var departments = await _context.Departments.AsNoTracking().ToDictionaryAsync(d => d.DepartmentId);
                 var teachers = await _context.Teachers.AsNoTracking().ToDictionaryAsync(t => t.Id);
                 var courses = await _context.Courses.AsNoTracking().ToDictionaryAsync(c => c.CourseId);
@@ -104,13 +89,19 @@ namespace ExamProcessManage.Repository
                 // Map to DTOs
                 var examSetDTOs = examSets.Select(p => new ExamSetDTO
                 {
+                    id = p.ExamSetId,
+                    name = p.ExamSetName,
+                    description = p.Description,
+                    status = p.Status,
+                    exam_quantity = p.ExamQuantity,
+                    create_at = p.CreateAt.ToString(),
+                    update_at = p.UpdateAt.ToString(),
                     course = p.CourseId.HasValue && courses.TryGetValue(p.CourseId.Value, out var course) ? new CommonObject
                     {
                         id = course.CourseId,
                         name = course.CourseName,
                         code = course.CourseCode
                     } : null,
-
                     department = p.DepartmentId.HasValue && departments.TryGetValue(p.DepartmentId.Value, out var department) ? new CommonObject
                     {
                         id = department.DepartmentId,
@@ -121,25 +112,18 @@ namespace ExamProcessManage.Repository
                         id = (int)p.ProposalId,
                         code = p.Proposal.PlanCode
                     } : null,
-                    description = p.Description,
-                    status = p.Status,
-                    exam_quantity = p.ExamQuantity,
-                    id = p.ExamSetId,
-
                     major = p.MajorId.HasValue && majors.TryGetValue(p.MajorId.Value, out var major) ? new CommonObject
                     {
                         id = (int)p.MajorId.Value,
                         name = major.MajorName
                     } : null,
-
-                    name = p.ExamSetName,
-                    exams = (bool)queryObject.isParamAddProposal ? exams.Where(e => e.ExamSetId == p.ExamSetId).Select(e => new ExamDTO
+                    exams = (bool)queryObject.isParamAddProposal ? examQuery.Where(e => e.ExamSetId == p.ExamSetId).Select(e => new ExamDTO
                     {
                         code = e.ExamCode,
                         comment = e.Comment,
                         description = e.Description,
                         attached_file = e.AttachedFile,
-                        upload_date = e.CreateAt.ToString(),
+                        create_at = e.CreateAt.ToString(),
                         status = e.Status,
                         id = e.ExamId,
                         name = e.ExamName
@@ -175,30 +159,21 @@ namespace ExamProcessManage.Repository
         {
             try
             {
-                var courses = await _context.Courses.AsNoTracking().ToListAsync();
-                var departments = await _context.Departments.AsNoTracking().ToListAsync();
-                // var users = await _context.Users.AsNoTracking().ToListAsync();
+                // Pre-fetch related data to avoid multiple database calls
+                var courses = await _context.Courses.AsNoTracking().ToDictionaryAsync(c => c.CourseId);
+                var departments = await _context.Departments.AsNoTracking().ToDictionaryAsync(d => d.DepartmentId);
                 var users = await _context.Users.AsNoTracking().ToDictionaryAsync(u => u.Id);
-                var majors = await _context.Majors.AsNoTracking().ToListAsync();
+                var majors = await _context.Majors.AsNoTracking().ToDictionaryAsync(m => m.MajorId);
                 var teachers = await _context.Teachers.AsNoTracking().ToDictionaryAsync(t => t.Id);
-                var examSet = await _context.ExamSets
-               .AsNoTracking().Include(p => p.Proposal).ThenInclude(p => p.TeacherProposals)
-               .FirstOrDefaultAsync(p => p.ExamSetId == id);
-                var exams = _context.Exams.Where(ex => ex.ExamSetId == examSet.ExamSetId).AsNoTracking().AsQueryable();
-                // var userIds = examSet.Proposal != null ? examSet.Proposal.TeacherProposals.Select(tp => tp.UserId).ToList() : null;
-                //  var userIds = users.Where(e => e. == (ulong)examSet.CreatorId);
 
-                //if (userId != null)
-                //{
-                //    if (userId != user.id)
-                //    {
-                //        return new BaseResponse<ExamSetDTO>
-                //        {
-                //            message = "403",
-                //            data = null
-                //        }; ;
-                //    }
-                //}
+                // Fetch the ExamSet with Proposal and TeacherProposals
+                var examSet = await _context.ExamSets
+                    .AsNoTracking()
+                    .Include(p => p.Proposal)
+                    .ThenInclude(p => p.TeacherProposals)
+                    .FirstOrDefaultAsync(p => p.ExamSetId == id);
+
+                // Return early if the ExamSet is not found
                 if (examSet == null)
                 {
                     return new BaseResponse<ExamSetDTO>
@@ -208,34 +183,11 @@ namespace ExamProcessManage.Repository
                     };
                 }
 
-                var examSetDTO = new ExamSetDTO
-                {
-                    course = courses.Where(m => m.CourseId == examSet.CourseId).Select(m => new CommonObject
-                    {
-                        id = m.CourseId,
-                        name = m.CourseName,
-                        code = m.CourseCode
-                    }).FirstOrDefault(),
-                    proposal = examSet.ProposalId != null ? new CommonObject {
-                        id = (int)examSet.ProposalId
-                    } : null,
-                    user = examSet.CreatorId.HasValue && users.TryGetValue((ulong)examSet.CreatorId.Value, out var user) ? new
-                    {
-                        id = (int)user.Id,
-                        name = user.Email ?? "",
-                        fullname = user.TeacherId.HasValue && teachers.TryGetValue(user.TeacherId.Value, out var teacher) ? teacher.Name : ""
-                    } : null,
-                    department = departments.Where(m => m.DepartmentId == examSet.DepartmentId).Select(m => new CommonObject
-                    {
-                        id = m.DepartmentId,
-                        name = m.DepartmentName
-                    }).FirstOrDefault(),
-                    description = examSet.Description,
-                    id = examSet.ExamSetId,
-                    name = examSet.ExamSetName,
-                    exam_quantity = examSet.ExamQuantity,
-                    status = examSet.Status,
-                    exams = exams.Where(c => c.ExamSetId == examSet.ExamSetId).Select(e => new ExamDTO
+                // Fetch associated exams for the ExamSet
+                var exams = await _context.Exams
+                    .AsNoTracking()
+                    .Where(ex => ex.ExamSetId == examSet.ExamSetId)
+                    .Select(e => new ExamDTO
                     {
                         academic_year = new CommonObject
                         {
@@ -249,13 +201,47 @@ namespace ExamProcessManage.Repository
                         id = e.ExamId,
                         name = e.ExamName,
                         status = e.Status,
-                        upload_date = e.CreateAt.ToString()
-                    }).ToList(),
-                    major = majors.Where(m => m.MajorId == examSet.MajorId).Select(m => new CommonObject
+                        create_at = e.CreateAt.ToString()
+                    })
+                    .ToListAsync();
+
+                // Create the DTO mapping using the pre-fetched dictionaries
+                var examSetDTO = new ExamSetDTO
+                {
+                    id = examSet.ExamSetId,
+                    name = examSet.ExamSetName,
+                    description = examSet.Description,
+                    exam_quantity = examSet.ExamQuantity,
+                    status = examSet.Status,
+                    create_at = examSet.CreateAt.ToString(),
+                    update_at = examSet.UpdateAt.ToString(),
+                    course = examSet.CourseId.HasValue && courses.TryGetValue(examSet.CourseId.Value, out var course) ? new CommonObject
                     {
-                        id = m.MajorId,
-                        name = m.MajorName
-                    }).FirstOrDefault(),
+                        id = course.CourseId,
+                        name = course.CourseName,
+                        code = course.CourseCode
+                    } : null,
+                    proposal = examSet.ProposalId.HasValue ? new CommonObject
+                    {
+                        id = (int)examSet.ProposalId
+                    } : null,
+                    user = examSet.CreatorId.HasValue && users.TryGetValue((ulong)examSet.CreatorId.Value, out var user) ? new
+                    {
+                        id = (int)user.Id,
+                        name = user.Email ?? string.Empty,
+                        fullname = user.TeacherId.HasValue && teachers.TryGetValue(user.TeacherId.Value, out var teacher) ? teacher.Name : string.Empty
+                    } : null,
+                    department = examSet.DepartmentId.HasValue && departments.TryGetValue(examSet.DepartmentId.Value, out var department) ? new CommonObject
+                    {
+                        id = department.DepartmentId,
+                        name = department.DepartmentName
+                    } : null,
+                    exams = exams,
+                    major = examSet.MajorId.HasValue && majors.TryGetValue(examSet.MajorId.Value, out var major) ? new CommonObject
+                    {
+                        id = major.MajorId,
+                        name = major.MajorName
+                    } : null
                 };
 
                 return new BaseResponse<ExamSetDTO>
@@ -275,9 +261,7 @@ namespace ExamProcessManage.Repository
             try
             {
                 if (examSetDTO == null)
-                {
                     return new BaseResponseId { status = 400, message = "Bộ đề rỗng" };
-                }
 
                 var errors = new List<ErrorDetail>();
 
@@ -287,16 +271,12 @@ namespace ExamProcessManage.Repository
                     bool isExistingName = await _context.ExamSets.AsNoTracking()
                         .AnyAsync(e => examSetDTO.name == e.ExamSetName);
                     if (isExistingName)
-                    {
                         errors.Add(new ErrorDetail { field = "name", message = "Tên bộ đề đã tồn tại" });
-                    }
                 }
 
                 // Kiểm tra trạng thái bộ đề
                 if (!validStatus.Contains(examSetDTO.status))
-                {
                     errors.Add(new ErrorDetail { field = "status", message = "Trạng thái bộ đề không hợp lệ" });
-                }
 
                 // Kiểm tra học phần
                 var course = await _context.Courses.AsNoTracking()
@@ -304,17 +284,11 @@ namespace ExamProcessManage.Repository
                     .FirstOrDefaultAsync(c => c.CourseId == examSetDTO.course.id);
 
                 if (course == null)
-                {
                     errors.Add(new ErrorDetail { field = "course", message = "Học phần không hợp lệ" });
-                }
                 else if (course.Major == null)
-                {
                     errors.Add(new ErrorDetail { field = "major", message = "Chuyên ngành không hợp lệ" });
-                }
                 else if (course.Major.Department == null)
-                {
                     errors.Add(new ErrorDetail { field = "department", message = "Khoa không hợp lệ" });
-                }
 
                 // Kiểm tra đề xuất
                 if (examSetDTO.proposal != null && examSetDTO.proposal.id > 0)
@@ -322,9 +296,7 @@ namespace ExamProcessManage.Repository
                     bool isExistingProposal = await _context.Proposals.AsNoTracking()
                         .AnyAsync(p => p.ProposalId == examSetDTO.proposal.id || p.PlanCode == examSetDTO.proposal.code);
                     if (!isExistingProposal)
-                    {
                         errors.Add(new ErrorDetail { field = "exam_set.proposal", message = "Không tìm thấy Đề xuất" });
-                    }
                 }
 
                 // Kiểm tra các bài thi
@@ -383,7 +355,8 @@ namespace ExamProcessManage.Repository
                     Description = examSetDTO.description ?? string.Empty,
                     Status = examSetDTO.status,
                     CourseId = course?.CourseId,
-                    ProposalId = examSetDTO.proposal?.id > 0 ? examSetDTO.proposal.id : (int?)null,
+                    ProposalId = examSetDTO.proposal?.id > 0 ? examSetDTO.proposal.id : null,
+                    CreateAt = DateOnly.FromDateTime(DateTime.Now),
                     Exams = examList
                 };
 
@@ -412,227 +385,222 @@ namespace ExamProcessManage.Repository
             var errorList = new List<ErrorDetail>();
 
             if (examSet == null) errorList.Add(new() { message = "Bo de rong" });
-            else
+            if (examSet.id <= 0) errorList.Add(new()
             {
-                if (examSet.id <= 0) errorList.Add(new()
-                {
-                    field = "exam_set.id",
-                    message = "Ma bo de da nhap khong hop le"
-                });
-                if (!validStatus.Contains(examSet.status)) errorList.Add(new()
-                {
-                    field = "exam_set.major.id",
-                    message = "Trang thai bo de da nhap khong hop le"
-                });
-                if (examSet.course.id <= 0) errorList.Add(new()
-                {
-                    field = "exam_set.course.id",
-                    message = "Ma hoc phan da nhap khong hop le"
-                });
-                if (userId <= 0) errorList.Add(new()
-                {
-                    field = "exam_set.user",
-                    message = "Nguoi dung khong hop le"
-                });
+                field = "exam_set.id",
+                message = "Ma bo de da nhap khong hop le"
+            });
+            if (!validStatus.Contains(examSet.status)) errorList.Add(new()
+            {
+                field = "exam_set.major.id",
+                message = "Trang thai bo de da nhap khong hop le"
+            });
+            if (examSet.course.id <= 0) errorList.Add(new()
+            {
+                field = "exam_set.course.id",
+                message = "Ma hoc phan da nhap khong hop le"
+            });
+            if (userId <= 0) errorList.Add(new()
+            {
+                field = "exam_set.user",
+                message = "Nguoi dung khong hop le"
+            });
 
-                var examIds = examSet.exams?.ToList();
+            var examIds = examSet.exams?.ToList();
 
-                if (examIds?.Count > 0)
+            if (examIds?.Count > 0)
+            {
+                for (int i = 0; i < examIds.Count; i++)
                 {
-                    for (int i = 0; i < examIds.Count; i++)
+                    if (examIds[i].id <= 0) errorList.Add(new()
                     {
-                        if (examIds[i].id <= 0) errorList.Add(new()
-                        {
-                            field = $"exam_set.exams.{i}",
-                            message = "Ma de thi khong hop le"
-                        });
-                    }
+                        field = $"exam_set.exams.{i}",
+                        message = "Ma de thi khong hop le"
+                    });
                 }
+            }
 
-                if (errorList.Any()) return new BaseResponseId
-                {
-                    status = 400,
-                    message = "Du lieu khong hop le",
-                    errors = errorList
-                };
+            if (errorList.Any()) return new BaseResponseId
+            {
+                status = 400,
+                message = "Du lieu khong hop le",
+                errors = errorList
+            };
 
-                try
+            try
+            {
+                var existExamSet = await _context.ExamSets.Include(t => t.Exams).FirstOrDefaultAsync(e => e.ExamSetId == examSet.id);
+                if (existExamSet == null)
                 {
-                    var existExamSet = await _context.ExamSets.Include(t => t.Exams).FirstOrDefaultAsync(e => e.ExamSetId == examSet.id);
-                    if (existExamSet == null)
+                    errorList.Add(new()
                     {
-                        errorList.Add(new()
+                        message = $"Khong tim thay bo de voi ma : {examSet.id}"
+                    });
+                }
+                else
+                {
+                    if (examSet.department != null && examSet.department.id > 0)
+                    {
+                        if (!await _context.Departments.AnyAsync(d => d.DepartmentId == examSet.department.id)) errorList.Add(new()
                         {
-                            message = $"Khong tim thay bo de voi ma : {examSet.id}"
+                            field = "exam_set.department",
+                            message = $"Khong tim thay khoa: {examSet.department.id}"
                         });
+                        else existExamSet.DepartmentId = examSet.department.id;
                     }
-                    else
+                    if (examSet.major != null && examSet.major.id > 0)
                     {
-                        if (examSet.department != null && examSet.department.id > 0)
+                        if (!await _context.Majors.AnyAsync(m => m.MajorId == examSet.major.id)) errorList.Add(new()
                         {
-                            if (!await _context.Departments.AnyAsync(d => d.DepartmentId == examSet.department.id)) errorList.Add(new()
-                            {
-                                field = "exam_set.department",
-                                message = $"Khong tim thay khoa: {examSet.department.id}"
-                            });
-                            else existExamSet.DepartmentId = examSet.department.id;
-                        }
-                        if (examSet.major != null && examSet.major.id > 0)
+                            field = "exam_set.major",
+                            message = $"Khong tim thay chuyen nganh: {examSet.major.id}"
+                        });
+                        else existExamSet.MajorId = examSet.major.id;
+                    }
+                    if (examSet.proposal != null && examSet.proposal.id > 0)
+                    {
+                        if (!await _context.Proposals.AnyAsync(p => p.ProposalId == examSet.proposal.id)) errorList.Add(new()
                         {
-                            if (!await _context.Majors.AnyAsync(m => m.MajorId == examSet.major.id)) errorList.Add(new()
-                            {
-                                field = "exam_set.major",
-                                message = $"Khong tim thay chuyen nganh: {examSet.major.id}"
-                            });
-                            else existExamSet.MajorId = examSet.major.id;
-                        }
-                        if (examSet.proposal != null && examSet.proposal.id > 0)
+                            field = "exam_set.proposal",
+                            message = $"Khong tim thay de xuat: {examSet.proposal.id}"
+                        });
+                        else existExamSet.ProposalId = examSet.proposal.id;
+                    }
+                    if (examSet.course != null && examSet.course.id > 0)
+                    {
+                        if (!await _context.Courses.AnyAsync(c => c.CourseId == examSet.course.id))
                         {
-                            if (!await _context.Proposals.AnyAsync(p => p.ProposalId == examSet.proposal.id)) errorList.Add(new()
+                            errorList.Add(new()
                             {
                                 field = "exam_set.proposal",
-                                message = $"Khong tim thay de xuat: {examSet.proposal.id}"
+                                message = $"Khong tim thay hoc phan: {examSet.course.id}"
                             });
-                            else existExamSet.ProposalId = examSet.proposal.id;
                         }
-                        if (examSet.course != null && examSet.course.id > 0)
+                        else
                         {
-                            if (!await _context.Courses.AnyAsync(c => c.CourseId == examSet.course.id))
+                            existExamSet.CourseId = examSet.course.id;
+                        }
+                    }
+
+                    existExamSet.ExamSetName = examSet.name == "string" || string.IsNullOrEmpty(examSet.name) ? existExamSet.ExamSetName : examSet.name;
+                    existExamSet.ExamQuantity = (int)examSet.exam_quantity;
+                    existExamSet.Description = examSet.description == "string" || string.IsNullOrEmpty(examSet.description)
+                        ? existExamSet.Description : examSet.description;
+                    existExamSet.Status = examSet.status;
+                    existExamSet.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
+
+                    var examList = new List<Exam>();
+                    if (examSet.exams != null && examSet.exams.Any())
+                    {
+                        // Tạo từ điển để ánh xạ ExamId với comment từ examDTO
+                        var examComments = examSet.exams.ToDictionary(e => e.id, e => e.comment);
+
+                        // Lấy danh sách ExamId từ examSet.exams và chuyển thành HashSet để cải thiện hiệu suất
+                        var examsListId = examComments.Keys.ToHashSet();
+
+                        // Tìm các exam có ExamId trùng với các examId trong examsListId
+                        var existingExams = await _context.Exams.Where(e => examsListId.Contains(e.ExamId)).ToListAsync();
+
+                        var examCodeSet = new HashSet<int>();
+                        var examsToRemove = existingExams.Where(e => !examsListId.Contains(e.ExamId)).ToList();
+
+                        if (examsToRemove.Any())
+                        {
+                            foreach (var examToRemove in examsToRemove)
                             {
-                                errorList.Add(new()
+                                examToRemove.ExamSetId = null;
+                            }
+                        }
+
+                        foreach (var examId in examsListId)
+                        {
+                            if (!examCodeSet.Add((int)examId))
+                            {
+                                errorList.Add(new ErrorDetail
                                 {
-                                    field = "exam_set.proposal",
-                                    message = $"Khong tim thay hoc phan: {examSet.course.id}"
+                                    field = $"exam_set.exams.{examId}",
+                                    message = $"Bài thi bị trùng lặp {examId}"
+                                });
+                            }
+                            else if (!existingExams.Any(e => e.ExamId == examId))
+                            {
+                                errorList.Add(new ErrorDetail
+                                {
+                                    field = $"exam_set.exams.{examId}",
+                                    message = $"Không tồn tại bài thi {examId}"
                                 });
                             }
                             else
                             {
-                                existExamSet.CourseId = examSet.course.id;
+                                var exam = existingExams.First(e => e.ExamId == examId);
+
+                                // Gán giá trị comment từ examDTO vào exam
+                                exam.Comment = examComments[examId];
+
+                                switch (examSet.status)
+                                {
+                                    case "approved":
+                                        if (exam.Status == "pending_approval")
+                                        {
+                                            exam.Status = examSet.status;
+                                        }
+                                        else
+                                        {
+                                            return new BaseResponseId
+                                            {
+                                                status = 500,
+                                                message = "Trạng thái không hợp lệ"
+                                            };
+                                        }
+                                        break;
+
+                                    case "rejected":
+                                        if (exam.Status == "pending_approval")
+                                        {
+                                            exam.Status = examSet.status;
+                                        }
+                                        else
+                                        {
+                                            return new BaseResponseId
+                                            {
+                                                status = 500,
+                                                message = "Trạng thái không hợp lệ"
+                                            };
+                                        }
+                                        break;
+
+                                    default:
+                                        exam.Status = examSet.status; // Các trạng thái khác được phép thay đổi trực tiếp
+                                        break;
+                                }
+
+                                examList.Add(exam);
                             }
                         }
-
-                        existExamSet.ExamSetName = examSet.name == "string" || string.IsNullOrEmpty(examSet.name) ? existExamSet.ExamSetName : examSet.name;
-                        existExamSet.ExamQuantity = (int)examSet.exam_quantity;
-                        existExamSet.Description = examSet.description == "string" || string.IsNullOrEmpty(examSet.description)
-                            ? existExamSet.Description : examSet.description;
-                        existExamSet.Status = examSet.status;
-
-                        var examList = new List<Exam>();
-                        if (examSet.exams != null && examSet.exams.Any())
-                        {
-                            // Tạo từ điển để ánh xạ ExamId với comment từ examDTO
-                            var examComments = examSet.exams.ToDictionary(e => e.id, e => e.comment);
-
-                            // Lấy danh sách ExamId từ examSet.exams và chuyển thành HashSet để cải thiện hiệu suất
-                            var examsListId = examComments.Keys.ToHashSet();
-
-                            // Tìm các exam có ExamId trùng với các examId trong examsListId
-                            var existingExams = await _context.Exams.Where(e => examsListId.Contains(e.ExamId)).ToListAsync();
-
-                            var examCodeSet = new HashSet<int>();
-                            var examsToRemove = existingExams.Where(e => !examsListId.Contains(e.ExamId)).ToList();
-
-                            if (examsToRemove.Any())
-                            {
-                                foreach (var examToRemove in examsToRemove)
-                                {
-                                    examToRemove.ExamSetId = null;
-                                }
-                            }
-
-                            foreach (var examId in examsListId)
-                            {
-                                if (!examCodeSet.Add((int)examId))
-                                {
-                                    errorList.Add(new ErrorDetail
-                                    {
-                                        field = $"exam_set.exams.{examId}",
-                                        message = $"Bài thi bị trùng lặp {examId}"
-                                    });
-                                }
-                                else if (!existingExams.Any(e => e.ExamId == examId))
-                                {
-                                    errorList.Add(new ErrorDetail
-                                    {
-                                        field = $"exam_set.exams.{examId}",
-                                        message = $"Không tồn tại bài thi {examId}"
-                                    });
-                                }
-                                else
-                                {
-                                    var exam = existingExams.First(e => e.ExamId == examId);
-
-                                    // Gán giá trị comment từ examDTO vào exam
-                                    exam.Comment = examComments[examId];
-
-                                    switch (examSet.status)
-                                    {
-                                        case "approved":
-                                            if (exam.Status == "pending_approval")
-                                            {
-                                                exam.Status = examSet.status;
-                                            }
-                                            else
-                                            {
-                                                return new BaseResponseId
-                                                {
-                                                    status = 500,
-                                                    message = "Trạng thái không hợp lệ"
-                                                };
-                                            }
-                                            break;
-
-                                        case "rejected":
-                                            if (exam.Status == "pending_approval")
-                                            {
-                                                exam.Status = examSet.status;
-                                            }
-                                            else
-                                            {
-                                                return new BaseResponseId
-                                                {
-                                                    status = 500,
-                                                    message = "Trạng thái không hợp lệ"
-                                                };
-                                            }
-                                            break;
-
-                                        default:
-                                            exam.Status = examSet.status; // Các trạng thái khác được phép thay đổi trực tiếp
-                                            break;
-                                    }
-
-                                    examList.Add(exam);
-                                }
-                            }
-                        }
-
-
-                        // var updateState = UpdateStateAsync((int)examSet.id, examSet.status);
-
-                        if (errorList.Any()) return new BaseResponseId
-                        {
-                            status = 400,
-                            message = "Du lieu khong hop le",
-                            errors = errorList
-                        };
-
-                        if (examIds != null && examList.Count == examIds.Count) existExamSet.Exams = examList;
-
-                        await _context.SaveChangesAsync();
-
-                        response.message = "Cap nhat thanh cong";
-                        response.data = new DetailResponse { id = existExamSet.ExamSetId };
                     }
-                }
-                catch (Exception ex)
-                {
-                    errorList.Add(new()
+
+                    if (errorList.Any()) return new BaseResponseId
                     {
-                        message = "Co loi xay ra: " + ex.Message + "\n" + ex.InnerException
-                    });
-                    response.errors = errorList;
+                        status = 400,
+                        message = "Du lieu khong hop le",
+                        errors = errorList
+                    };
+
+                    if (examIds != null && examList.Count == examIds.Count) existExamSet.Exams = examList;
+
+                    await _context.SaveChangesAsync();
+
+                    response.message = "Cap nhat thanh cong";
+                    response.data = new DetailResponse { id = existExamSet.ExamSetId };
                 }
+            }
+            catch (Exception ex)
+            {
+                errorList.Add(new()
+                {
+                    message = $"Co loi xay ra:  {ex.Message} {ex.InnerException}"
+                });
+                response.errors = errorList;
             }
 
             return response;

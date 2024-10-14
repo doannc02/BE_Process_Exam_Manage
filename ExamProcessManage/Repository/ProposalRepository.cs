@@ -17,102 +17,6 @@ namespace ExamProcessManage.Repository
             _context = context;
         }
 
-        //public async Task<PageResponse<ProposalDTO>> GetListProposalsAsync(int? userId, QueryObjectProposal queryObject)
-        //{
-        //    try
-        //    {
-        //        var startRow = (queryObject.page.Value - 1) * queryObject.size;
-        //        var baseQuery = _context.Proposals.AsNoTracking().AsQueryable();
-
-        //        if (!string.IsNullOrEmpty(queryObject.search))
-        //        {
-        //            baseQuery = baseQuery.Where(p => p.PlanCode.Contains(queryObject.search));
-        //        }
-        //        if (!string.IsNullOrEmpty(queryObject.status))
-        //        {
-        //            baseQuery = baseQuery.Where(e => e.Status == queryObject.status);
-        //        }
-        //        if (queryObject.semester > 0)
-        //        {
-        //            baseQuery = baseQuery.Where(e => e.Semester == queryObject.semester.ToString());
-        //        }
-        //        if (queryObject.create_month.HasValue && queryObject.create_month > 0)
-        //        {
-        //            baseQuery = baseQuery.Where(p => p.StartDate.HasValue && p.StartDate.Value.Month == queryObject.create_month);
-        //        }
-        //        if (queryObject.month_end > 0)
-        //        {
-        //            baseQuery = baseQuery.Where(e => e.EndDate.Value.Month == queryObject.month_end);
-        //        }
-        //        if (userId.HasValue)
-        //        {
-        //            var proposalIds = _context.TeacherProposals
-        //            .Where(tp => tp.UserId == (ulong)userId.Value)
-        //            .Select(tp => tp.ProposalId)
-        //            .ToList();
-
-        //            if (proposalIds.Any())
-        //            {
-        //                baseQuery = baseQuery.Where(p => proposalIds.Contains(p.ProposalId));
-        //            }
-        //        }
-
-        //        if (queryObject.userId.HasValue && !userId.HasValue)
-        //        {
-        //            var proposalIds = _context.TeacherProposals
-        //           .Where(tp => tp.UserId == (ulong)queryObject.userId.Value)
-        //           .Select(tp => tp.ProposalId)
-        //           .ToList();
-
-        //            if (proposalIds.Any())
-        //            {
-        //                baseQuery = baseQuery.Where(p => proposalIds.Contains(p.ProposalId));
-        //            }
-        //        }
-
-        //        var totalCount = await baseQuery.CountAsync();
-        //        var academic_years = _context.AcademicYears.AsNoTracking().ToList();
-        //        var proposals = await baseQuery.OrderBy(p => p.ProposalId).Skip(startRow).Take(queryObject.size).Include(p => p.TeacherProposals)
-        //            .ThenInclude(tp => tp.User).ThenInclude(u => u.Teacher)
-        //            .Select(p => new ProposalDTO
-        //            {
-        //                id = p.ProposalId,
-        //                academic_year = new CommonObject
-        //                {
-        //                    // id = academic_years.FirstOrDefault(a => a.YearName == p.AcademicYear).AcademicYearId ,
-        //                    name = p.AcademicYear
-        //                },
-        //                content = p.Content,
-        //                end_date = p.EndDate.ToString(),
-        //                code = p.PlanCode,
-        //                semester = p.Semester,
-        //                start_date = p.StartDate.ToString(),
-        //                status = p.Status,
-        //                total_exam_set = p.ExamSets.Count(),
-        //                user = p.TeacherProposals.Select(tp => new CommonObject
-        //                {
-        //                    id = (int)tp.User.Id,
-        //                    name = tp.User.Name + " - " + tp.User.Teacher.Name
-        //                }).FirstOrDefault()
-        //            }).ToListAsync();
-
-        //        var pageResponse = new PageResponse<ProposalDTO>
-        //        {
-        //            totalElements = totalCount,
-        //            totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
-        //            size = queryObject.size,
-        //            page = queryObject.page.Value,
-        //            content = proposals.ToArray()
-        //        };
-
-        //        return pageResponse;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return null;
-        //    }
-        //}
-
         public async Task<PageResponse<ProposalDTO>> GetListProposalsAsync(int? userId, QueryObjectProposal queryObject)
         {
             try
@@ -211,6 +115,8 @@ namespace ExamProcessManage.Repository
                         start_date = p.StartDate.HasValue ? p.StartDate.Value.ToString("yyyy-MM-dd") : null,
                         status = p.Status,
                         total_exam_set = p.ExamSets.Count(),
+                        create_at = p.CreateAt.ToString(),
+                        update_at = p.UpdateAt.ToString(),
                         user = p.TeacherProposals.Select(tp => new CommonObject
                         {
                             id = (int)tp.User.Id,
@@ -259,13 +165,7 @@ namespace ExamProcessManage.Repository
             .FirstOrDefaultAsync(p => p.ProposalId == id);
 
             if (proposal == null)
-            {
-                return new BaseResponse<ProposalDTO>
-                {
-                    message = $"Proposal with id = {id} could not be found",
-                    data = null
-                };
-            }
+                return new BaseResponse<ProposalDTO> { message = $"Proposal with id = {id} could not be found" };
 
             var examSetDTOs = proposal.ExamSets.Select(es => new ExamSetDTO
             {
@@ -295,6 +195,8 @@ namespace ExamProcessManage.Repository
                 name = es.ExamSetName,
                 exam_quantity = es.ExamQuantity,
                 status = es.Status,
+                create_at = es.CreateAt.ToString(),
+                update_at = es.UpdateAt.ToString(),
                 exams = es.Exams.Select(e => new ExamDTO
                 {
                     code = e.ExamCode,
@@ -417,6 +319,7 @@ namespace ExamProcessManage.Repository
                     Content = string.IsNullOrEmpty(proposalDTO.content) || proposalDTO.content == "string" ? string.Empty : proposalDTO.content,
                     Status = proposalDTO.status,
                     AcademicYear = proposalDTO.academic_year.name ?? string.Empty,
+                    CreateAt = DateOnly.FromDateTime(DateTime.Now),
                     ExamSets = examSets
                 };
 
@@ -471,7 +374,7 @@ namespace ExamProcessManage.Repository
                     existingProposal.StartDate = DateOnly.Parse(proposalDTO.start_date);
                     existingProposal.Semester = proposalDTO.semester;
                     existingProposal.Status = proposalDTO.status;
-                    // Update other properties as needed
+                    existingProposal.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
 
                     var examSetList = new List<ExamSet>();
                     if (proposalDTO.exam_sets != null && proposalDTO.exam_sets.Any())
