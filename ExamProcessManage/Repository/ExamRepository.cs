@@ -140,6 +140,7 @@ namespace ExamProcessManage.Repository
             {
                 var users = await _context.Users.AsNoTracking().ToDictionaryAsync(u => u.Id);
                 var teachers = await _context.Teachers.AsNoTracking().ToDictionaryAsync(t => t.Id);
+                var examSets = await _context.ExamSets.AsNoTracking().ToDictionaryAsync(t => t.ExamSetId);
                 var exam = await _context.Exams.FindAsync(examId);
                 if (exam == null)
                 {
@@ -164,7 +165,8 @@ namespace ExamProcessManage.Repository
                     name = exam.ExamName,
                     exam_set = exam.ExamSetId != null ? new CommonObject
                     {
-                        id = (int)exam.ExamSetId
+                        id = (int)exam.ExamSetId,
+                        name = examSets.TryGetValue((int)exam.ExamSetId, out var exam_set) ?  exam_set.ExamSetName : null,
                     } : null,
                     user = exam.CreatorId.HasValue && users.TryGetValue((ulong)exam.CreatorId.Value, out var user) ? new
                     {

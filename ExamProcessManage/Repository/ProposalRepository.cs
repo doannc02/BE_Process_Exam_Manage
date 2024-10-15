@@ -246,7 +246,7 @@ namespace ExamProcessManage.Repository
             };
         }
 
-        public async Task<BaseResponseId> CreateProposalAsync(int userId, ProposalDTO proposalDTO)
+        public async Task<BaseResponseId> CreateProposalAsync(int userId, ProposalDTO proposalDTO, string? role = null)
         {
             try
             {
@@ -320,7 +320,8 @@ namespace ExamProcessManage.Repository
                     Status = proposalDTO.status,
                     AcademicYear = proposalDTO.academic_year.name ?? string.Empty,
                     CreateAt = DateOnly.FromDateTime(DateTime.Now),
-                    ExamSets = examSets
+                    ExamSets = examSets,
+                    IsCreatedByAdmin = role == "Admin" ? true : null,
                 };
 
                 await _context.Proposals.AddAsync(newProposal);

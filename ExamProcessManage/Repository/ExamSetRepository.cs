@@ -164,6 +164,7 @@ namespace ExamProcessManage.Repository
                 var departments = await _context.Departments.AsNoTracking().ToDictionaryAsync(d => d.DepartmentId);
                 var users = await _context.Users.AsNoTracking().ToDictionaryAsync(u => u.Id);
                 var majors = await _context.Majors.AsNoTracking().ToDictionaryAsync(m => m.MajorId);
+                var proposals = await _context.Proposals.AsNoTracking().ToDictionaryAsync(p => p.ProposalId);
                 var teachers = await _context.Teachers.AsNoTracking().ToDictionaryAsync(t => t.Id);
 
                 // Fetch the ExamSet with Proposal and TeacherProposals
@@ -223,7 +224,8 @@ namespace ExamProcessManage.Repository
                     } : null,
                     proposal = examSet.ProposalId.HasValue ? new CommonObject
                     {
-                        id = (int)examSet.ProposalId
+                        id = (int)examSet.ProposalId,
+                        name = proposals.TryGetValue((int)examSet.ProposalId, out var proposal) ? proposal.PlanCode : null,
                     } : null,
                     user = examSet.CreatorId.HasValue && users.TryGetValue((ulong)examSet.CreatorId.Value, out var user) ? new
                     {

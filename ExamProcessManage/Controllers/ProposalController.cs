@@ -2,6 +2,7 @@
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
@@ -133,6 +134,7 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpPut]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateProposalAsync([FromBody] ProposalDTO proposal)
         {
             if (proposal == null)
@@ -171,6 +173,7 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpPut("update-state")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateStateProposalAsync([Required] int proposalId, [Required] string status, string comment)
         {
             try
@@ -193,6 +196,7 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpDelete]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteProposalAsync([Required] int proposalId)
         {
             try
