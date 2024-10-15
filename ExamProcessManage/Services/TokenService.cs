@@ -46,7 +46,7 @@ namespace ExamProcessManage.Services
             return jwt;
         }
 
-        public TokenResponse GenerateToken(User user)
+        public TokenResponse GenerateToken(User user)       
         {
             if (user == null)
             {

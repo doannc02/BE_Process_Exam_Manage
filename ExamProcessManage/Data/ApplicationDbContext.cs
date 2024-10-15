@@ -135,9 +135,9 @@ namespace ExamProcessManage.Data
                     .HasColumnName("status")
                     .HasDefaultValueSql("'in_progress'");
 
-                entity.Property(e => e.CreateAt).HasColumnName("create_at");
+                entity.Property(e => e.CreateAt).HasColumnName("create_at").HasColumnType("date").IsRequired(false);
 
-                entity.Property(e => e.UpdateAt).HasColumnName("update_at");
+                entity.Property(e => e.UpdateAt).HasColumnName("update_at").HasColumnType("date").IsRequired(false);
 
                 entity.HasOne(d => d.AcademicYear)
                     .WithMany(p => p.Exams)
@@ -179,9 +179,9 @@ namespace ExamProcessManage.Data
 
                 entity.Property(e => e.CreatorId).HasColumnName("creator_id");
 
-                entity.Property(e => e.CreateAt).HasColumnName("create_at");
+                entity.Property(e => e.CreateAt).HasColumnName("create_at").HasColumnType("date").IsRequired(false);
 
-                entity.Property(e => e.UpdateAt).HasColumnName("update_at");
+                entity.Property(e => e.UpdateAt).HasColumnName("update_at").HasColumnType("date").IsRequired(false);
 
                 entity.Property(e => e.DepartmentId)
                     .HasMaxLength(50)
@@ -298,9 +298,11 @@ namespace ExamProcessManage.Data
                     .HasColumnName("status")
                     .HasDefaultValueSql("'in_progress'");
 
-                entity.Property(e => e.CreateAt).HasColumnName("create_at");
+                entity.Property(e => e.CreateAt).HasColumnName("create_at").HasColumnType("date").IsRequired(false);
 
-                entity.Property(e => e.UpdateAt).HasColumnName("update_at");
+                entity.Property(e => e.UpdateAt).HasColumnName("update_at").HasColumnType("date").IsRequired(false);
+
+                entity.Property(e => e.IsCreatedByAdmin).HasColumnName("is_created_by_admin").HasColumnType("bit").IsRequired(false);
             });
 
             modelBuilder.Entity<Role>(entity =>
