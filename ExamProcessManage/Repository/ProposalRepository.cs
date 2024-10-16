@@ -65,10 +65,7 @@ namespace ExamProcessManage.Repository
                         .Select(tp => tp.ProposalId)
                         .ToList();
 
-                    if (proposalIds.Any())
-                    {
-                        baseQuery = baseQuery.Where(p => proposalIds.Contains(p.ProposalId));
-                    }
+                    baseQuery = baseQuery.Where(p => proposalIds.Contains(p.ProposalId));
                 }
 
                 // Filter by queryObject.userId if not filtering by userId
