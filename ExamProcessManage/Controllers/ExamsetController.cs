@@ -226,14 +226,14 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpDelete]
-        public async Task<IActionResult> DeleteExamSetAsync([FromQuery][Required] int examSetId)
+        public async Task<IActionResult> DeleteExamSetAsync([FromQuery][Required] int examSetId, bool examSetOnly = true)
         {
             try
             {
                 var user = User.Claims.FirstOrDefault(c => c.Type == "userId");
                 if (user != null)
                 {
-                    var delExamSet = await _repository.DeleteExamSetAsync(int.Parse(user.Value), examSetId);
+                    var delExamSet = await _repository.DeleteExamSetAsync(int.Parse(user.Value), examSetId, examSetOnly);
                     if (delExamSet.data != null)
                     {
                         var response = _createResponse.CreateResponse(delExamSet.message, HttpContext, delExamSet.data);

@@ -777,45 +777,88 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public async Task<BaseResponseId> DeleteExamSetAsync(int userId, int examSetId)
+        public async Task<BaseResponseId> DeleteExamSetAsync(int userId, int examSetId, bool examSetOnly)
         {
             try
             {
                 var findExamSet = await _context.ExamSets
-                    .Include(es => es.Exams) // Include related exams in the same query
+                    .Include(es => es.Exams)
                     .FirstOrDefaultAsync(es => es.ExamSetId == examSetId);
 
                 if (findExamSet == null)
-                    return new BaseResponseId { status = 404, message = $"Exam set not found {examSetId}" };
+                    return new BaseResponseId
+                    {
+                        status = 404,
+                        message = "Not found",
+                        errors = new List<ErrorDetail> { new() { message = $"Khong tim thay bo de {examSetId}" } }
+                    };
 
                 if (userId != findExamSet.CreatorId)
-                    return new BaseResponseId { status = 403 };
+                    return new BaseResponseId
+                    {
+                        status = 403,
+                        message = "Forbiden",
+                        errors = new List<ErrorDetail> { new() { message = "Khong co quyen xoa bo de" } }
+                    };
+
+                if (findExamSet.Status == "approved")
+                {
+                    return new BaseResponseId
+                    {
+                        status = 403,
+                        message = "Forbiden",
+                        errors = new List<ErrorDetail> { new() { message = "Bo de da duoc phe duyet, khong the xoa" } }
+                    };
+                }
 
                 var exams = findExamSet.Exams;
 
                 if (exams.Any())
                 {
-                    var examIds = exams.Select(e => e.ExamId).ToList();
+                    if (examSetOnly)
+                    {
+                        var examIds = exams.Select(e => e.ExamId).ToList();
+                        await _context.Exams
+                            .Where(e => examIds.Contains(e.ExamId))
+                            .ForEachAsync(e => e.ExamSetId = null);
+                    }
+                    else
+                    {
+                        var approvedExams = exams.Where(e => e.Status == "approved").ToList();
+                        if (approvedExams.Any())
+                            return new BaseResponseId
+                            {
+                                status = 403,
+                                message = "Forbiden",
+                                errors = new List<ErrorDetail> { new() { message = "De da duoc phe duyet, khong the xoa" } }
+                            };
 
-                    await _context.Exams
-                        .Where(e => examIds.Contains(e.ExamId))
-                        .ForEachAsync(e => e.ExamSetId = null); // Batch update using ForEachAsync
+                        var nonCreatorExams = exams.Where(e => e.CreatorId != userId).ToList();
+                        if (nonCreatorExams.Any())
+                            return new BaseResponseId
+                            {
+                                status = 403,
+                                message = "Forbiden",
+                                errors = new List<ErrorDetail> { new() { message = "Khong co quyen xoa de" } }
+                            };
+
+                        _context.Exams.RemoveRange(exams);
+                    }
                 }
 
-                // Remove the exam set after nullifying exam references
                 _context.ExamSets.Remove(findExamSet);
                 await _context.SaveChangesAsync();
 
                 return new BaseResponseId
                 {
                     status = 200,
-                    message = "Delete exam set successfully",
+                    message = examSetOnly ? "Xoa bo de thanh cong" : "Xoa bo de va de cuong kem theo thanh cong",
                     data = new() { id = findExamSet.ExamSetId }
                 };
             }
             catch (Exception ex)
             {
-                return new BaseResponseId { status = 500, message = $"An error occurred: {ex.Message} {ex.InnerException}" };
+                return new BaseResponseId { status = 500, message = $"Co loi xay ra: {ex.Message} {ex.InnerException}" };
             }
         }
     }
