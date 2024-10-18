@@ -6,7 +6,6 @@ using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
-using ZstdSharp.Unsafe;
 
 namespace ExamProcessManage.Controllers
 {
@@ -172,7 +171,7 @@ namespace ExamProcessManage.Controllers
                     {
                         if (updatedExamSet.status != null || updatedExamSet.status == 500 && updatedExamSet.errors != null && updatedExamSet.errors.Any())
                         {
-                            return new CustomJsonResult((int)updatedExamSet.status, HttpContext, updatedExamSet.message, (List<ErrorDetail>?)updatedExamSet.errors);
+                            return new CustomJsonResult((int)updatedExamSet.status, HttpContext, updatedExamSet.message, updatedExamSet.errors);
                         }
                         else
                         {
@@ -211,7 +210,7 @@ namespace ExamProcessManage.Controllers
                 else if (updateStatus != null)
                 {
                     // Phản hồi lại lỗi từ UpdateStateAsync
-                    return new CustomJsonResult((int)updateStatus.status, HttpContext, updateStatus.message, (List<ErrorDetail>)updateStatus.errors);
+                    return new CustomJsonResult((int)updateStatus.status, HttpContext, updateStatus.message, updateStatus.errors);
                 }
                 else
                 {
@@ -239,9 +238,9 @@ namespace ExamProcessManage.Controllers
                         var response = _createResponse.CreateResponse(delExamSet.message, HttpContext, delExamSet.data);
                         return Ok(response);
                     }
-                    else return new CustomJsonResult((int)delExamSet.status, HttpContext, delExamSet.message);
+                    else return new CustomJsonResult((int)delExamSet.status, HttpContext, delExamSet.message, delExamSet.errors);
                 }
-                else return new CustomJsonResult(403, HttpContext, string.Empty);
+                else return new CustomJsonResult(401, HttpContext, string.Empty);
             }
             catch
             {

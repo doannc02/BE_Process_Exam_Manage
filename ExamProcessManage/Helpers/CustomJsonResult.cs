@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
 using System.Diagnostics;
 
 namespace ExamProcessManage.Helpers
@@ -25,32 +24,43 @@ namespace ExamProcessManage.Helpers
             response.StatusCode = _status;
             response.ContentType = "application/json";
 
-            if (_status == StatusCodes.Status401Unauthorized ||
-                _status == StatusCodes.Status403Forbidden)
-            {
-                response.Headers.Add("www-authenticate", "Bearer");
-
-                var unauthorizedResponse = new
-                {
-                    status = _status == 401 ? 401 : 403,
-                    traceId = _traceId,
-                    message = _status == 401 ? "Unauthorized" : "Forbidden"
-                };
-
-                var json = JsonConvert.SerializeObject(unauthorizedResponse);
-                await response.WriteAsync(json);
-                return;
-            }
-
-            var jsonResponse = System.Text.Json.JsonSerializer.Serialize(new
+            // Build the base response object with errors (can be null)
+            var jsonResponse = new
             {
                 status = _status,
                 traceId = _traceId,
                 title = _title,
-                error = _errorDetail
-            });
+                errors = _errorDetail
+            };
 
-            await response.WriteAsync(jsonResponse);
+            // Customize response for specific status codes
+            switch (_status)
+            {
+                case StatusCodes.Status401Unauthorized:
+                    response.Headers.Add("www-authenticate", "Bearer");
+                    jsonResponse = new
+                    {
+                        status = 401,
+                        traceId = _traceId,
+                        title = "Unauthorized",
+                        errors = (List<ErrorDetail>?)null // Ensure consistent structure
+                    };
+                    break;
+
+                case StatusCodes.Status403Forbidden:
+                    response.Headers.Add("www-authenticate", "Bearer");
+                    jsonResponse = new
+                    {
+                        status = 403,
+                        traceId = _traceId,
+                        title = "Forbidden",
+                        errors = _errorDetail // Use the actual error details if any
+                    };
+                    break;
+            }
+
+            // Serialize and write the response
+            await response.WriteAsJsonAsync(jsonResponse);
         }
     }
 }
