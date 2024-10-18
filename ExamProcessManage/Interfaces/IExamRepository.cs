@@ -10,6 +10,6 @@ namespace ExamProcessManage.Interfaces
         Task<BaseResponse<ExamDTO>> GetDetailExamAsync(int examId);
         Task<BaseResponse<List<DetailResponse>>> CreateExamsAsync(List<ExamDTO> examDTOs, int userId);
         Task<BaseResponseId> UpdateExamAsync(ExamDTO examDTO, int userId);
-        Task<BaseResponse<string>> DeleteExamAsync(int examId);
+        Task<BaseResponseId> DeleteExamAsync(int userId, int examId);
     }
 }

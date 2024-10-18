@@ -4,7 +4,6 @@ using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.Models;
 using ExamProcessManage.RequestModels;
-using ExamProcessManage.Utils;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamProcessManage.Repository
@@ -166,7 +165,7 @@ namespace ExamProcessManage.Repository
                     exam_set = exam.ExamSetId != null ? new CommonObject
                     {
                         id = (int)exam.ExamSetId,
-                        name = examSets.TryGetValue((int)exam.ExamSetId, out var exam_set) ?  exam_set.ExamSetName : null,
+                        name = examSets.TryGetValue((int)exam.ExamSetId, out var exam_set) ? exam_set.ExamSetName : null,
                     } : null,
                     user = exam.CreatorId.HasValue && users.TryGetValue((ulong)exam.CreatorId.Value, out var user) ? new
                     {
@@ -636,42 +635,57 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public async Task<BaseResponse<string>> DeleteExamAsync(int examId)
+        public async Task<BaseResponseId> DeleteExamAsync(int userId, int examId)
         {
             try
             {
-                // Tìm bài thi dựa vào examId
                 var existExam = await _context.Exams.FindAsync(examId);
-
                 if (existExam == null)
                 {
-                    // Trả về lỗi nếu không tìm thấy bài thi
-                    return new BaseResponse<string>
+                    return new BaseResponseId
                     {
-                        message = $"Không tìm thấy bài thi với ID {examId}",
-                        errors = new List<ErrorDetail> { new() {
-                            field = "exam_id",
-                            message = $"Exam with ID {examId} not found." } }
+                        status = 404,
+                        message = "Not found",
+                        errors = new List<ErrorDetail> { new() { field = "examId", message = $"Không tìm thấy đề với ID {examId}" } }
                     };
                 }
 
-                // Xóa bài thi
+                if (existExam.Status == "approved")
+                {
+                    return new BaseResponseId
+                    {
+                        status = 403,
+                        message = "Forbiden",
+                        errors = new List<ErrorDetail> { new() { field = "examId", message = "Đề đã được phê duyệt, không thể xóa" } }
+                    };
+                }
+
+                if (existExam.CreatorId != userId)
+                {
+                    return new BaseResponseId
+                    {
+                        status = 403,
+                        message = "Forbiden",
+                        errors = new List<ErrorDetail> { new() { field = "examId", message = "Bạn không có quyền xóa đề này" } }
+                    };
+                }
+
                 _context.Exams.Remove(existExam);
                 await _context.SaveChangesAsync();
 
-                // Trả về thành công sau khi xóa
-                return new BaseResponse<string>
+                return new BaseResponseId
                 {
+                    status = 200,
                     message = "Xóa thành công",
-                    data = $"Bài thi với ID {examId} đã được xóa."
+                    data = new() { id = existExam.ExamId }
                 };
             }
             catch (Exception ex)
             {
-                // Xử lý lỗi xảy ra
-                return new BaseResponse<string>
+                return new BaseResponseId
                 {
-                    message = "Có lỗi xảy ra: " + ex.Message
+                    status = 500,
+                    message = $"Internal Server Error: {ex.Message} {ex.InnerException}"
                 };
             }
         }
