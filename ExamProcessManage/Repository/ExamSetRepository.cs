@@ -513,15 +513,16 @@ namespace ExamProcessManage.Repository
                                 examToRemove.ExamSetId = null;
                             }
                         }
-
+                        int indexExam = 0;
                         foreach (var examId in examsListId)
                         {
+                            
                             if (!examCodeSet.Add((int)examId))
                             {
                                 errorList.Add(new ErrorDetail
                                 {
-                                    field = $"exam_set.exams.{examId}",
-                                    message = $"Bài thi bị trùng lặp {examId}"
+                                    field = $"exam_set.{indexExam}.exams.comment",
+                                    message = $"Nhập nhận xét để từ chối đề thi này"
                                 });
                             }
                             else if (!existingExams.Any(e => e.ExamId == examId))
@@ -548,11 +549,12 @@ namespace ExamProcessManage.Repository
                                         }
                                         else
                                         {
-                                            return new BaseResponseId
+                                            errorList.Add(new ErrorDetail
                                             {
-                                                status = 500,
-                                                message = "Trạng thái không hợp lệ"
-                                            };
+                                                field = $"exam_set.exams.{examId}",
+                                                message = $"Bài thi bị trùng lặp {examId}"
+                                            });
+                                            break;
                                         }
                                         break;
 
@@ -563,11 +565,20 @@ namespace ExamProcessManage.Repository
                                         }
                                         else
                                         {
-                                            return new BaseResponseId
+                                            //return new BaseResponseId
+                                            //{
+                                            //    status = 500,
+                                            //    message = "Trạng thái không hợp lệ"
+                                            //};
+                                            if(exam.Comment == null)
                                             {
-                                                status = 500,
-                                                message = "Trạng thái không hợp lệ"
-                                            };
+                                                return new BaseResponseId
+                                                {
+                                                    status = 500,
+                                                    message = "Trạng thái không hợp lệ"
+                                                };
+                                            }
+                                            break; 
                                         }
                                         break;
 
@@ -578,6 +589,7 @@ namespace ExamProcessManage.Repository
 
                                 examList.Add(exam);
                             }
+                            ++indexExam;
                         }
                     }
 
