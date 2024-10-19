@@ -7,8 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-
 namespace ExamProcessManage.Controllers
 {
     [Route("api/v1/exam")]
@@ -62,14 +60,14 @@ namespace ExamProcessManage.Controllers
             {
                 var examDetail = await _examRepository.GetDetailExamAsync(examId);
 
-                if (examDetail != null)
+                if (examDetail.data != null)
                 {
-                    var response = _createCommon.CreateResponse("Lấy chi tiết bài thi thành công", HttpContext, examDetail);
+                    var response = _createCommon.CreateResponse(examDetail.message, HttpContext, examDetail.data);
                     return Ok(response);
                 }
                 else
                 {
-                    return new CustomJsonResult(404, HttpContext, $"Không tìm thấy bài thi với ID {examId}");
+                    return new CustomJsonResult((int)examDetail.status, HttpContext, examDetail.message, examDetail.errors);
                 }
             }
             catch (Exception ex)
@@ -101,8 +99,7 @@ namespace ExamProcessManage.Controllers
                     }
                     else
                     {
-                        var response = _createCommon.CreateResponse(createExam.message, HttpContext, createExam);
-                        return BadRequest(response);
+                        return new CustomJsonResult((int)createExam.status, HttpContext, createExam.message, createExam.errors);
                     }
                 }
                 return Unauthorized();
@@ -110,7 +107,7 @@ namespace ExamProcessManage.Controllers
             }
             catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message}\n{ex.InnerException}");
+                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message} {ex.InnerException}");
             }
         }
 
@@ -128,7 +125,7 @@ namespace ExamProcessManage.Controllers
                 }
                 if (userId != null && roleClaim.Value != "Admin")
                 {
-                    var updateExam = await _examRepository.UpdateExamAsync(examDTO, int.Parse(userId.Value));
+                    var updateExam = await _examRepository.UpdateExamAsync(int.Parse(userId.Value), examDTO);
 
                     if (updateExam != null && updateExam.data != null)
                     {
@@ -137,53 +134,14 @@ namespace ExamProcessManage.Controllers
                     }
                     else
                     {
-                        var response = _createCommon.CreateResponse(updateExam.message, HttpContext, updateExam);
-                        return Ok(response);
+                        return new CustomJsonResult((int)updateExam.status, HttpContext, updateExam.message, updateExam.errors);
                     }
                 }
                 return Unauthorized();
-
-
-
-            }
-            catch
-            {
-                return new CustomJsonResult(500, HttpContext, "Internal Server Error");
-            }
-        }
-
-        [HttpPut("update-state")]
-        public async Task<IActionResult> UpdateStateAsync([Required] int examId, [Required] string status, string? comment)
-        {
-            if (!ModelState.IsValid)
-            {
-                // Xử lý trường hợp các tham số không hợp lệ
-                return new CustomJsonResult(400, HttpContext, "Thông tin không hợp lệ");
-            }
-
-            try
-            {
-                var updateStatus = await _examRepository.UpdateStateAsync(examId, status, comment);
-
-                if (updateStatus != null && updateStatus.data != null)
-                {
-                    var response = _createCommon.CreateResponse(updateStatus.message, HttpContext, updateStatus.data);
-                    return Ok(response); // Trả về kết quả thành công
-                }
-                else if (updateStatus != null)
-                {
-                    // Phản hồi lại lỗi từ UpdateStateAsync
-                    return new CustomJsonResult((int)updateStatus.status, HttpContext, updateStatus.message, (List<ErrorDetail>)updateStatus.errors);
-                }
-                else
-                {
-                    return new CustomJsonResult(400, HttpContext, "Không thể cập nhật trạng thái");
-                }
             }
             catch (Exception ex)
             {
-                // Xử lý ngoại lệ nếu có lỗi trong quá trình cập nhật
-                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message}");
+                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message} {ex.InnerException}");
             }
         }
 
@@ -193,7 +151,7 @@ namespace ExamProcessManage.Controllers
             try
             {
                 var userId = User.Claims.FirstOrDefault(c => c.Type == "userId");
-                if (userId == null) return new CustomJsonResult(403, HttpContext, "User not authenticated");
+                if (userId == null) return new CustomJsonResult(405, HttpContext, "User not authenticated");
 
                 var deleteExam = await _examRepository.DeleteExamAsync(int.Parse(userId.Value), id);
                 if (deleteExam == null) return new CustomJsonResult(500, HttpContext, "An error occurred!");

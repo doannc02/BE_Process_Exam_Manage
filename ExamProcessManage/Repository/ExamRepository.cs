@@ -141,11 +141,14 @@ namespace ExamProcessManage.Repository
                 var teachers = await _context.Teachers.AsNoTracking().ToDictionaryAsync(t => t.Id);
                 var examSets = await _context.ExamSets.AsNoTracking().ToDictionaryAsync(t => t.ExamSetId);
                 var exam = await _context.Exams.FindAsync(examId);
+
                 if (exam == null)
                 {
                     return new BaseResponse<ExamDTO>
                     {
-                        message = "Không tìm thấy bài thi.",
+                        status = 404,
+                        message = "Not found",
+                        errors = new() { new() { message = $"Exam not found {examId}" } }
                     };
                 }
 
@@ -186,7 +189,7 @@ namespace ExamProcessManage.Repository
 
                 return new BaseResponse<ExamDTO>
                 {
-                    message = "Thành công",
+                    message = "Success",
                     data = examDto
                 };
             }
@@ -194,7 +197,9 @@ namespace ExamProcessManage.Repository
             {
                 return new BaseResponse<ExamDTO>
                 {
-                    message = "Có lỗi xảy ra: " + ex.Message,
+                    status = 500,
+                    message = "An error occured: " + ex.Message,
+                    errors = new() { new() { message = ex.InnerException.ToString() } }
                 };
             }
         }
@@ -205,10 +210,11 @@ namespace ExamProcessManage.Repository
             {
                 if (exams == null || !exams.Any())
                 {
-                    return new BaseResponse<List<DetailResponse>>
+                    return new()
                     {
                         status = 400,
-                        message = "Danh sách bài thi rỗng"
+                        message = "Invalid input",
+                        errors = new() { new() { message = "Null input" } }
                     };
                 }
 
@@ -243,17 +249,15 @@ namespace ExamProcessManage.Repository
                 for (int i = 0; i < exams.Count; i++)
                 {
                     var examDTO = exams[i];
-                    var examHasErrors = false;
 
                     // Validate code
-                    if (IsInvalidString(examDTO.code))
+                    if (string.IsNullOrEmpty(examDTO.code) || examDTO.code == "string")
                     {
                         errors.Add(new()
                         {
                             field = $"exams.{i}.code",
                             message = $"Exam with code '{examDTO.code}' invalid."
                         });
-                        examHasErrors = true;
                     }
                     else if (existingCodes.Contains(examDTO.code))
                     {
@@ -262,18 +266,16 @@ namespace ExamProcessManage.Repository
                             field = $"exams.{i}.code",
                             message = $"Exam with code '{examDTO.code}' already exists."
                         });
-                        examHasErrors = true;
                     }
 
                     // Validate name
-                    if (IsInvalidString(examDTO.name))
+                    if (string.IsNullOrEmpty(examDTO.name) || examDTO.name == "string")
                     {
                         errors.Add(new()
                         {
                             field = $"exams.{i}.name",
                             message = $"Exam with name '{examDTO.name}' invalid."
                         });
-                        examHasErrors = true;
                     }
                     else if (existingNames.Contains(examDTO.name))
                     {
@@ -282,18 +284,16 @@ namespace ExamProcessManage.Repository
                             field = $"exams.{i}.name",
                             message = $"Exam with name '{examDTO.name}' already exists."
                         });
-                        examHasErrors = true;
                     }
 
                     // Validate attached file
-                    if (IsInvalidString(examDTO.attached_file))
+                    if (string.IsNullOrEmpty(examDTO.attached_file) || examDTO.attached_file == "string")
                     {
                         errors.Add(new()
                         {
                             field = $"exams.{i}.attached_file",
                             message = $"Exam with attached_file '{examDTO.attached_file}' invalid."
                         });
-                        examHasErrors = true;
                     }
                     else if (existingFiles.Contains(examDTO.attached_file))
                     {
@@ -302,30 +302,27 @@ namespace ExamProcessManage.Repository
                             field = $"exams.{i}.attached_file",
                             message = $"Exam with file '{examDTO.attached_file}' already exists."
                         });
-                        examHasErrors = true;
                     }
 
                     // Validate status
-                    if (IsInvalidString(examDTO.status) || !validStatus.Contains(examDTO.status))
+                    if (string.IsNullOrEmpty(examDTO.status) || examDTO.status == "string" || !validStatus.Contains(examDTO.status))
                     {
                         errors.Add(new()
                         {
                             field = $"exams.{i}.status",
                             message = $"Exam with status '{examDTO.status}' is invalid."
                         });
-                        examHasErrors = true;
                     }
 
                     // Validate exam set
-                    //if (!examSetIds.Contains(examDTO.exam_set.id))
-                    //{
-                    //    errors.Add(new ErrorCodes
-                    //    {
-                    //        code = $"exams.{i}.exam_set.id",
-                    //        message = $"ExamSet with id '{examDTO.exam_set.id}' does not exist."
-                    //    });
-                    //    examHasErrors = true;
-                    //}
+                    if (examDTO.exam_set != null && examDTO.exam_set.id > 0 && !examSetIds.Contains(examDTO.exam_set.id))
+                    {
+                        errors.Add(new()
+                        {
+                            field = $"exams.{i}.exam_set.id",
+                            message = $"ExamSet with id '{examDTO.exam_set.id}' does not exist."
+                        });
+                    }
 
                     // Validate academic year
                     if (!academicYearIds.Contains(examDTO.academic_year.id))
@@ -335,20 +332,18 @@ namespace ExamProcessManage.Repository
                             field = $"exams.{i}.academic_year.id",
                             message = $"AcademicYear with id '{examDTO.academic_year.id}' does not exist."
                         });
-                        examHasErrors = true;
                     }
 
                     // If no errors, add exam to the list
-                    if (!examHasErrors)
+                    if (!errors.Any())
                     {
                         listExam.Add(new Exam
                         {
                             ExamCode = examDTO.code,
                             ExamName = examDTO.name,
-                            ExamSetId = examDTO.exam_set?.id,
+                            ExamSetId = examDTO.exam_set?.id > 0 ? examDTO.exam_set?.id : null,
                             AcademicYearId = examDTO.academic_year?.id,
                             AttachedFile = examDTO.attached_file,
-                            //Comment = examDTO.comment == "string" ? string.Empty : examDTO.comment,
                             Description = examDTO.description == "string" ? string.Empty : examDTO.description,
                             CreateAt = DateOnly.FromDateTime(DateTime.Now),
                             Status = examDTO.status,
@@ -358,11 +353,12 @@ namespace ExamProcessManage.Repository
                 }
 
                 // If no exams were successfully added, return the errors
-                if (listExam.Count == 0)
+                if (listExam.Count == 0 && errors.Any())
                 {
                     return new BaseResponse<List<DetailResponse>>
                     {
-                        message = "Lỗi thêm bài thi",
+                        status = 500,
+                        message = "Add exam failed",
                         errors = errors
                     };
                 }
@@ -373,7 +369,7 @@ namespace ExamProcessManage.Repository
 
                 return new BaseResponse<List<DetailResponse>>
                 {
-                    message = "Thêm thành công",
+                    message = "Add exam successfully",
                     data = listExam.Select(e => new DetailResponse { id = e.ExamId }).ToList()
                 };
             }
@@ -381,256 +377,141 @@ namespace ExamProcessManage.Repository
             {
                 return new BaseResponse<List<DetailResponse>>
                 {
-                    message = "Có lỗi xảy ra: " + ex.Message
+                    status = 500,
+                    message = "An error occurred: " + ex.Message,
+                    errors = new() { new() { message = ex.InnerException.ToString() } }
                 };
             }
         }
 
-        private static bool IsInvalidString(string input)
-        {
-            return string.IsNullOrEmpty(input) || input == "string";
-        }
-
-        public async Task<BaseResponseId> UpdateExamAsync(ExamDTO examDTO, int userId)
+        public async Task<BaseResponseId> UpdateExamAsync(int userId, bool isAdmin, ExamDTO examDTO)
         {
             try
             {
                 var existExam = await _context.Exams.FirstOrDefaultAsync(e => e.ExamId == examDTO.id || e.ExamCode == examDTO.code);
 
-                if (existExam.CreatorId != userId)
+                if (existExam == null)
                 {
-
                     return new BaseResponseId
                     {
-                        message = "Không có quyền xóa đề này",
+                        status = 404,
+                        message = "Not Found",
+                        errors = new() { new() { field = "id", message = $"Exam not found {examDTO.id}" } }
                     };
                 }
 
-
-                if (existExam == null)
+                if (existExam.CreatorId != userId && isAdmin == false)
                 {
-                    return GenerateErrorResponse("code", $"Không tìm thấy bài thi {examDTO.code}", "Không tìm thấy bài thi");
+                    return new BaseResponseId
+                    {
+                        status = 405,
+                        message = "Method Not Allowed",
+                        errors = new() { new() { message = "You do not have permission to update this exam." } }
+                    };
                 }
 
                 if (existExam.Status == "approved")
                 {
                     return new BaseResponseId
                     {
-                        message = "Bài thi đã phê duyệt, không được sửa",
+                        status = 405,
+                        message = "Method Not Allowed",
+                        errors = new() { new() { message = "Exam has been approved and cannot updated." } }
                     };
                 }
 
                 if (!validStatus.Contains(examDTO.status))
                 {
-                    return GenerateErrorResponse("status", "status không hợp lệ: " + examDTO.status, "Status không hợp lệ");
+                    return new BaseResponseId
+                    {
+                        status = 400,
+                        message = "Bad request",
+                        errors = new() { new() { field = "status", message = "Invalid status." } }
+                    };
                 }
 
-                if (examDTO.academic_year != null && examDTO.academic_year.id <= 0 ||
-                    !await _context.AcademicYears.AnyAsync(a => a.AcademicYearId == examDTO.academic_year.id))
+                if (isAdmin)
                 {
-                    return GenerateErrorResponse("academic_year", "academicYear khong hop le " + examDTO.academic_year.id, "AcademicYear khong hop le");
+                    if (existExam.Status == "pending_approval" && examDTO.status == "approved" || examDTO.status == "rejected")
+                    {
+                        if (!string.IsNullOrEmpty(examDTO.comment) && examDTO.comment != "string")
+                            existExam.Comment = examDTO.comment;
+                        else
+                            return new BaseResponseId
+                            {
+                                status = 400,
+                                message = "Bad request",
+                                errors = new() { new() { field = "comment", message = "Invalid comment." } }
+                            };
+
+                        existExam.Status = examDTO.status;
+                        existExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
+                    }
+
+                    return new BaseResponseId
+                    {
+                        status = 400,
+                        message = "Bad request",
+                        errors = new() { new() { field = "status", message = "Invalid status." } }
+                    };
                 }
+                else
+                {
+                    if (examDTO.academic_year != null && examDTO.academic_year.id <= 0 ||
+                        !await _context.AcademicYears.AnyAsync(a => a.AcademicYearId == examDTO.academic_year.id))
+                    {
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Bad request",
+                            errors = new() { new() { field = "academic_year", message = "Invalid academic year." } }
+                        };
+                    }
 
-                //if (examDTO.exam_set != null && examDTO.exam_set.id <= 0 ||
-                //    !await _context.ExamSets.AnyAsync(e => e.ExamSetId == examDTO.exam_set.id))
-                //{
-                //    return GenerateErrorResponse("exam_set_id", "examSetId khong hop le " + examDTO.exam_set.id, "ExamSet khong hop le");
-                //}
+                    if (examDTO.exam_set != null && examDTO.exam_set.id <= 0 ||
+                        !await _context.ExamSets.AnyAsync(e => e.ExamSetId == examDTO.exam_set.id))
+                    {
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Bad request",
+                            errors = new() { new() { field = "exam_set", message = "Invalid exam set." } }
+                        };
+                    }
 
-                existExam.ExamName = examDTO.name != "string" && examDTO.name != existExam.ExamName ?
-                    examDTO.name : existExam.ExamName;
-                existExam.AttachedFile = examDTO.attached_file != "string" && examDTO.attached_file != existExam.AttachedFile ?
-                    examDTO.attached_file : existExam.AttachedFile;
-                existExam.Description = examDTO.description != "string" && examDTO.description != existExam.Description ?
-                    examDTO.description : existExam.Description;
-                existExam.Comment = examDTO.comment != "string" && examDTO.comment != existExam.Comment ?
-                    examDTO.comment : existExam.Comment;
-                existExam.Status = examDTO.status != "string" && examDTO.status != existExam.Status ?
-                    examDTO.status : existExam.Status;
-                existExam.ExamSetId = examDTO.exam_set?.id;
-                existExam.AcademicYearId = examDTO.academic_year?.id;
-                existExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
+                    existExam.ExamName = examDTO.name != "string" && examDTO.name != existExam.ExamName
+                        ? examDTO.name : existExam.ExamName;
+                    existExam.AttachedFile = examDTO.attached_file != "string" && examDTO.attached_file != existExam.AttachedFile
+                        ? examDTO.attached_file : existExam.AttachedFile;
+                    existExam.Description = examDTO.description != "string" && examDTO.description != existExam.Description
+                        ? examDTO.description : existExam.Description;
+                    existExam.Comment = examDTO.comment != "string" && examDTO.comment != existExam.Comment
+                        ? examDTO.comment : existExam.Comment;
+                    existExam.ExamSetId = examDTO.exam_set?.id;
+                    existExam.AcademicYearId = examDTO.academic_year?.id;
+                    existExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
+
+                    // can sua them logic
+                    existExam.Status = examDTO.status != "string" && examDTO.status != existExam.Status
+                        ? examDTO.status : existExam.Status;
+                }
 
                 await _context.SaveChangesAsync();
 
                 return new BaseResponseId
                 {
-                    message = "Sửa thành công",
-                    data = new DetailResponse
-                    {
-                        id = existExam.ExamId
-                    }
+                    status = 200,
+                    message = "Update successfully.",
+                    data = new DetailResponse { id = existExam.ExamId }
                 };
-            }
-            catch (Exception ex)
-            {
-                return new BaseResponseId
-                {
-                    message = "Có lỗi xảy ra: " + ex.Message
-                };
-            }
-        }
-
-        public async Task<BaseResponseId> UpdateStateAsync(int examId, string status, string? comment = null)
-        {
-            try
-            {
-                var findExam = await _context.Exams.FindAsync(examId);
-                if (findExam == null)
-                {
-                    return new BaseResponseId
-                    {
-                        status = 404,
-                        message = "Không tìm thấy bài thi",
-                        errors = new List<ErrorDetail> { new() { field = "exam_id", message = $"Không tìm thấy bài thi {examId}" } }
-                    };
-                }
-                else
-                {
-                    if (!validStatus.Contains(status))
-                    {
-                        return new BaseResponseId
-                        {
-                            status = 400,
-                            message = "Không hợp lệ",
-                            errors = new List<ErrorDetail> { new() { field = "status", message = "status nhập vào không hợp lệ" } }
-                        };
-                    }
-
-                    if (findExam.Status == "approved")
-                    {
-                        return new BaseResponseId
-                        {
-                            status = 400,
-                            message = "Đề thi đã được duyệt, không được phép sửa"
-                        };
-                    }
-
-                    if (!string.IsNullOrEmpty(status))
-                    {
-                        // Xử lý logic thay đổi trạng thái dựa trên trạng thái hiện tại và trạng thái mới
-                        switch (status)
-                        {
-                            case "approved":
-                                if (findExam.Status == "pending_approval")
-                                {
-                                    findExam.Status = status;
-                                }
-                                else
-                                {
-                                    return new BaseResponseId
-                                    {
-                                        status = 400,
-                                        message = "Trạng thái không hợp lệ"
-                                    };
-                                }
-                                break;
-
-                            case "rejected":
-                                if (findExam.Status == "pending_approval")
-                                {
-                                    findExam.Status = status;
-                                }
-                                else
-                                {
-                                    return new BaseResponseId
-                                    {
-                                        status = 400,
-                                        message = "Trạng thái không hợp lệ"
-                                    };
-                                }
-                                break;
-
-                            default:
-                                findExam.Status = status; // Các trạng thái khác được phép thay đổi trực tiếp
-                                break;
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(comment) && comment != "string")
-                    {
-                        findExam.Comment = comment;
-                    }
-
-                    await _context.SaveChangesAsync();
-
-                    return new BaseResponseId
-                    {
-                        data = new DetailResponse { id = findExam.ExamId },
-                        message = "Cập nhật thành công"
-                    };
-                }
             }
             catch (Exception ex)
             {
                 return new BaseResponseId
                 {
                     status = 500,
-                    message = "Có lỗi xảy ra: " + ex.Message,
-                    errors = new List<ErrorDetail> { new() { field = "exception", message = ex.InnerException?.Message ?? ex.Message } }
-                };
-            }
-        }
-
-        private static BaseResponseId GenerateErrorResponse(string code, string errorMessage, string userMessage, string? extraCode = null, string? extraMessage = null)
-        {
-            var errorList = new List<ErrorDetail> { new() { field = code, message = errorMessage } };
-
-            if (extraCode != null && extraMessage != null)
-            {
-                errorList.Add(new() { field = extraCode, message = extraMessage });
-            }
-
-            return new BaseResponseId
-            {
-                message = userMessage,
-                errors = errorList
-            };
-        }
-
-        public async Task<BaseResponseId> RemoveChildAsync(int examSetId, int examId, string? comment)
-        {
-            try
-            {
-                var findExam = await _context.Exams.FindAsync(examSetId);
-
-                if (findExam != null)
-                {
-                    findExam.ExamSetId = null;
-                    findExam.Comment = comment ?? findExam.Comment;
-                }
-                else
-                {
-                    return new BaseResponseId
-                    {
-                        message = "Thất bại",
-                        errors = new List<ErrorDetail>
-                            {
-                                new()
-                                {
-                                    field = $"exam.exam_id",
-                                    message = "Không tìm thấy bài thi"
-                                }
-                            }
-                    };
-                }
-
-                await _context.SaveChangesAsync();
-
-                return new BaseResponseId
-                {
-                    message = "Thành công",
-                    data = new DetailResponse
-                    {
-                        id = examId,
-                    }
-                };
-            }
-            catch (Exception ex)
-            {
-                return new BaseResponseId
-                {
-                    message = "Có lỗi xảy ra: " + ex.Message,
+                    message = $"An error occurred: {ex.Message}",
+                    errors = new() { new() { message = ex.InnerException?.ToString() } }
                 };
             }
         }
@@ -646,7 +527,7 @@ namespace ExamProcessManage.Repository
                     {
                         status = 404,
                         message = "Not found",
-                        errors = new List<ErrorDetail> { new() { field = "examId", message = $"Không tìm thấy đề với ID {examId}" } }
+                        errors = new List<ErrorDetail> { new() { field = "examId", message = $"Exam not found {examId}" } }
                     };
                 }
 
@@ -654,9 +535,9 @@ namespace ExamProcessManage.Repository
                 {
                     return new BaseResponseId
                     {
-                        status = 403,
-                        message = "Forbiden",
-                        errors = new List<ErrorDetail> { new() { field = "examId", message = "Đề đã được phê duyệt, không thể xóa" } }
+                        status = 405,
+                        message = "Method Not Allowed",
+                        errors = new List<ErrorDetail> { new() { message = "Exam has been approved and cannot be deleted." } }
                     };
                 }
 
@@ -664,9 +545,9 @@ namespace ExamProcessManage.Repository
                 {
                     return new BaseResponseId
                     {
-                        status = 403,
-                        message = "Forbiden",
-                        errors = new List<ErrorDetail> { new() { field = "examId", message = "Bạn không có quyền xóa đề này" } }
+                        status = 405,
+                        message = "Method Not Allowed",
+                        errors = new List<ErrorDetail> { new() { message = "You do not have the right to delete other instructors' exams." } }
                     };
                 }
 
@@ -676,7 +557,7 @@ namespace ExamProcessManage.Repository
                 return new BaseResponseId
                 {
                     status = 200,
-                    message = "Xóa thành công",
+                    message = "Delete successfully",
                     data = new() { id = existExam.ExamId }
                 };
             }
