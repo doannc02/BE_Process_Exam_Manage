@@ -196,39 +196,6 @@ namespace ExamProcessManage.Controllers
             }
         }
 
-        [AllowAnonymous]
-
-        [HttpPut("update-state")]
-        public async Task<IActionResult> UpdateStateAsync([FromQuery][Required] int examSetId, [Required] string status, string? comment)
-        {
-            return new CustomJsonResult(501, HttpContext, "Not Implemented");
-
-            //try
-            //{
-            //    var updateStatus = await _repository.UpdateStateAsync(examSetId, status, comment);
-
-            //    if (updateStatus != null && updateStatus.data != null)
-            //    {
-            //        var response = _createResponse.CreateResponse(updateStatus.message, HttpContext, updateStatus.data);
-            //        return Ok(response); // Trả về kết quả thành công
-            //    }
-            //    else if (updateStatus != null)
-            //    {
-            //        // Phản hồi lại lỗi từ UpdateStateAsync
-            //        return new CustomJsonResult((int)updateStatus.status, HttpContext, updateStatus.message, updateStatus.errors);
-            //    }
-            //    else
-            //    {
-            //        return new CustomJsonResult(400, HttpContext, "Không thể cập nhật trạng thái");
-            //    }
-            //}
-            //catch (Exception ex)
-            //{
-            //    // Xử lý ngoại lệ nếu có lỗi trong quá trình cập nhật
-            //    return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message}");
-            //}
-        }
-
         [HttpDelete]
         public async Task<IActionResult> DeleteExamSetAsync([FromQuery][Required] int examSetId, bool examSetOnly = true)
         {

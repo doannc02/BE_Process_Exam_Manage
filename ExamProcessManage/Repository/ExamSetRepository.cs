@@ -650,175 +650,6 @@ namespace ExamProcessManage.Repository
             return response;
         }
 
-        public async Task<BaseResponseId> UpdateStateAsync(int examSetId, string status, string? comment = null)
-        {
-            try
-            {
-                var findExamSet = await _context.ExamSets.FindAsync(examSetId);
-                if (findExamSet == null)
-                {
-                    return new BaseResponseId
-                    {
-                        status = 404,
-                        message = "Exam set not found",
-                        errors = new List<ErrorDetail> { new() { field = "exam_id", message = $"Exam set not found: {examSetId}" } }
-                    };
-                }
-
-                if (!validStatus.Contains(status))
-                {
-                    return new BaseResponseId
-                    {
-                        status = 400,
-                        message = "Invalid",
-                        errors = new List<ErrorDetail> { new() { field = "status", message = "Input status is invalid" } }
-                    };
-                }
-
-                // Check if the input status is the same as the current status
-                //if (findExamSet.Status == status)
-                //{
-                //    return new BaseResponseId
-                //    {
-                //        status = 204, // No Content
-                //        message = "No changes made as the status is the same."
-                //    };
-                //}
-
-                if (findExamSet.Status == "approved")
-                {
-                    return new BaseResponseId
-                    {
-                        status = 400,
-                        message = "Exam set has been approved, cannot be modified"
-                    };
-                }
-
-                // Check conditions for changing the ExamSet status
-                switch (findExamSet.Status)
-                {
-                    case "in_progress":
-                        if (status == "pending_approval")
-                        {
-                            findExamSet.Status = status; // Update status
-                            break; // Exit switch
-                        }
-                        return new BaseResponseId
-                        {
-                            status = 400,
-                            message = "Invalid status",
-                            errors = new List<ErrorDetail> { new() { field = "status", message = "Can only update from 'in_progress' to 'pending_approval'." } }
-                        };
-
-                    case "pending_approval":
-                        if (status == "approved" || status == "rejected" || status == "in_progress")
-                        {
-                            findExamSet.Status = status; // Update status
-                            break; // Exit switch
-                        }
-                        return new BaseResponseId
-                        {
-                            status = 400,
-                            message = "Invalid status",
-                            errors = new List<ErrorDetail> { new() { field = "status", message = "Can only update from 'pending_approval' to 'approved', 'rejected', or 'in_progress'." } }
-                        };
-
-                    case "rejected":
-                        if (status == "in_progress" || status == "pending_approval")
-                        {
-                            findExamSet.Status = status; // Update status
-                            break; // Exit switch
-                        }
-                        return new BaseResponseId
-                        {
-                            status = 400,
-                            message = "Invalid status",
-                            errors = new List<ErrorDetail> { new() { field = "status", message = "Can only update from 'rejected' to 'in_progress' or 'pending_approval'." } }
-                        };
-
-                    default:
-                        return new BaseResponseId
-                        {
-                            status = 400,
-                            message = "Invalid status",
-                            errors = new List<ErrorDetail> { new() { field = "status", message = "Unexpected status." } }
-                        };
-                }
-
-                // Update ExamSet status
-                var listExam = await _context.Exams.Where(e => e.ExamSetId == findExamSet.ExamSetId).ToListAsync();
-                var errorList = new List<ErrorDetail>();
-
-                if (!listExam.Any())
-                    return new BaseResponseId
-                    {
-                        status = 400,
-                        message = "Invalid exam list",
-                        errors = new List<ErrorDetail> { new() { field = "exam_set.exams", message = "No exams found" } }
-                    };
-
-                if (listExam.Count < findExamSet.ExamQuantity)
-                    return new BaseResponseId
-                    {
-                        status = 400,
-                        message = "Not enough exams",
-                        errors = new List<ErrorDetail> { new() {
-                            field = "exam_set.exams",
-                            message = $"Not enough exams: {listExam.Count}/{findExamSet.ExamQuantity}" } }
-                    };
-
-                for (int i = 0; i < listExam.Count; i++)
-                {
-                    if (listExam[i].Status != "approved")
-                    {
-                        // Check and update status of each Exam
-                        if ((status == "approved" || status == "rejected") && listExam[i].Status != "pending_approval")
-                        {
-                            errorList.Add(new ErrorDetail
-                            {
-                                field = $"exam_set.exams.{i}",
-                                message = "Invalid status"
-                            });
-                        }
-                        else
-                        {
-                            listExam[i].Status = status; // Update status
-                        }
-                    }
-                }
-
-                // If there are errors in updating the Exams
-                if (errorList.Any())
-                {
-                    return new BaseResponseId
-                    {
-                        status = 400,
-                        message = "An error occurred",
-                        errors = errorList
-                    };
-                }
-
-                // Save changes to the database
-                await _context.SaveChangesAsync();
-
-                return new BaseResponseId
-                {
-                    status = 200,
-                    message = "Update successful",
-                    data = new DetailResponse { id = findExamSet.ExamSetId }
-                };
-            }
-            catch (Exception ex)
-            {
-                return new BaseResponseId
-                {
-                    status = 500,
-                    message = "An error occurred: " + ex.Message,
-                    errors = new List<ErrorDetail> { new() { field = "exception", message = ex.InnerException?.Message ?? ex.Message } }
-                };
-            }
-        }
-
         public async Task<BaseResponseId> DeleteExamSetAsync(int userId, int examSetId, bool examSetOnly)
         {
             try
@@ -832,24 +663,24 @@ namespace ExamProcessManage.Repository
                     {
                         status = 404,
                         message = "Not found",
-                        errors = new List<ErrorDetail> { new() { message = $"Khong tim thay bo de {examSetId}" } }
+                        errors = new() { new() { message = $"Exam set not found {examSetId}" } }
                     };
 
                 if (userId != findExamSet.CreatorId)
                     return new BaseResponseId
                     {
-                        status = 403,
+                        status = 405,
                         message = "Forbiden",
-                        errors = new List<ErrorDetail> { new() { message = "Khong co quyen xoa bo de" } }
+                        errors = new() { new() { message = "You do not have the right to delete this exam set." } }
                     };
 
                 if (findExamSet.Status == "approved")
                 {
                     return new BaseResponseId
                     {
-                        status = 403,
+                        status = 405,
                         message = "Forbiden",
-                        errors = new List<ErrorDetail> { new() { message = "Bo de da duoc phe duyet, khong the xoa" } }
+                        errors = new() { new() { message = "he exam set has been approved and cannot be deleted." } }
                     };
                 }
 
@@ -870,18 +701,18 @@ namespace ExamProcessManage.Repository
                         if (approvedExams.Any())
                             return new BaseResponseId
                             {
-                                status = 403,
+                                status = 405,
                                 message = "Forbiden",
-                                errors = new List<ErrorDetail> { new() { message = "De da duoc phe duyet, khong the xoa" } }
+                                errors = new() { new() { message = "The exam has been approved and cannot be deleted." } }
                             };
 
                         var nonCreatorExams = exams.Where(e => e.CreatorId != userId).ToList();
                         if (nonCreatorExams.Any())
                             return new BaseResponseId
                             {
-                                status = 403,
+                                status = 405,
                                 message = "Forbiden",
-                                errors = new List<ErrorDetail> { new() { message = "Khong co quyen xoa de" } }
+                                errors = new() { new() { message = "You do not have the right to delete this exam." } }
                             };
 
                         _context.Exams.RemoveRange(exams);
@@ -894,13 +725,18 @@ namespace ExamProcessManage.Repository
                 return new BaseResponseId
                 {
                     status = 200,
-                    message = examSetOnly ? "Xoa bo de thanh cong" : "Xoa bo de va de cuong kem theo thanh cong",
+                    message = examSetOnly ? "Delete exam set successfully." : "Delete examset and exams successfully.",
                     data = new() { id = findExamSet.ExamSetId }
                 };
             }
             catch (Exception ex)
             {
-                return new BaseResponseId { status = 500, message = $"Co loi xay ra: {ex.Message} {ex.InnerException}" };
+                return new BaseResponseId
+                {
+                    status = 500,
+                    message = $"An error occurred: {ex.Message}",
+                    errors = new() { new() { message = ex.InnerException.ToString() } }
+                };
             }
         }
     }
