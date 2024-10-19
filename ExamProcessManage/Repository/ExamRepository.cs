@@ -432,7 +432,7 @@ namespace ExamProcessManage.Repository
 
                 if (isAdmin)
                 {
-                    if (existExam.Status == "pending_approval" && examDTO.status == "approved" || examDTO.status == "rejected")
+                    if (existExam.Status == "pending_approval" && (examDTO.status == "approved" || examDTO.status == "rejected"))
                     {
                         if (!string.IsNullOrEmpty(examDTO.comment) && examDTO.comment != "string")
                             existExam.Comment = examDTO.comment;
@@ -447,13 +447,15 @@ namespace ExamProcessManage.Repository
                         existExam.Status = examDTO.status;
                         existExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
                     }
-
-                    return new BaseResponseId
+                    else
                     {
-                        status = 400,
-                        message = "Bad request",
-                        errors = new() { new() { field = "status", message = "Invalid status." } }
-                    };
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Bad request",
+                            errors = new() { new() { field = "status", message = "Invalid status." } }
+                        };
+                    }
                 }
                 else
                 {
@@ -468,8 +470,7 @@ namespace ExamProcessManage.Repository
                         };
                     }
 
-                    if (examDTO.exam_set != null && examDTO.exam_set.id <= 0 ||
-                        !await _context.ExamSets.AnyAsync(e => e.ExamSetId == examDTO.exam_set.id))
+                    if (examDTO.exam_set != null && examDTO.exam_set.id < 0)
                     {
                         return new BaseResponseId
                         {
@@ -479,6 +480,14 @@ namespace ExamProcessManage.Repository
                         };
                     }
 
+                    if (examDTO.exam_set != null && examDTO.exam_set.id > 0 && !await _context.ExamSets.AnyAsync(e => e.ExamSetId == examDTO.exam_set.id))
+                        return new BaseResponseId
+                        {
+                            status = 404,
+                            message = "Not found",
+                            errors = new() { new() { field = "exam_set", message = "Exam set not found." } }
+                        };
+
                     existExam.ExamName = examDTO.name != "string" && examDTO.name != existExam.ExamName
                         ? examDTO.name : existExam.ExamName;
                     existExam.AttachedFile = examDTO.attached_file != "string" && examDTO.attached_file != existExam.AttachedFile
@@ -487,13 +496,26 @@ namespace ExamProcessManage.Repository
                         ? examDTO.description : existExam.Description;
                     existExam.Comment = examDTO.comment != "string" && examDTO.comment != existExam.Comment
                         ? examDTO.comment : existExam.Comment;
-                    existExam.ExamSetId = examDTO.exam_set?.id;
+                    existExam.ExamSetId = examDTO.exam_set?.id == 0 ? existExam.ExamSetId : examDTO.exam_set?.id;
                     existExam.AcademicYearId = examDTO.academic_year?.id;
                     existExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
 
-                    // can sua them logic
-                    existExam.Status = examDTO.status != "string" && examDTO.status != existExam.Status
-                        ? examDTO.status : existExam.Status;
+                    if (existExam.Status == "in_progress" && examDTO.status == "pending_approval")
+                        existExam.Status = examDTO.status;
+                    else if (existExam.Status == "pending_approval" && examDTO.status == "in_progress")
+                        existExam.Status = examDTO.status;
+                    else if (existExam.Status == "rejected" && examDTO.status == "in_progress")
+                    {
+                        existExam.Status = examDTO.status;
+                        existExam.Comment = string.Empty;
+                    }
+                    else
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Bad request",
+                            errors = new() { new() { field = "status", message = "Invalid status." } }
+                        };
                 }
 
                 await _context.SaveChangesAsync();
@@ -531,16 +553,6 @@ namespace ExamProcessManage.Repository
                     };
                 }
 
-                if (existExam.Status == "approved")
-                {
-                    return new BaseResponseId
-                    {
-                        status = 405,
-                        message = "Method Not Allowed",
-                        errors = new List<ErrorDetail> { new() { message = "Exam has been approved and cannot be deleted." } }
-                    };
-                }
-
                 if (existExam.CreatorId != userId)
                 {
                     return new BaseResponseId
@@ -548,6 +560,16 @@ namespace ExamProcessManage.Repository
                         status = 405,
                         message = "Method Not Allowed",
                         errors = new List<ErrorDetail> { new() { message = "You do not have the right to delete other instructors' exams." } }
+                    };
+                }
+
+                if (existExam.Status == "approved")
+                {
+                    return new BaseResponseId
+                    {
+                        status = 405,
+                        message = "Method Not Allowed",
+                        errors = new List<ErrorDetail> { new() { message = "Exam has been approved and cannot be deleted." } }
                     };
                 }
 

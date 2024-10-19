@@ -123,9 +123,9 @@ namespace ExamProcessManage.Controllers
                 {
                     return Forbid();
                 }
-                if (userId != null && roleClaim.Value != "Admin")
+                if (userId != null)
                 {
-                    var updateExam = await _examRepository.UpdateExamAsync(int.Parse(userId.Value), examDTO);
+                    var updateExam = await _examRepository.UpdateExamAsync(int.Parse(userId.Value), roleClaim.Value == "Admin", examDTO);
 
                     if (updateExam != null && updateExam.data != null)
                     {
