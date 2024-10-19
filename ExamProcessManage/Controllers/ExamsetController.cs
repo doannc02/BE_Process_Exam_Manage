@@ -3,6 +3,7 @@ using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.RequestModels;
 using ExamProcessManage.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
@@ -195,33 +196,37 @@ namespace ExamProcessManage.Controllers
             }
         }
 
+        [AllowAnonymous]
+
         [HttpPut("update-state")]
         public async Task<IActionResult> UpdateStateAsync([FromQuery][Required] int examSetId, [Required] string status, string? comment)
         {
-            try
-            {
-                var updateStatus = await _repository.UpdateStateAsync(examSetId, status, comment);
+            return new CustomJsonResult(501, HttpContext, "Not Implemented");
 
-                if (updateStatus != null && updateStatus.data != null)
-                {
-                    var response = _createResponse.CreateResponse(updateStatus.message, HttpContext, updateStatus.data);
-                    return Ok(response); // Trả về kết quả thành công
-                }
-                else if (updateStatus != null)
-                {
-                    // Phản hồi lại lỗi từ UpdateStateAsync
-                    return new CustomJsonResult((int)updateStatus.status, HttpContext, updateStatus.message, updateStatus.errors);
-                }
-                else
-                {
-                    return new CustomJsonResult(400, HttpContext, "Không thể cập nhật trạng thái");
-                }
-            }
-            catch (Exception ex)
-            {
-                // Xử lý ngoại lệ nếu có lỗi trong quá trình cập nhật
-                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message}");
-            }
+            //try
+            //{
+            //    var updateStatus = await _repository.UpdateStateAsync(examSetId, status, comment);
+
+            //    if (updateStatus != null && updateStatus.data != null)
+            //    {
+            //        var response = _createResponse.CreateResponse(updateStatus.message, HttpContext, updateStatus.data);
+            //        return Ok(response); // Trả về kết quả thành công
+            //    }
+            //    else if (updateStatus != null)
+            //    {
+            //        // Phản hồi lại lỗi từ UpdateStateAsync
+            //        return new CustomJsonResult((int)updateStatus.status, HttpContext, updateStatus.message, updateStatus.errors);
+            //    }
+            //    else
+            //    {
+            //        return new CustomJsonResult(400, HttpContext, "Không thể cập nhật trạng thái");
+            //    }
+            //}
+            //catch (Exception ex)
+            //{
+            //    // Xử lý ngoại lệ nếu có lỗi trong quá trình cập nhật
+            //    return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message}");
+            //}
         }
 
         [HttpDelete]

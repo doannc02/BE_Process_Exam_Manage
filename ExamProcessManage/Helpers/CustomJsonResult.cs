@@ -24,43 +24,15 @@ namespace ExamProcessManage.Helpers
             response.StatusCode = _status;
             response.ContentType = "application/json";
 
-            // Build the base response object with errors (can be null)
-            var jsonResponse = new
+            var result = new
             {
                 status = _status,
-                traceId = _traceId,
                 title = _title,
+                traceId = _traceId,
                 errors = _errorDetail
             };
 
-            // Customize response for specific status codes
-            switch (_status)
-            {
-                case StatusCodes.Status401Unauthorized:
-                    response.Headers.Add("www-authenticate", "Bearer");
-                    jsonResponse = new
-                    {
-                        status = 401,
-                        traceId = _traceId,
-                        title = "Unauthorized",
-                        errors = (List<ErrorDetail>?)null // Ensure consistent structure
-                    };
-                    break;
-
-                case StatusCodes.Status403Forbidden:
-                    response.Headers.Add("www-authenticate", "Bearer");
-                    jsonResponse = new
-                    {
-                        status = 403,
-                        traceId = _traceId,
-                        title = "Forbidden",
-                        errors = _errorDetail // Use the actual error details if any
-                    };
-                    break;
-            }
-
-            // Serialize and write the response
-            await response.WriteAsJsonAsync(jsonResponse);
+            await response.WriteAsJsonAsync(result);
         }
     }
 }
