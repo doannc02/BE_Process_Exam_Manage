@@ -172,46 +172,23 @@ namespace ExamProcessManage.Controllers
             }
         }
 
-        [HttpPut("update-state")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UpdateStateProposalAsync([Required] int proposalId, [Required] string status, string comment)
-        {
-            try
-            {
-                var updateStatus = await _repository.UpdateStateProposalAsync(proposalId, status, comment);
-                if (updateStatus != null && updateStatus.data != null)
-                {
-                    var response = _createCommonResponse.CreateResponse(updateStatus.message, HttpContext, updateStatus.data);
-                    return Ok(response);
-                }
-                else if (updateStatus != null)
-                    return new CustomJsonResult((int)updateStatus.status, HttpContext, updateStatus.message, updateStatus.errors);
-                else
-                    return new CustomJsonResult(400, HttpContext, "Unable to update state");
-            }
-            catch (Exception ex)
-            {
-                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message}");
-            }
-        }
-
         [HttpDelete]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteProposalAsync([Required] int proposalId)
+        public async Task<IActionResult> DeleteProposalAsync([Required] int id)
         {
             try
             {
-                var delProposal = await _repository.DeleteProposalAsync(proposalId);
+                var delProposal = await _repository.DeleteProposalAsync(id);
                 if (delProposal.data != null)
                 {
                     var response = _createCommonResponse.CreateResponse(delProposal.message, HttpContext, delProposal.data);
                     return Ok(response);
                 }
-                else return new CustomJsonResult((int)delProposal.status, HttpContext, delProposal.message);
+                else return new CustomJsonResult((int)delProposal.status, HttpContext, delProposal.message, delProposal.errors);
             }
             catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, $"An error occurred: {ex.Message} {ex.InnerException}");
+                return new CustomJsonResult(500, HttpContext, $"An error occurred: {ex.Message}", new() { new() { message = ex.InnerException.ToString() } });
             }
         }
     }

@@ -494,8 +494,6 @@ namespace ExamProcessManage.Repository
                         ? examDTO.attached_file : existExam.AttachedFile;
                     existExam.Description = examDTO.description != "string" && examDTO.description != existExam.Description
                         ? examDTO.description : existExam.Description;
-                    existExam.Comment = examDTO.comment != "string" && examDTO.comment != existExam.Comment
-                        ? examDTO.comment : existExam.Comment;
                     existExam.ExamSetId = examDTO.exam_set?.id == 0 ? existExam.ExamSetId : examDTO.exam_set?.id;
                     existExam.AcademicYearId = examDTO.academic_year?.id;
                     existExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
@@ -518,6 +516,23 @@ namespace ExamProcessManage.Repository
                         };
                 }
 
+                var examsByExamSet = await _context.Exams.Where(e => e.ExamSetId == existExam.ExamSetId).ToListAsync();
+                if (examsByExamSet.Any())
+                {
+                    bool allExamsPendingApproval = examsByExamSet.All(exam => exam.Status == "pending_approval");
+                    var examSet = await _context.ExamSets.FindAsync(existExam.ExamSetId);
+                    if (examSet != null && examSet.Status != "approved")
+                    {
+                        var newStatus = allExamsPendingApproval ? "pending_approval" : "in_progress";
+                        if (examSet.Status != newStatus)
+                        {
+                            examSet.Status = newStatus;
+                            _context.ExamSets.Update(examSet);
+                        }
+                    }
+                }
+
+                _context.Exams.Update(existExam);
                 await _context.SaveChangesAsync();
 
                 return new BaseResponseId

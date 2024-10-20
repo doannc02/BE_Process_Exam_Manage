@@ -689,10 +689,17 @@ namespace ExamProcessManage.Repository
                 var proposal = await _context.Proposals.FirstOrDefaultAsync(p => p.ProposalId == proposalId);
 
                 if (proposal == null)
-                    return new BaseResponseId { status = 404, message = $"Proposal not found {proposalId}" };
+                    return new BaseResponseId
+                    {
+                        status = 404,
+                        message = "Not found",
+                        errors = new() { new() { message = $"Proposal not found {proposalId}" } }
+                    };
+
+
 
                 _context.Proposals.Remove(proposal);
-                await _context.SaveChangesAsync();
+                //await _context.SaveChangesAsync();
 
                 return new BaseResponseId { status = 200, message = "Delete proposal successfully", data = new() { id = proposalId } };
             }
