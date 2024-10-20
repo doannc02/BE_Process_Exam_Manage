@@ -516,24 +516,67 @@ namespace ExamProcessManage.Repository
                         };
                 }
 
+                // Lấy danh sách tất cả các Exam trong ExamSet
                 var examsByExamSet = await _context.Exams.Where(e => e.ExamSetId == existExam.ExamSetId).ToListAsync();
+
                 if (examsByExamSet.Any())
                 {
+                    // Kiểm tra nếu tất cả các exam có cùng trạng thái
+                    bool allExamsInProgress = examsByExamSet.All(exam => exam.Status == "in_progress");
                     bool allExamsPendingApproval = examsByExamSet.All(exam => exam.Status == "pending_approval");
+                    bool allExamsApproved = examsByExamSet.All(exam => exam.Status == "approved");
+                    bool allExamsRejected = examsByExamSet.All(exam => exam.Status == "rejected");
+
                     var examSet = await _context.ExamSets.FindAsync(existExam.ExamSetId);
-                    if (examSet != null && examSet.Status != "approved")
+                    if (examSet != null)
                     {
-                        var newStatus = allExamsPendingApproval ? "pending_approval" : "in_progress";
-                        if (examSet.Status != newStatus)
+                        // Nếu tất cả các exam có cùng trạng thái, chuyển trạng thái của exam_set theo
+                        if (allExamsInProgress)
                         {
-                            examSet.Status = newStatus;
-                            _context.ExamSets.Update(examSet);
+                            examSet.Status = "in_progress";
                         }
+                        else if (allExamsPendingApproval)
+                        {
+                            examSet.Status = "pending_approval";
+                        }
+                        else if (allExamsApproved)
+                        {
+                            examSet.Status = "approved";
+                        }
+                        else if (allExamsRejected)
+                        {
+                            examSet.Status = "rejected";
+                        }
+                        else
+                        {
+                            // Kiểm tra các trường hợp trạng thái bị pha trộn
+                            bool anyExamInProgress = examsByExamSet.Any(exam => exam.Status == "in_progress");
+                            bool anyExamRejected = examsByExamSet.Any(exam => exam.Status == "rejected");
+                            bool anyExamApproved = examsByExamSet.Any(exam => exam.Status == "approved");
+
+                            // Nếu có bất kỳ exam nào đang ở "in_progress" hoặc bị "rejected", es chuyển về "in_progress"
+                            if (anyExamInProgress || anyExamRejected)
+                            {
+                                examSet.Status = "in_progress";
+                            }
+                            // Nếu tất cả các exam còn lại là "approved", es chuyển về "approved"
+                            else if (allExamsApproved)
+                            {
+                                examSet.Status = "approved";
+                            }
+                            // Nếu các exam còn lại là "pending_approval", es giữ ở "pending_approval"
+                            else if (examsByExamSet.All(exam => exam.Status == "pending_approval"))
+                            {
+                                examSet.Status = "pending_approval";
+                            }
+                        }
+
+                        _context.ExamSets.Update(examSet);
                     }
                 }
 
                 _context.Exams.Update(existExam);
-                await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync(); // Lưu thay đổi vào DB
 
                 return new BaseResponseId
                 {
