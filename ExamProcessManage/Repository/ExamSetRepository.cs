@@ -675,14 +675,20 @@ namespace ExamProcessManage.Repository
                     };
 
                 if (findExamSet.Status == "approved")
-                {
                     return new BaseResponseId
                     {
                         status = 405,
                         message = "Forbiden",
-                        errors = new() { new() { message = "he exam set has been approved and cannot be deleted." } }
+                        errors = new() { new() { message = "The exam set has been approved and cannot be deleted." } }
                     };
-                }
+
+                if (findExamSet.ProposalId > 0)
+                    return new BaseResponseId
+                    {
+                        status = 405,
+                        message = "Forbiden",
+                        errors = new() { new() { message = "This exam set is currently assigned to a proposal and cannot be deleted." } }
+                    };
 
                 var exams = findExamSet.Exams;
 
