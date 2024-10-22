@@ -650,7 +650,7 @@ namespace ExamProcessManage.Repository
             return response;
         }
 
-        public async Task<BaseResponseId> DeleteExamSetAsync(int userId, int examSetId, bool examSetOnly)
+        public async Task<BaseResponseId> DeleteExamSetAsync(int userId, int examSetId, bool withExam)
         {
             try
             {
@@ -666,36 +666,51 @@ namespace ExamProcessManage.Repository
                         errors = new() { new() { message = $"Exam set not found {examSetId}" } }
                     };
 
+                // Check if the user has permission to delete the exam set
                 if (userId != findExamSet.CreatorId)
                     return new BaseResponseId
                     {
                         status = 405,
-                        message = "Forbiden",
+                        message = "Forbidden",
                         errors = new() { new() { message = "You do not have the right to delete this exam set." } }
                     };
 
+                // Check if the exam set is approved
                 if (findExamSet.Status == "approved")
                     return new BaseResponseId
                     {
                         status = 405,
-                        message = "Forbiden",
+                        message = "Forbidden",
                         errors = new() { new() { message = "The exam set has been approved and cannot be deleted." } }
                     };
 
+                // Check if the exam set is part of a proposal
                 if (findExamSet.ProposalId > 0)
                     return new BaseResponseId
                     {
                         status = 405,
-                        message = "Forbiden",
+                        message = "Forbidden",
                         errors = new() { new() { message = "This exam set is currently assigned to a proposal and cannot be deleted." } }
                     };
 
                 var exams = findExamSet.Exams;
 
+                // If there are exams related to this exam set
                 if (exams.Any())
                 {
-                    if (examSetOnly)
+                    if (!withExam)
                     {
+                        // Check if any exam in the exam set is approved
+                        var approvedExams = exams.Where(e => e.Status == "approved").ToList();
+                        if (approvedExams.Any())
+                            return new BaseResponseId
+                            {
+                                status = 405,
+                                message = "Forbidden",
+                                errors = new() { new() { message = "One or more exams have been approved, the exam set cannot be deleted." } }
+                            };
+
+                        // Set ExamSetId to null for the related exams
                         var examIds = exams.Select(e => e.ExamId).ToList();
                         await _context.Exams
                             .Where(e => examIds.Contains(e.ExamId))
@@ -703,35 +718,39 @@ namespace ExamProcessManage.Repository
                     }
                     else
                     {
+                        // Check if any exam is approved
                         var approvedExams = exams.Where(e => e.Status == "approved").ToList();
                         if (approvedExams.Any())
                             return new BaseResponseId
                             {
                                 status = 405,
-                                message = "Forbiden",
-                                errors = new() { new() { message = "The exam has been approved and cannot be deleted." } }
+                                message = "Forbidden",
+                                errors = new() { new() { message = "One or more exams have been approved, the exam set cannot be deleted." } }
                             };
 
+                        // Check if any exam is not created by the current user
                         var nonCreatorExams = exams.Where(e => e.CreatorId != userId).ToList();
                         if (nonCreatorExams.Any())
                             return new BaseResponseId
                             {
                                 status = 405,
-                                message = "Forbiden",
-                                errors = new() { new() { message = "You do not have the right to delete this exam." } }
+                                message = "Forbidden",
+                                errors = new() { new() { message = "One or more exams are not yours, and cannot be deleted." } }
                             };
 
+                        // Delete the related exams
                         _context.Exams.RemoveRange(exams);
                     }
                 }
 
+                // Finally, delete the exam set
                 _context.ExamSets.Remove(findExamSet);
                 await _context.SaveChangesAsync();
 
                 return new BaseResponseId
                 {
                     status = 200,
-                    message = examSetOnly ? "Delete exam set successfully." : "Delete examset and exams successfully.",
+                    message = withExam ? "Delete exam set successfully." : "Delete exam set and exams successfully.",
                     data = new() { id = findExamSet.ExamSetId }
                 };
             }
@@ -741,7 +760,7 @@ namespace ExamProcessManage.Repository
                 {
                     status = 500,
                     message = $"An error occurred: {ex.Message}",
-                    errors = new() { new() { message = ex.InnerException.ToString() } }
+                    errors = new() { new() { message = ex.InnerException?.ToString() ?? ex.Message } }
                 };
             }
         }
