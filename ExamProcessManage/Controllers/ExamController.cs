@@ -145,8 +145,8 @@ namespace ExamProcessManage.Controllers
             }
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteExamAsync(int id)
+        [HttpDelete]
+        public async Task<IActionResult> DeleteExamAsync([FromQuery][Required] int id)
         {
             try
             {
