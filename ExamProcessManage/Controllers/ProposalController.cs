@@ -174,11 +174,11 @@ namespace ExamProcessManage.Controllers
 
         [HttpDelete]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteProposalAsync([Required] int id)
+        public async Task<IActionResult> DeleteProposalAsync([Required] int id, bool withExamSet = false, bool withExam = false)
         {
             try
             {
-                var delProposal = await _repository.DeleteProposalAsync(id);
+                var delProposal = await _repository.DeleteProposalAsync(id, withExamSet, withExam);
                 if (delProposal.data != null)
                 {
                     var response = _createCommonResponse.CreateResponse(delProposal.message, HttpContext, delProposal.data);
