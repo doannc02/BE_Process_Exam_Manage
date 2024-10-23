@@ -164,24 +164,18 @@ namespace ExamProcessManage.Controllers
             {
                 var roleClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
                 var uID = User.Claims.FirstOrDefault(c => c.Type == "userId");
+
                 if (roleClaim != null && uID != null)
                 {
                     var updatedExamSet = await _repository.UpdateExamSetAsync(int.Parse(uID.Value), examSet, roleClaim.Value == "Admin");
                     if (updatedExamSet.data != null)
                     {
-                        if (updatedExamSet.errors != null && updatedExamSet.errors.Any())
-                        {
-                            return new CustomJsonResult((int)updatedExamSet.status, HttpContext, updatedExamSet.message, updatedExamSet.errors);
-                        }
-                        else
-                        {
-                            var response = _createResponse.CreateResponse(updatedExamSet.message, HttpContext, updatedExamSet.data);
-                            return Ok(response);
-                        }
+                        var response = _createResponse.CreateResponse(updatedExamSet.message, HttpContext, updatedExamSet.data);
+                        return Ok(response);
                     }
                     else
                     {
-                        return new CustomJsonResult(400, HttpContext, updatedExamSet.message, updatedExamSet.errors);
+                        return new CustomJsonResult((int)updatedExamSet.status, HttpContext, updatedExamSet.message, updatedExamSet.errors);
                     }
                 }
                 else
@@ -191,7 +185,8 @@ namespace ExamProcessManage.Controllers
             }
             catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, "Server error: " + ex.Message + "\n" + ex.InnerException);
+                return new CustomJsonResult(500, HttpContext, $"Server error: {ex.Message}", new() {
+                    new() { message = ex.InnerException?.ToString() ?? ex.Message } });
             }
         }
 

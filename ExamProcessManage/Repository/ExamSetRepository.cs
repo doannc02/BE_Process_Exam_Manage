@@ -383,11 +383,11 @@ namespace ExamProcessManage.Repository
 
         public async Task<BaseResponseId> UpdateExamSetAsync(int userId, ExamSetDTO examSet, bool isAdmin)
         {
-            var response = new BaseResponseId();
-            var errorList = new List<ErrorDetail>();
             try
             {
-                // check loi dau vao
+                var errorList = new List<ErrorDetail>();
+
+                // Check loi dau vao
                 if (examSet == null)
                     return new BaseResponseId
                     {
@@ -397,18 +397,18 @@ namespace ExamProcessManage.Repository
                     };
 
                 if (examSet?.id <= 0)
-                    errorList.Add(new() { field = "exam_set.id", message = "Invalid examset id" });
+                    errorList.Add(new() { field = "id", message = $"Invalid examset id {examSet.id}" });
 
                 if (!validStatus.Contains(examSet.status))
-                    errorList.Add(new() { field = "exam_set.status", message = "Invalid status" });
+                    errorList.Add(new() { field = "status", message = $"Invalid status '{examSet.status}'" });
 
                 if (examSet.course.id < 0)
-                    errorList.Add(new() { field = "exam_set.course.id", message = "Invalid course id" });
+                    errorList.Add(new() { field = "course.id", message = $"Invalid course id {examSet.course.id}" });
 
                 if (examSet.exam_quantity < 0)
-                    errorList.Add(new() { field = "exam_set.exam_quantity", message = "Invalid exam quantity" });
+                    errorList.Add(new() { field = "exam_quantity", message = $"Invalid exam quantity {examSet.exam_quantity}" });
 
-                // kiem tra tinh hop le, trung exam
+                // Kiem tra tinh hop le, trung exam
                 var examDTOs = examSet.exams?.ToList();
                 if (examDTOs != null && examDTOs.Any())
                 {
@@ -418,28 +418,29 @@ namespace ExamProcessManage.Repository
                         var id = examDTOs[i].id;
                         if (id <= 0) errorList.Add(new()
                         {
-                            field = $"exam_set.exams.{i}",
-                            message = "Invalid exam id"
+                            field = $"exams.{i}",
+                            message = $"Invalid exam id {id}"
                         });
                         if (!examIds.Add((int)examDTOs[i].id))
                         {
                             errorList.Add(new()
                             {
-                                field = $"exam_set.exams.{i}",
+                                field = $"exams.{i}",
                                 message = $"Conflict exam {id}"
                             });
                         }
                     }
                 }
 
-                if (errorList.Any()) return new BaseResponseId
-                {
-                    status = 400,
-                    message = "Invalid input",
-                    errors = errorList
-                };
+                if (errorList.Any())
+                    return new BaseResponseId
+                    {
+                        status = 400,
+                        message = "Invalid input",
+                        errors = errorList
+                    };
 
-                // lay ra exam set da co kem theo exams
+                // Lay ra exam set da co kem theo exams
                 var existExamSet = await _context.ExamSets.Include(t => t.Exams).FirstOrDefaultAsync(e => e.ExamSetId == examSet.id);
                 if (existExamSet == null)
                     return new BaseResponseId
@@ -449,7 +450,7 @@ namespace ExamProcessManage.Repository
                         errors = new() { new() { message = $"Exam set not found {examSet.id}" } }
                     };
 
-                // bao loi khi bo de da duoc phe duyet
+                // Bao loi khi bo de da duoc phe duyet
                 if (existExamSet.Status == "approved")
                     return new BaseResponseId
                     {
@@ -459,7 +460,11 @@ namespace ExamProcessManage.Repository
                     };
 
                 // Retrieve the list of exams from the exam set
-                var exams = existExamSet.Exams.ToList();
+                var existExams = existExamSet.Exams.ToList();
+
+
+
+
 
                 // Check if the user is an admin
                 if (isAdmin)
@@ -481,7 +486,7 @@ namespace ExamProcessManage.Repository
                         int i = 0;
                         foreach (var examDTO in examDTOs)
                         {
-                            var exam = exams.FirstOrDefault(e => e.ExamId == examDTO.id);
+                            var exam = existExams.FirstOrDefault(e => e.ExamId == examDTO.id);
 
                             if (exam == null)
                             {
@@ -529,7 +534,7 @@ namespace ExamProcessManage.Repository
                     if (examSet.status == "approved")
                     {
                         // Check if all exams are already approved
-                        var allExamsApproved = exams.All(e => e.Status == "approved");
+                        var allExamsApproved = existExams.All(e => e.Status == "approved");
                         if (allExamsApproved)
                         {
                             // If all exams are approved, set the exam set status to approved
@@ -565,252 +570,230 @@ namespace ExamProcessManage.Repository
                         };
                     }
                 }
+
+
+
+
+
+                // Neu user khong phai admin
                 else
                 {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                    // Kiem tra exam set co phai do nguoi dung dang dang nhap tao khong
                     if (existExamSet.CreatorId != userId)
                     {
                         return new BaseResponseId
                         {
-                            status = 403,
+                            status = 405,
                             message = "Forbiden",
-                            errors = new() { new() { message = "You do not have permission to update this exam set" } }
+                            errors = new() { new() { message = "You do not have the right to update this exam set." } }
                         };
                     }
 
-                    if (existExamSet.Status != examSet.status)
-                        switch (existExamSet.Status)
+                    // Trang thai dau vao chi danh cho admin
+                    if (examSet.status == "approved" || examSet.status == "rejected")
+                        return new BaseResponseId
                         {
-                            case "in_progress":
-                                if (examSet.status == "pending_approval")
-                                {
-                                    existExamSet.Status = examSet.status;
-                                    break;
-                                }
-                                return new BaseResponseId
-                                {
-                                    status = 400,
-                                    message = "Invalid status",
-                                    errors = new List<ErrorDetail> { new()
-                                {
-                                    field = "status",
-                                    message = "Can only update from 'in_progress' to 'pending_approval'."
-                                } }
-                                };
+                            status = 405,
+                            message = "Not allowed",
+                            errors = new() { new() { field = "status", message = "Status not allowed for user." } }
+                        };
 
-                            case "pending_approval":
-                                if (examSet.status == "approved" || examSet.status == "rejected" || examSet.status == "in_progress")
-                                {
-                                    existExamSet.Status = examSet.status;
-                                    break;
-                                }
-                                return new BaseResponseId
-                                {
-                                    status = 400,
-                                    message = "Invalid status",
-                                    errors = new List<ErrorDetail> { new()
-                                {
-                                    field = "status",
-                                    message = "Can only update from 'pending_approval' to 'approved', 'rejected', or 'in_progress'."
-                                } }
-                                };
-
-                            case "rejected":
-                                if (examSet.status == "in_progress" || examSet.status == "pending_approval")
-                                {
-                                    existExamSet.Status = examSet.status;
-                                    break;
-                                }
-                                return new BaseResponseId
-                                {
-                                    status = 400,
-                                    message = "Invalid status",
-                                    errors = new List<ErrorDetail> { new()
-                                {
-                                    field = "status",
-                                    message = "Can only update from 'rejected' to 'in_progress' or 'pending_approval'."
-                                } }
-                                };
-
-                            default:
-                                return new BaseResponseId
-                                {
-                                    status = 400,
-                                    message = "Invalid status",
-                                    errors = new List<ErrorDetail> { new() { field = "status", message = "Unexpected status." } }
-                                };
-                        }
-
+                    // Thay doi khoa
                     if (examSet.department != null && examSet.department.id > 0)
                     {
                         if (!await _context.Departments.AnyAsync(d => d.DepartmentId == examSet.department.id)) errorList.Add(new()
                         {
-                            field = "exam_set.department",
+                            field = "department",
                             message = $"Department not found {examSet.department.id}"
                         });
                         else existExamSet.DepartmentId = examSet.department.id;
                     }
 
+                    // Thay doi chuyen nghanh
                     if (examSet.major != null && examSet.major.id > 0)
                     {
                         if (!await _context.Majors.AnyAsync(m => m.MajorId == examSet.major.id)) errorList.Add(new()
                         {
-                            field = "exam_set.major",
+                            field = "major",
                             message = $"Major not found {examSet.major.id}"
                         });
                         else existExamSet.MajorId = examSet.major.id;
                     }
 
+                    // Thay doi de xuat
                     if (examSet.proposal != null && examSet.proposal.id > 0)
                     {
                         if (!await _context.Proposals.AnyAsync(p => p.ProposalId == examSet.proposal.id)) errorList.Add(new()
                         {
-                            field = "exam_set.proposal",
+                            field = "proposal",
                             message = $"Proposal not found {examSet.proposal.id}"
                         });
                         else existExamSet.ProposalId = examSet.proposal.id;
                     }
 
+                    // Thay doi hoc phan
                     if (examSet.course != null && examSet.course.id > 0)
                     {
                         if (!await _context.Courses.AnyAsync(c => c.CourseId == examSet.course.id)) errorList.Add(new()
                         {
-                            field = "exam_set.course",
+                            field = "course",
                             message = $"Course not found {examSet.course.id}"
                         });
                         else existExamSet.CourseId = examSet.course.id;
                     }
 
-                    existExamSet.Status = examSet.status;
-                    existExamSet.ExamQuantity = (int)examSet.exam_quantity;
                     existExamSet.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
                     existExamSet.ExamSetName = examSet.name == "string" || string.IsNullOrEmpty(examSet.name)
                         ? existExamSet.ExamSetName : examSet.name;
                     existExamSet.Description = examSet.description == "string" || string.IsNullOrEmpty(examSet.description)
                         ? existExamSet.Description : examSet.description;
+                    existExamSet.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
 
-                    var examList = new List<Exam>();
-                    if (examSet.exams != null && examSet.exams.Any())
+
+
+
+
+                    // Cap nhat exams
+                    if (examDTOs != null)
                     {
-                        var examComments = examSet.exams.ToDictionary(e => e.id, e => e.comment);
-                        var examsListId = examComments.Keys.ToHashSet();
-                        var existingExams = await _context.Exams.Where(e => examsListId.Contains(e.ExamId)).ToListAsync();
-                        var examCodeSet = new HashSet<int>();
-                        var examsToRemove = existingExams.Where(e => !examsListId.Contains(e.ExamId)).ToList();
+                        // Lấy danh sách kỳ thi mới dựa trên thông tin từ examDTO
+                        var newExams = await _context.Exams
+                            .Where(e => examDTOs.Select(dto => dto.id).Contains(e.ExamId))
+                            .ToListAsync();
 
-                        if (examsToRemove.Any())
-                            foreach (var exam in examsToRemove) { exam.ExamSetId = null; }
+                        // Tạo tập hợp ID của các kỳ thi mới để kiểm tra kỳ thi cũ
+                        var newExamIds = new HashSet<int>(newExams.Select(e => e.ExamId));
 
-                        int i = 0;
-                        foreach (var examId in examsListId)
+                        // Xử lý các kỳ thi cũ
+                        foreach (var oldExam in existExams)
                         {
-                            if (!examCodeSet.Add((int)examId))
+                            if (!newExamIds.Contains(oldExam.ExamId))
                             {
-                                errorList.Add(new()
+                                if (oldExam.Status == "approved")
                                 {
-                                    field = $"exam_set.exams.{i}",
-                                    message = $"Conflict exam {examId}"
-                                });
+                                    errorList.Add(new() { field = "exams", message = $"Can not remove exam is approved {oldExam.ExamId}." });
+                                }
+                                else
+                                {
+                                    oldExam.Status = oldExam.Status == "pending_approval" ? "in_progress" : oldExam.Status;
+                                    oldExam.ExamSetId = null;
+                                    oldExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
+                                }
                             }
-                            else if (!existingExams.Any(e => e.ExamId == examId))
+                        }
+
+
+
+
+
+                        // Tạo dictionary để nhanh chóng truy cập trạng thái kỳ thi theo id
+                        var examStatusDict = examDTOs.ToDictionary(e => e.id, e => e.status);
+                        int i = 0;
+
+                        // Cập nhật trạng thái kỳ thi mới dựa trên examDTO
+                        foreach (var newExam in newExams)
+                        {
+                            if ((newExam.ExamSetId == null || newExam.ExamSetId == existExamSet.ExamSetId) && newExam.CreatorId == userId)
                             {
-                                errorList.Add(new()
+                                if (examStatusDict.TryGetValue(newExam.ExamId, out var newStatus))
                                 {
-                                    field = $"exam_set.exams.{i}",
-                                    message = $"Exam not found {examId}"
-                                });
+                                    if (newStatus == "approved" || newStatus == "rejected")
+                                    {
+                                        errorList.Add(new() { field = $"exam_set.exams.{i}", message = "Invalid status for exam." });
+                                    }
+                                    else
+                                    {
+                                        if (newExam.Status != examDTOs[i].status)
+                                            if (newExam.Status == "in_progress" && examDTOs[i].status == "pending_approval")
+                                            {
+                                                newExam.Status = examDTOs[i].status;
+                                                newExam.Comment = string.Empty;
+                                            }
+                                            else if (newExam.Status == "pending_approval" && examDTOs[i].status == "in_progress")
+                                                newExam.Status = examDTOs[i].status;
+                                            else if (newExam.Status == "rejected" && examDTOs[i].status == "in_progress")
+                                                newExam.Status = examDTOs[i].status;
+                                            else
+                                                errorList.Add(new()
+                                                {
+                                                    field = $"exams.{i}.status",
+                                                    message = $"Invalid status for exam {newExam.ExamId}: '{newExam.Status}' to '{examDTOs[i].status}'."
+                                                });
+                                    }
+                                }
                             }
                             else
                             {
-                                var exam = existingExams.First(e => e.ExamId == examId);
-
-                                var comment = examComments[examId];
-                                exam.Comment = string.IsNullOrEmpty(comment) || comment == "string" || exam.Comment == comment ? exam.Comment : comment;
-
-                                if (examSet.status != exam.Status && exam.Status != "approved")
-                                    switch (examSet.status)
-                                    {
-                                        case "approved":
-                                            if (exam.Status == "pending_approval")
-                                                exam.Status = examSet.status;
-                                            else
-                                                errorList.Add(new() { field = $"exam_set.exams.{i}", message = "Invalid exam status" });
-                                            break;
-
-                                        case "rejected":
-                                            if (exam.Status == "pending_approval")
-                                                exam.Status = examSet.status;
-                                            else
-                                                errorList.Add(new() { field = $"exam_set.exams.{i}", message = "Invalid exam status" });
-                                            break;
-                                        default:
-                                            exam.Status = examSet.status;
-                                            break;
-                                    }
-                                examList.Add(exam);
+                                errorList.Add(new() { field = $"exams.{i}", message = "Invalid exam." });
                             }
                             i++;
                         }
+
+                        // Thay thế kỳ thi cũ bằng kỳ thi mới trong examSet
+                        existExamSet.Exams = newExams;
                     }
 
-                    if (errorList.Any()) return new BaseResponseId
+
+
+
+
+                    // Cập nhật trạng thái exam set dựa trên trạng thái của các kỳ thi
+                    if (existExamSet.Status != examSet.status)
+                        if (existExamSet.Status == "in_progress" && examSet.status == "pending_approval")
+                            if (existExamSet.Exams.All(e => e.Status == "pending_approval"))
+                                if (existExamSet.Exams.Count >= existExamSet.ExamQuantity)
+                                    existExamSet.Status = examSet.status;
+                                else
+                                    errorList.Add(new()
+                                    {
+                                        field = "exam_quantity",
+                                        message = $"Exam set not enough exams: {existExamSet.Exams.Count}/{existExamSet.ExamQuantity}."
+                                    });
+                            else
+                                errorList.Add(new()
+                                {
+                                    field = "status",
+                                    message = "Not all exams are pending approval."
+                                });
+                        else if (existExamSet.Status == "pending_approval" && examSet.status == "in_progress")
+                            existExamSet.Status = examSet.status;
+                        else if (existExamSet.Status == "rejected" && examSet.status == "in_progress")
+                            existExamSet.Status = examSet.status;
+                        else
+                            errorList.Add(new()
+                            {
+                                field = "status",
+                                message = "Invalid status for exam set: '{existExamSet.Status}' to '{examSet.status}'"
+                            });
+                }
+
+                // Return errors if any were found
+                if (errorList.Any())
+                    return new BaseResponseId
                     {
                         status = 400,
                         message = "Update failed",
                         errors = errorList
                     };
 
-                    if (examDTOs != null && examList.Count == examDTOs.Count) existExamSet.Exams = examList;
-
-                    await _context.SaveChangesAsync();
-
-                    response.message = "Update successfully";
-                    response.data = new DetailResponse { id = existExamSet.ExamSetId };
-                }
-
                 await _context.SaveChangesAsync();
 
-                response.message = "Update successfully";
-                response.data = new DetailResponse { id = existExamSet.ExamSetId };
+                return new BaseResponseId
+                {
+                    status = 200,
+                    message = "Update successfully",
+                    data = new() { id = existExamSet.ExamSetId }
+                };
             }
             catch (Exception ex)
             {
-                errorList.Add(new()
+                return new BaseResponseId
                 {
-                    message = ex.InnerException?.ToString() ?? ex.Message
-                });
-                response.message = $"An error occurred: {ex.Message}";
-                response.errors = errorList;
+                    status = 500,
+                    message = $"An error occurred: {ex.Message}",
+                    errors = new() { new() { message = ex.InnerException?.ToString() ?? ex.Message } }
+                };
             }
-
-            return response;
         }
 
         public async Task<BaseResponseId> DeleteExamSetAsync(int userId, int examSetId, bool withExam)
