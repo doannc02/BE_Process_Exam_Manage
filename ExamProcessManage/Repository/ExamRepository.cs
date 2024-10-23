@@ -499,14 +499,14 @@ namespace ExamProcessManage.Repository
                     existExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
 
                     if (existExam.Status == "in_progress" && examDTO.status == "pending_approval")
-                        existExam.Status = examDTO.status;
-                    else if (existExam.Status == "pending_approval" && examDTO.status == "in_progress")
-                        existExam.Status = examDTO.status;
-                    else if (existExam.Status == "rejected" && examDTO.status == "in_progress")
                     {
                         existExam.Status = examDTO.status;
                         existExam.Comment = string.Empty;
                     }
+                    else if (existExam.Status == "pending_approval" && examDTO.status == "in_progress")
+                        existExam.Status = examDTO.status;
+                    else if (existExam.Status == "rejected" && examDTO.status == "in_progress")
+                        existExam.Status = examDTO.status;
                     else
                         return new BaseResponseId
                         {
