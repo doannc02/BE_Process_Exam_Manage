@@ -3,7 +3,6 @@ using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.RequestModels;
 using ExamProcessManage.Utils;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
@@ -163,14 +162,14 @@ namespace ExamProcessManage.Controllers
         {
             try
             {
+                var roleClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
                 var uID = User.Claims.FirstOrDefault(c => c.Type == "userId");
-                if (uID != null)
+                if (roleClaim != null && uID != null)
                 {
-                    var updatedExamSet = await _repository.UpdateExamSetAsync(int.Parse(uID.Value), examSet);
-
-                    if (updatedExamSet != null)
+                    var updatedExamSet = await _repository.UpdateExamSetAsync(int.Parse(uID.Value), examSet, roleClaim.Value == "Admin");
+                    if (updatedExamSet.data != null)
                     {
-                        if (updatedExamSet.status != null || updatedExamSet.status == 500 && updatedExamSet.errors != null && updatedExamSet.errors.Any())
+                        if (updatedExamSet.errors != null && updatedExamSet.errors.Any())
                         {
                             return new CustomJsonResult((int)updatedExamSet.status, HttpContext, updatedExamSet.message, updatedExamSet.errors);
                         }
@@ -182,7 +181,7 @@ namespace ExamProcessManage.Controllers
                     }
                     else
                     {
-                        return new CustomJsonResult(400, HttpContext, "Error");
+                        return new CustomJsonResult(400, HttpContext, updatedExamSet.message, updatedExamSet.errors);
                     }
                 }
                 else

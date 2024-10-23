@@ -381,18 +381,34 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public async Task<BaseResponseId> UpdateExamSetAsync(int userId, ExamSetDTO examSet)
+        public async Task<BaseResponseId> UpdateExamSetAsync(int userId, ExamSetDTO examSet, bool isAdmin)
         {
             var response = new BaseResponseId();
             var errorList = new List<ErrorDetail>();
             try
             {
-                if (examSet == null) errorList.Add(new() { message = "Null exam set" });
-                if (examSet.id <= 0) errorList.Add(new() { field = "exam_set.id", message = "Invalid examset id" });
-                if (!validStatus.Contains(examSet.status)) errorList.Add(new() { field = "exam_set.status", message = "Invalid status" });
-                //if (examSet.course.id <= 0) errorList.Add(new() { field = "exam_set.course.id", message = "Invalid course id" });
-                //if (examSet.exam_quantity <= 0) errorList.Add(new() { field = "exam_set.exam_quantity", message = "Invalid exam quantity" });
+                // check loi dau vao
+                if (examSet == null)
+                    return new BaseResponseId
+                    {
+                        status = 400,
+                        message = "Bad resuest",
+                        errors = new() { new() { message = "Null exam set." } }
+                    };
 
+                if (examSet?.id <= 0)
+                    errorList.Add(new() { field = "exam_set.id", message = "Invalid examset id" });
+
+                if (!validStatus.Contains(examSet.status))
+                    errorList.Add(new() { field = "exam_set.status", message = "Invalid status" });
+
+                if (examSet.course.id < 0)
+                    errorList.Add(new() { field = "exam_set.course.id", message = "Invalid course id" });
+
+                if (examSet.exam_quantity < 0)
+                    errorList.Add(new() { field = "exam_set.exam_quantity", message = "Invalid exam quantity" });
+
+                // kiem tra tinh hop le, trung exam
                 var examDTOs = examSet.exams?.ToList();
                 if (examDTOs != null && examDTOs.Any())
                 {
@@ -423,11 +439,162 @@ namespace ExamProcessManage.Repository
                     errors = errorList
                 };
 
+                // lay ra exam set da co kem theo exams
                 var existExamSet = await _context.ExamSets.Include(t => t.Exams).FirstOrDefaultAsync(e => e.ExamSetId == examSet.id);
                 if (existExamSet == null)
-                    errorList.Add(new() { message = $"Exam set not found {examSet.id}" });
+                    return new BaseResponseId
+                    {
+                        status = 404,
+                        message = "Not found",
+                        errors = new() { new() { message = $"Exam set not found {examSet.id}" } }
+                    };
+
+                // bao loi khi bo de da duoc phe duyet
+                if (existExamSet.Status == "approved")
+                    return new BaseResponseId
+                    {
+                        status = 405,
+                        message = "Forbiden",
+                        errors = new() { new() { message = "This exam set has been approved, unable to update" } }
+                    };
+
+                // Retrieve the list of exams from the exam set
+                var exams = existExamSet.Exams.ToList();
+
+                // Check if the user is an admin
+                if (isAdmin)
+                {
+                    // Ensure the exam set is pending approval and the new status is valid
+                    if (existExamSet.Status != "pending_approval" || (examSet.status != "approved" && examSet.status != "rejected"))
+                    {
+                        errorList.Add(new() { field = "status", message = "Invalid status for exam set." });
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Update failed",
+                            errors = errorList
+                        };
+                    }
+
+                    if (examDTOs != null)
+                    {
+                        int i = 0;
+                        foreach (var examDTO in examDTOs)
+                        {
+                            var exam = exams.FirstOrDefault(e => e.ExamId == examDTO.id);
+
+                            if (exam == null)
+                            {
+                                errorList.Add(new() { field = $"exam_set.exams.{i}", message = $"Exam not match {examDTO.id}" });
+                                i++;
+                                continue;
+                            }
+
+                            // Exam already approved, cannot update
+                            if (exam.Status == "approved")
+                            {
+                                errorList.Add(new() { message = "The exam has been approved, and cannot be updated." });
+                                i++;
+                                continue;
+                            }
+
+                            // Check for valid status transitions (only pending exams can be approved/rejected)
+                            if (exam.Status == "pending_approval" && (examDTO.status == "approved" || examDTO.status == "rejected"))
+                            {
+                                // Validate the comment
+                                if (string.IsNullOrEmpty(examDTO.comment) || examDTO.comment == "string")
+                                {
+                                    return new BaseResponseId
+                                    {
+                                        status = 400,
+                                        message = "Bad request",
+                                        errors = new() { new() { field = "comment", message = "Invalid comment." } }
+                                    };
+                                }
+
+                                // Update exam details
+                                exam.Comment = examDTO.comment;
+                                exam.Status = examDTO.status;
+                                exam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
+                            }
+                            else
+                            {
+                                errorList.Add(new() { field = $"exam_set.exams.{i}", message = "Invalid status for exam." });
+                            }
+
+                            i++;
+                        }
+                    }
+
+                    if (examSet.status == "approved")
+                    {
+                        // Check if all exams are already approved
+                        var allExamsApproved = exams.All(e => e.Status == "approved");
+                        if (allExamsApproved)
+                        {
+                            // If all exams are approved, set the exam set status to approved
+                            existExamSet.Status = "approved";
+                        }
+                        else
+                        {
+                            // If not all exams are approved, return an error
+                            errorList.Add(new() { field = "status", message = "Not all exams are approved." });
+                        }
+                    }
+                    else if (examSet.status == "rejected")
+                    {
+                        // If the status is rejected, set the exam set status to rejected directly
+                        existExamSet.Status = "rejected";
+                    }
+                    else
+                    {
+                        errorList.Add(new() { field = "status", message = "Invalid status transition." });
+                    }
+
+                    // Update timestamp of the exam set
+                    existExamSet.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
+
+                    // Return error response if there are any validation errors
+                    if (errorList.Any())
+                    {
+                        return new BaseResponseId
+                        {
+                            status = 400,
+                            message = "Update failed",
+                            errors = errorList
+                        };
+                    }
+                }
                 else
                 {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     if (existExamSet.CreatorId != userId)
                     {
                         return new BaseResponseId
@@ -435,16 +602,6 @@ namespace ExamProcessManage.Repository
                             status = 403,
                             message = "Forbiden",
                             errors = new() { new() { message = "You do not have permission to update this exam set" } }
-                        };
-                    }
-
-                    if (existExamSet.Status == "approved")
-                    {
-                        return new BaseResponseId
-                        {
-                            status = 403,
-                            message = "Forbiden",
-                            errors = new() { new() { message = "This exam set has been approved, unable to update" } }
                         };
                     }
 
@@ -637,13 +794,19 @@ namespace ExamProcessManage.Repository
                     response.message = "Update successfully";
                     response.data = new DetailResponse { id = existExamSet.ExamSetId };
                 }
+
+                await _context.SaveChangesAsync();
+
+                response.message = "Update successfully";
+                response.data = new DetailResponse { id = existExamSet.ExamSetId };
             }
             catch (Exception ex)
             {
                 errorList.Add(new()
                 {
-                    message = $"An error occurred:  {ex.Message} {ex.InnerException}"
+                    message = ex.InnerException?.ToString() ?? ex.Message
                 });
+                response.message = $"An error occurred: {ex.Message}";
                 response.errors = errorList;
             }
 
