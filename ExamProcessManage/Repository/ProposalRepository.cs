@@ -682,23 +682,112 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public async Task<BaseResponseId> DeleteProposalAsync(int proposalId)
+        public async Task<BaseResponseId> DeleteProposalAsync(int proposalId, bool withExamSet, bool withExam)
         {
             try
             {
-                var proposal = await _context.Proposals.FirstOrDefaultAsync(p => p.ProposalId == proposalId);
+                var proposal = await _context.Proposals
+                    .Include(es => es.ExamSets)
+                    .FirstOrDefaultAsync(p => p.ProposalId == proposalId);
 
                 if (proposal == null)
-                    return new BaseResponseId { status = 404, message = $"Proposal not found {proposalId}" };
+                    return new BaseResponseId
+                    {
+                        status = 404,
+                        message = "Not found",
+                        errors = new() { new() { message = $"Proposal not found {proposalId}" } }
+                    };
+
+                if (proposal.Status == "approved")
+                    return new BaseResponseId
+                    {
+                        status = 405,
+                        message = "Forbiden",
+                        errors = new() { new() { message = "The proposal has been approved and cannot be deleted." } }
+                    };
+
+                var examSets = proposal.ExamSets;
+                if (examSets.Any())
+                {
+                    if (!withExamSet)
+                    {
+                        var approvedExamSets = examSets.Where(e => e.Status == "approved").ToList();
+                        if (approvedExamSets.Any())
+                            return new BaseResponseId
+                            {
+                                status = 405,
+                                message = "Forbidden",
+                                errors = new() { new() { message = "One or more exam sets have been approved, the proposal cannot be deleted." } }
+                            };
+
+                        var examSetIds = examSets.Select(e => e.ExamSetId).ToList();
+                        await _context.ExamSets
+                            .Where(e => examSetIds.Contains(e.ExamSetId))
+                            .ForEachAsync(e => e.ProposalId = null);
+                    }
+                    else
+                    {
+                        var approvedExamSets = examSets.Where(e => e.Status == "approved").ToList();
+                        if (approvedExamSets.Any())
+                            return new BaseResponseId
+                            {
+                                status = 405,
+                                message = "Forbiden",
+                                errors = new() { new() { message = "One or more exam sets have been approved, the proposal cannot be deleted." } }
+                            };
+
+                        foreach (var item in examSets)
+                        {
+                            var exams = await _context.Exams.Where(e => e.ExamSetId == item.ExamSetId).ToListAsync();
+
+                            if (!withExam)
+                            {
+                                var approvedExams = exams.Where(e => e.Status == "approved").ToList();
+                                if (approvedExams.Any())
+                                    return new BaseResponseId
+                                    {
+                                        status = 405,
+                                        message = "Forbidden",
+                                        errors = new() { new() { message = "One or more exams have been approved, the exam set cannot be deleted." } }
+                                    };
+
+                                var examIds = exams.Select(e => e.ExamId).ToList();
+                                await _context.Exams
+                                    .Where(e => examIds.Contains(e.ExamId))
+                                    .ForEachAsync(e => e.ExamSetId = null);
+                            }
+                            else
+                            {
+                                var approvedExams = exams.Where(e => e.Status == "approved").ToList();
+                                if (approvedExams.Any())
+                                    return new BaseResponseId
+                                    {
+                                        status = 405,
+                                        message = "Forbidden",
+                                        errors = new() { new() { message = "One or more exams have been approved, the exam set cannot be deleted." } }
+                                    };
+
+                                _context.Exams.RemoveRange(exams);
+                            }
+                        }
+
+                        _context.ExamSets.RemoveRange(examSets);
+                    }
+                }
 
                 _context.Proposals.Remove(proposal);
                 await _context.SaveChangesAsync();
 
-                return new BaseResponseId { status = 200, message = "Delete proposal successfully", data = new() { id = proposalId } };
+                return new BaseResponseId { status = 200, message = "Delete proposal successfully", data = new() { id = proposal.ProposalId } };
             }
             catch (Exception ex)
             {
-                return new BaseResponseId { status = 500, message = $"An error occurred: {ex.Message} {ex.InnerException}" };
+                return new BaseResponseId
+                {
+                    status = 500,
+                    message = $"An error occurred: {ex.Message}",
+                    errors = new() { new() { message = ex.InnerException.ToString() } }
+                };
             }
         }
     }

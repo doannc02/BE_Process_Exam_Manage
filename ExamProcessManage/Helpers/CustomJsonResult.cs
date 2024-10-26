@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
 using System.Diagnostics;
 
 namespace ExamProcessManage.Helpers
@@ -25,32 +24,15 @@ namespace ExamProcessManage.Helpers
             response.StatusCode = _status;
             response.ContentType = "application/json";
 
-            if (_status == StatusCodes.Status401Unauthorized ||
-                _status == StatusCodes.Status403Forbidden)
-            {
-                response.Headers.Add("www-authenticate", "Bearer");
-
-                var unauthorizedResponse = new
-                {
-                    status = _status == 401 ? 401 : 403,
-                    traceId = _traceId,
-                    message = _status == 401 ? "Unauthorized" : "Forbidden"
-                };
-
-                var json = JsonConvert.SerializeObject(unauthorizedResponse);
-                await response.WriteAsync(json);
-                return;
-            }
-
-            var jsonResponse = System.Text.Json.JsonSerializer.Serialize(new
+            var result = new
             {
                 status = _status,
-                traceId = _traceId,
                 title = _title,
-                error = _errorDetail
-            });
+                traceId = _traceId,
+                errors = _errorDetail
+            };
 
-            await response.WriteAsync(jsonResponse);
+            await response.WriteAsJsonAsync(result);
         }
     }
 }

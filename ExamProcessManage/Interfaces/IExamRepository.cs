@@ -4,12 +4,12 @@ using ExamProcessManage.RequestModels;
 
 namespace ExamProcessManage.Interfaces
 {
-    public interface IExamRepository : IBaseRepository
+    public interface IExamRepository
     {
         Task<PageResponse<ExamDTO>> GetListExamsAsync(ExamRequestParams examRequest, int? userId);
         Task<BaseResponse<ExamDTO>> GetDetailExamAsync(int examId);
         Task<BaseResponse<List<DetailResponse>>> CreateExamsAsync(List<ExamDTO> examDTOs, int userId);
-        Task<BaseResponseId> UpdateExamAsync(ExamDTO examDTO, int userId);
+        Task<BaseResponseId> UpdateExamAsync(int userId, bool isAdmin, ExamDTO examDTO);
         Task<BaseResponseId> DeleteExamAsync(int userId, int examId);
     }
 }
