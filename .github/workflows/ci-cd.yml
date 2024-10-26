@@ -38,16 +38,16 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-
+          
           # Khởi động ssh-agent và thêm khóa SSH
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/id_rsa
-
+          
           # Kết nối đến server và sao chép files qua cổng 9001
           scp -o StrictHostKeyChecking=no -P 9001 -r ~/BE_Process_Exam_Manage/ExamProcessManage/deploy-pem/be/publish/* $SERVER_USER@$SERVER_IP:~/BE_Process_Exam_Manage/ExamProcessManage/deploy-pem/be/publish
-
+          
           # Khởi động lại Nginx sau khi sao chép file qua cổng 9001
           ssh -o StrictHostKeyChecking=no -p 9001 $SERVER_USER@$SERVER_IP 'sudo systemctl restart nginx'
-
+          
           # Xóa file khóa SSH sau khi sử dụng
           rm ~/.ssh/id_rsa
