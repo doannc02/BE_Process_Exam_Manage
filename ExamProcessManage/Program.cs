@@ -148,7 +148,7 @@ app.Use(async (context, next) =>
     }
 });
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseAuthentication();
 
