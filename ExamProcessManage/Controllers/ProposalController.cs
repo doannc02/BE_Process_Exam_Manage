@@ -134,7 +134,7 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpPut]
-        [Authorize(Roles = "Admin")]
+        
         public async Task<IActionResult> UpdateProposalAsync([FromBody] ProposalDTO proposal)
         {
             if (proposal == null)
