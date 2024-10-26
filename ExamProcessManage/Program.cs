@@ -109,7 +109,7 @@ builder.Services.AddSwaggerGen(option =>
 });
 
 var app = builder.Build();
-
+app.Urls.Add("http://0.0.0.0:5000");
 // Middleware pipeline
 if (app.Environment.IsDevelopment())
 {

@@ -10,11 +10,13 @@ namespace ExamProcessManage.Services
     {
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IConfiguration _configuration;
 
-        public UploadService(IWebHostEnvironment webHostEnvironment, IHttpContextAccessor httpContextAccessor)
+        public UploadService(IConfiguration configuration, IWebHostEnvironment webHostEnvironment, IHttpContextAccessor httpContextAccessor)
         {
             _webHostEnvironment = webHostEnvironment;
             _httpContextAccessor = httpContextAccessor;
+            _configuration = configuration;
         }
 
         public async Task<string> UploadFile(IFormFile file)
@@ -42,12 +44,16 @@ namespace ExamProcessManage.Services
             {
                 await file.CopyToAsync(stream);
             }
+            var settingValue = _configuration["ngrok"];  // "Value1"
 
             // Lấy thông tin về Request để tạo URL cho file
             var request = _httpContextAccessor.HttpContext.Request;
-            string fileUrl = $"{request.Scheme}://{request.Host}/files/{uniqueFileName}";
+           // string fileUrl = $"{request.Scheme}://{request.Host}/files/{uniqueFileName}";
+            string fileUrl = $"{settingValue}/files/{uniqueFileName}";
+            //string fileUrl = Path.Combine(settingValue,"files", uniqueFileName);
 
-            return fileUrl;
+            // return fileUrl;
+            return new string(fileUrl);
         }
 
         public async Task<bool> DeleteFile(string fileName)
