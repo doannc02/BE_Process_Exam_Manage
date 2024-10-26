@@ -33,13 +33,15 @@ jobs:
           SERVER_IP: ${{ secrets.SERVER_IP }} # Đặt địa chỉ IP server trong Secrets
           SERVER_USER: ${{ secrets.SERVER_USER }} # Đặt tên người dùng trong Secrets
         run: |
-          # Cài đặt SSH Client
-          sudo apt-get install -y ssh
-
-          # Kết nối đến server và sao chép files qua cổng 9001
+          # Tạo file chứa khóa SSH
           echo "$SSH_PRIVATE_KEY" > private_key.pem
           chmod 600 private_key.pem
+
+          # Kết nối đến server và sao chép files qua cổng 9001
           scp -o StrictHostKeyChecking=no -i private_key.pem -P 9001 -r ~/BE_Process_Exam_Manage/ExamProcessManage/deploy-pem/be/publish/* $SERVER_USER@$SERVER_IP:~/BE_Process_Exam_Manage/ExamProcessManage/deploy-pem/be/publish
 
           # Khởi động lại Nginx sau khi sao chép file qua cổng 9001
           ssh -o StrictHostKeyChecking=no -i private_key.pem -p 9001 $SERVER_USER@$SERVER_IP 'sudo systemctl restart nginx'
+
+          # Xóa file khóa SSH sau khi sử dụng
+          rm private_key.pem
