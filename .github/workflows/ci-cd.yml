@@ -36,10 +36,10 @@ jobs:
           # Cài đặt SSH Client
           sudo apt-get install -y ssh
 
-          # Kết nối đến server và sao chép files
+          # Kết nối đến server và sao chép files qua cổng 9001
           echo "$SSH_PRIVATE_KEY" > private_key.pem
           chmod 600 private_key.pem
-          scp -o StrictHostKeyChecking=no -i private_key.pem -r ~/BE_Process_Exam_Manage/ExamProcessManage/deploy-pem/be/publish/* $SERVER_USER@$SERVER_IP:~/BE_Process_Exam_Manage/ExamProcessManage/deploy-pem/be/publish
+          scp -o StrictHostKeyChecking=no -i private_key.pem -P 9001 -r ~/BE_Process_Exam_Manage/ExamProcessManage/deploy-pem/be/publish/* $SERVER_USER@$SERVER_IP:~/BE_Process_Exam_Manage/ExamProcessManage/deploy-pem/be/publish
 
-          # Khởi động lại Nginx sau khi sao chép file
-          ssh -o StrictHostKeyChecking=no -i private_key.pem $SERVER_USER@$SERVER_IP 'sudo systemctl restart nginx'
+          # Khởi động lại Nginx sau khi sao chép file qua cổng 9001
+          ssh -o StrictHostKeyChecking=no -i private_key.pem -p 9001 $SERVER_USER@$SERVER_IP 'sudo systemctl restart nginx'
