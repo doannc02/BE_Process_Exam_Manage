@@ -1,0 +1,45 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: "6.0.x" # Sử dụng phiên bản .NET Core 6
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release
+
+      - name: Publish
+        run: dotnet publish --configuration Release -o ~/BE_Process_Exam_Manage/ExamProcessManage/deploy-pem/be/publish
+
+      - name: Deploy to Server
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }} # Đặt SSH key trong Secrets
+          SERVER_IP: ${{ secrets.SERVER_IP }} # Đặt địa chỉ IP server trong Secrets
+          SERVER_USER: ${{ secrets.SERVER_USER }} # Đặt tên người dùng trong Secrets
+        run: |
+          # Cài đặt SSH Client
+          sudo apt-get install -y ssh
+
+          # Kết nối đến server và sao chép files
+          echo "$SSH_PRIVATE_KEY" > private_key.pem
+          chmod 600 private_key.pem
+          scp -o StrictHostKeyChecking=no -i private_key.pem -r ~/BE_Process_Exam_Manage/ExamProcessManage/deploy-pem/be/publish/* $SERVER_USER@$SERVER_IP:~/BE_Process_Exam_Manage/ExamProcessManage/deploy-pem/be/publish
+
+          # Khởi động lại Nginx sau khi sao chép file
+          ssh -o StrictHostKeyChecking=no -i private_key.pem $SERVER_USER@$SERVER_IP 'sudo systemctl restart nginx'
