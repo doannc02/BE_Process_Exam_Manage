@@ -20,7 +20,25 @@ namespace ExamProcessManage.Repository
         {
             var yearResponses = new List<AcademicYearResponse>();
             var queryAcademicYears = _context.AcademicYears.AsQueryable();
+
+            // Đếm tổng số bản ghi
             var totalCount = await queryAcademicYears.CountAsync();
+
+            // Nếu không có bản ghi nào, trả về PageResponse với content là mảng rỗng
+            if (totalCount == 0)
+            {
+                return new PageResponse<AcademicYearResponse>()
+                {
+                    content = yearResponses, // Mảng rỗng
+                    totalElements = totalCount,
+                    totalPages = 0, // Không có trang nào
+                    size = queryObject.size,
+                    page = queryObject.page.Value,
+                    numberOfElements = yearResponses.Count
+                };
+            }
+
+            // Lấy danh sách bản ghi theo phân trang
             var listAcademicYears = await queryAcademicYears
                 .Skip((queryObject.page.Value - 1) * queryObject.size)
                 .Take(queryObject.size)
@@ -41,7 +59,7 @@ namespace ExamProcessManage.Repository
 
             return new PageResponse<AcademicYearResponse>()
             {
-                content = yearResponses,
+                content = yearResponses, // Mảng chứa kết quả
                 totalElements = totalCount,
                 totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
                 size = queryObject.size,
@@ -49,6 +67,7 @@ namespace ExamProcessManage.Repository
                 numberOfElements = yearResponses.Count
             };
         }
+
 
         public async Task<BaseResponse<AcademicYearResponse>> GetDetailAcademicYearAsync(int id)
         {

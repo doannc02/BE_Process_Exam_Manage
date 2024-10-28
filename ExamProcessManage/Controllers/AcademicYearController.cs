@@ -28,15 +28,10 @@ namespace ExamProcessManage.Controllers
         {
             var academics = await _repository.GetListAcademicYearAsync(queryObject);
 
-            if (academics.content.Any())
-            {
-                var commonResponse = _createCommon.CreateResponse("success", HttpContext, academics);
-                return Ok(commonResponse);
-            }
-            else
-            {
-                return new CustomJsonResult(400, HttpContext, "bad request");
-            }
+          
+             var commonResponse = _createCommon.CreateResponse("success", HttpContext, academics);
+             return Ok(commonResponse);
+          
         }
 
         // GET detail of an academic_year

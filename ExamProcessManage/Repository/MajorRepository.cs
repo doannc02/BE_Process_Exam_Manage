@@ -18,19 +18,33 @@ namespace ExamProcessManage.Repository
 
         public async Task<PageResponse<MajorResponse>> GetListMajorAsync(int departmentId, QueryObject queryObject)
         {
+            // Validate QueryObject
+            if (queryObject.page <= 0)
+            {
+                throw new ArgumentException("Page number must be greater than zero.");
+            }
+
+            if (queryObject.size <= 0)
+            {
+                throw new ArgumentException("Page size must be greater than zero.");
+            }
+
             var listMajors = new List<MajorResponse>();
             var baseQuery = _context.Majors.AsQueryable();
 
+            // Filter by DepartmentId if applicable
             if (departmentId > 0)
             {
                 baseQuery = baseQuery.Where(m => m.DepartmentId == departmentId);
             }
 
+            // Apply search filter
             if (!string.IsNullOrEmpty(queryObject.search))
             {
                 baseQuery = baseQuery.Where(m => m.MajorName.Contains(queryObject.search));
             }
 
+            // Apply sorting if specified
             if (!string.IsNullOrEmpty(queryObject.sort))
             {
                 baseQuery = queryObject.sort.ToLower() switch
@@ -41,13 +55,33 @@ namespace ExamProcessManage.Repository
                 };
             }
 
-            var departmentList = await _context.Departments.ToListAsync();
+            // Get total count of majors
             var totalCount = await baseQuery.CountAsync();
+
+            // If no records found, return empty content
+            if (totalCount == 0)
+            {
+                return new PageResponse<MajorResponse>
+                {
+                    content = listMajors, // Empty array
+                    totalElements = totalCount,
+                    totalPages = 0, // No pages available
+                    size = queryObject.size,
+                    page = queryObject.page.Value,
+                    numberOfElements = listMajors.Count
+                };
+            }
+
+            // Get the list of majors with pagination
             var majorList = await baseQuery
                 .Skip((queryObject.page.Value - 1) * queryObject.size)
                 .Take(queryObject.size)
                 .ToListAsync();
 
+            // Get the department list to map departments to majors
+            var departmentList = await _context.Departments.ToListAsync();
+
+            // Create response objects for each major
             foreach (var item in majorList)
             {
                 var departmentMajor = departmentList.FirstOrDefault(d => d.DepartmentId == item.DepartmentId);
@@ -58,12 +92,13 @@ namespace ExamProcessManage.Repository
                     department = new CommonObject
                     {
                         id = departmentMajor?.DepartmentId ?? (int)item.DepartmentId,
-                        code = departmentMajor.DepartmentId.ToString(),
-                        name = departmentMajor.DepartmentName
+                        code = departmentMajor?.DepartmentId.ToString() ?? string.Empty,
+                        name = departmentMajor?.DepartmentName ?? string.Empty
                     }
                 });
             }
 
+            // Return paginated response
             return new PageResponse<MajorResponse>
             {
                 content = listMajors,
@@ -74,6 +109,7 @@ namespace ExamProcessManage.Repository
                 numberOfElements = listMajors.Count
             };
         }
+
 
         public async Task<BaseResponse<MajorResponse>> GetDetailMajorAsync(int majorId)
         {

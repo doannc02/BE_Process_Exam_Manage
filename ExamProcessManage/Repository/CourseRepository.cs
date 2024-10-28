@@ -18,6 +18,17 @@ namespace ExamProcessManage.Repository
 
         public async Task<PageResponse<CourseReponse>> GetListCourseAsync(int majorId, QueryObject queryObject)
         {
+            // Validate QueryObject
+            if (queryObject.page <= 0)
+            {
+                throw new ArgumentException("Page number must be greater than zero.");
+            }
+
+            if (queryObject.size <= 0)
+            {
+                throw new ArgumentException("Page size must be greater than zero.");
+            }
+
             var responses = new List<CourseReponse>();
 
             // Base query
@@ -52,11 +63,27 @@ namespace ExamProcessManage.Repository
                 };
             }
 
-            // Get the list of majors
+            // Get the list of majors (for mapping major data)
             var majorList = await _context.Majors.ToListAsync();
 
             // Apply pagination
             var totalCount = await courseQueryable.CountAsync();
+
+            // If no records found, return empty content
+            if (totalCount == 0)
+            {
+                return new PageResponse<CourseReponse>
+                {
+                    content = responses, // Empty array
+                    totalElements = totalCount,
+                    totalPages = 0, // No pages available
+                    size = queryObject.size,
+                    page = queryObject.page.Value,
+                    numberOfElements = responses.Count
+                };
+            }
+
+            // Retrieve the paginated list of courses
             var courseList = await courseQueryable
                 .Skip((queryObject.page.Value - 1) * queryObject.size)
                 .Take(queryObject.size)
@@ -93,6 +120,7 @@ namespace ExamProcessManage.Repository
                 numberOfElements = responses.Count
             };
         }
+
 
         public async Task<BaseResponse<CourseReponse>> GetDetailCourseAsync(int courseId)
         {

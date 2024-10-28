@@ -26,15 +26,11 @@ namespace ExamProcessManage.Controllers
         {
             var listCourse = await _repository.GetListCourseAsync(majorId, queryObject);
 
-            if (listCourse != null)
-            {
-                var commonResponse = _createCommon.CreateResponse("success", HttpContext, listCourse);
-                return Ok(commonResponse);
-            }
-            else
-            {
-                return new CustomJsonResult(400, HttpContext, "bad request");
-            }
+
+            var commonResponse = _createCommon.CreateResponse("success", HttpContext, listCourse);
+            return Ok(commonResponse);
+
+
         }
 
         // GET api/<ValuesController>/5

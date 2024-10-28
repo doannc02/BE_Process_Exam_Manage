@@ -263,7 +263,7 @@ namespace ExamProcessManage.Repository
             try
             {
                 if (examSetDTO == null)
-                    return new BaseResponseId { status = 400, message = "Bộ đề rỗng" };
+                    return new BaseResponseId { status = 500, message = "Bộ đề rỗng" };
 
                 var errors = new List<ErrorDetail>();
 
@@ -340,7 +340,7 @@ namespace ExamProcessManage.Repository
                 {
                     return new BaseResponseId
                     {
-                        status = 400,
+                        status = 500,
                         message = "Validation Failed",
                         errors = errors
                     };
@@ -697,35 +697,34 @@ namespace ExamProcessManage.Repository
                             {
                                 if (examStatusDict.TryGetValue(newExam.ExamId, out var newStatus))
                                 {
-                                    if (newStatus == "approved" || newStatus == "rejected")
-                                    {
-                                        errorList.Add(new() { field = $"exam_set.exams.{i}", message = "Invalid status for exam." });
-                                    }
-                                    else
-                                    {
-                                        if (newExam.Status != examDTOs[i].status)
+                                    if (newExam.Status != examDTOs[i].status)
+
+                                        if (newStatus == "approved" || newStatus == "rejected")
+                                            errorList.Add(new() { field = $"exam_set.exams.{i}", message = "Users are not allowed to approve the exam." });
+                                        else
                                             if (newExam.Status == "in_progress" && examDTOs[i].status == "pending_approval")
+                                        {
+                                            newExam.Status = examDTOs[i].status;
+                                            newExam.Comment = string.Empty;
+                                        }
+                                        else if (newExam.Status == "pending_approval" && examDTOs[i].status == "in_progress")
+                                            newExam.Status = examDTOs[i].status;
+                                        else if (newExam.Status == "rejected" && examDTOs[i].status == "in_progress")
+                                            newExam.Status = examDTOs[i].status;
+                                        else
+                                            errorList.Add(new()
                                             {
-                                                newExam.Status = examDTOs[i].status;
-                                                newExam.Comment = string.Empty;
-                                            }
-                                            else if (newExam.Status == "pending_approval" && examDTOs[i].status == "in_progress")
-                                                newExam.Status = examDTOs[i].status;
-                                            else if (newExam.Status == "rejected" && examDTOs[i].status == "in_progress")
-                                                newExam.Status = examDTOs[i].status;
-                                            else
-                                                errorList.Add(new()
-                                                {
-                                                    field = $"exams.{i}.status",
-                                                    message = $"Invalid status for exam {newExam.ExamId}: '{newExam.Status}' to '{examDTOs[i].status}'."
-                                                });
-                                    }
+                                                field = $"exams.{i}.status",
+                                                message = $"Invalid status for exam {newExam.ExamId}: '{newExam.Status}' to '{examDTOs[i].status}'."
+                                            });
                                 }
                             }
                             else
-                            {
-                                errorList.Add(new() { field = $"exams.{i}", message = "Invalid exam." });
-                            }
+                                errorList.Add(new()
+                                {
+                                    field = $"exams.{i}",
+                                    message = "This exam has been assigned to another exam set or you are not the owner."
+                                });
                             i++;
                         }
 
@@ -740,7 +739,7 @@ namespace ExamProcessManage.Repository
                     // Cập nhật trạng thái exam set dựa trên trạng thái của các kỳ thi
                     if (existExamSet.Status != examSet.status)
                         if (existExamSet.Status == "in_progress" && examSet.status == "pending_approval")
-                            if (existExamSet.Exams.All(e => e.Status == "pending_approval"))
+                            if (existExamSet.Exams.All(e => e.Status == "pending_approval" || e.Status == "approved"))
                                 if (existExamSet.Exams.Count >= existExamSet.ExamQuantity)
                                     existExamSet.Status = examSet.status;
                                 else
