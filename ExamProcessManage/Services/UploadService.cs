@@ -38,13 +38,15 @@ namespace ExamProcessManage.Services
             // Tạo tên file duy nhất (để tránh trùng lặp)
             string uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(file.FileName);
             string filePath = Path.Combine(uploadPath, uniqueFileName);
-
+            
             // Lưu file vào wwwroot/files
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
                 await file.CopyToAsync(stream);
             }
-            var settingValue = _configuration["ngrok"];  // "Value1"
+            //   var settingValue = _configuration["ngrok"];  // "Value1"
+
+            Console.WriteLine($"uploadPath: {uploadPath}");
 
             // Lấy thông tin về Request để tạo URL cho file
             var request = _httpContextAccessor.HttpContext.Request;
