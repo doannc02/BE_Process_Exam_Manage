@@ -13,9 +13,9 @@ jobs:
       - name: Checkout code
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secret.HOST }}
-          username:  ${{ secret.USERNAME }}
-          password: ${{ secret.PASSWORD }}
+          host: ${{ secrets.HOST }}
+          username:  ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
           port: 9001
 
       - name: Publish application
