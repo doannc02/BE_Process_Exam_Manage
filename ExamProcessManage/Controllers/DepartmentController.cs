@@ -26,15 +26,10 @@ namespace ExamProcessManage.Controllers
         {
             var listDepart = await _repository.GetListDepartmentAsync(queryObject);
 
-            if (listDepart.totalElements > 0)
-            {
-                var response = _createCommon.CreateResponse("success", HttpContext, listDepart);
-                return Ok(response);
-            }
-            else
-            {
-                return new CustomJsonResult(400, HttpContext, "bad request");
-            }
+
+            var response = _createCommon.CreateResponse("success", HttpContext, listDepart);
+            return Ok(response);
+
         }
 
         // GET api/<DepartmentController>/5

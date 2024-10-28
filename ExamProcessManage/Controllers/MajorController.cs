@@ -26,19 +26,10 @@ namespace ExamProcessManage.Controllers
         {
             var listMajors = await _majorRepository.GetListMajorAsync(departmentId, queryObject);
 
-            if (listMajors.content.Any())
-            {
-                var commonResponse = _createCommonResponse.CreateResponse("success", HttpContext, listMajors);
-                return Ok(commonResponse);
-            }
-            else if (departmentId > 0 && !listMajors.content.Any())
-            {
-                return new CustomJsonResult(404, HttpContext, $"no major with department_id = '{departmentId}'");
-            }
-            else
-            {
-                return new CustomJsonResult(400, HttpContext, "bad request");
-            }
+
+            var commonResponse = _createCommonResponse.CreateResponse("success", HttpContext, listMajors);
+            return Ok(commonResponse);
+
         }
 
         // GET api/<MajorController>/5
