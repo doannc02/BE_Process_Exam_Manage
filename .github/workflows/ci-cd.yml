@@ -19,13 +19,11 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
-          port: 9001
+          port: 22
 
       - name: Publish application
         run: |
-          # Thêm máy chủ vào known_hosts nếu chưa làm
-          ssh-keyscan -p 9001 -H ${{ secrets.HOST }} >> ~/.ssh/known_hosts
-
+          dotnet publish -c Release -o ~/BE_Process_Exam_Manage/ExamProcessManage/publish
           # Xóa các file cũ trên server
           ssh -p 9001 ${{ secrets.USERNAME }}@${{ secrets.HOST }} "rm -rf ~/BE_Process_Exam_Manage/ExamProcessManage/publish/*"
 
