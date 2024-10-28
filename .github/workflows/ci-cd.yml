@@ -31,6 +31,6 @@ jobs:
             pwd
             ls
             rm -rf ./publish
-            dotnet publish ExamProcessManage.csproj -c Release -o ./publish -p:NoWarn=CS8601;CS8602;CS8629;CS8714 || { echo "Publish failed"; exit 1; }
+            dotnet publish ExamProcessManage.csproj -c Release -o ./publish -p:NoWarn=CS8601,CS8602,CS8629,CS8714 || { echo "Publish failed"; exit 1; }
             ls ./publish  # Kiểm tra xem thư mục publish có tồn tại hay không
             scp -P 9001 -r ./publish/* ${{ secrets.USERNAME }}@${{ secrets.HOST }}:~/BE_Process_Exam_Manage/ExamProcessManage/publish/
