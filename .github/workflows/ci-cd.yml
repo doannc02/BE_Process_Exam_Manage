@@ -12,7 +12,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
+      - name: Print working directory
+        run: pwd
+      - name: List files
+        run: ls -R
       - name: Set up SSH and Publish Application
         uses: appleboy/ssh-action@master
         with:
@@ -22,7 +25,8 @@ jobs:
           port: 9001
           script: |
             # Build and publish ứng dụng lên thư mục local
-            dotnet publish ./ExamProcessManage/ExamProcessManage.csproj -c Release -o ./publish
+            cd BE_Process_Exam_Manage/ExamProcessManage
+            dotnet publish ExamProcessManage.csproj -c Release -o ./publish
 
             # Xóa các file cũ trên server
             ssh -p 9001 ${{ secrets.USERNAME }}@${{ secrets.HOST }} "rm -rf ~/BE_Process_Exam_Manage/ExamProcessManage/publish/*"
