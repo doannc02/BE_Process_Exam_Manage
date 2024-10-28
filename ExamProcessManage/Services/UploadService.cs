@@ -26,6 +26,12 @@ namespace ExamProcessManage.Services
                 return "No file was uploaded.";
             }
 
+            // Kiểm tra WebRootPath
+            if (string.IsNullOrEmpty(_webHostEnvironment.WebRootPath))
+            {
+                throw new InvalidOperationException("WebRootPath is not set.");
+            }
+
             // Đường dẫn đến thư mục wwwroot/files
             string uploadPath = Path.Combine(_webHostEnvironment.WebRootPath, "files");
 
@@ -33,6 +39,12 @@ namespace ExamProcessManage.Services
             if (!Directory.Exists(uploadPath))
             {
                 Directory.CreateDirectory(uploadPath);
+            }
+
+            // Kiểm tra tên file
+            if (string.IsNullOrEmpty(file.FileName))
+            {
+                return "File name is not valid.";
             }
 
             // Tạo tên file duy nhất (để tránh trùng lặp)
@@ -44,17 +56,14 @@ namespace ExamProcessManage.Services
             {
                 await file.CopyToAsync(stream);
             }
-           // var settingValue = _configuration["ngrok"];  // "Value1"
 
             // Lấy thông tin về Request để tạo URL cho file
             var request = _httpContextAccessor.HttpContext.Request;
             string fileUrl = $"{request.Scheme}://{request.Host}/files/{uniqueFileName}";
-            //string fileUrl = $"{settingValue}/files/{uniqueFileName}";
-            //string fileUrl = Path.Combine(settingValue,"files", uniqueFileName);
 
-            // return fileUrl;
-            return new string(fileUrl);
+            return fileUrl; // Trả về URL file đã upload
         }
+
 
         public async Task<bool> DeleteFile(string fileName)
         {
