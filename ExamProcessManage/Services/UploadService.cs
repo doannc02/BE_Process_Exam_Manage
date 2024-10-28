@@ -44,15 +44,17 @@ namespace ExamProcessManage.Services
             {
                 await file.CopyToAsync(stream);
             }
+            var settingValue = _configuration["ngrok"];  // "Value1"
 
             // Lấy thông tin về Request để tạo URL cho file
             var request = _httpContextAccessor.HttpContext.Request;
-            string fileUrl = $"{request.Scheme}://{request.Host}/files/{uniqueFileName}";
+           string fileUrl = $"{request.Scheme}://{request.Host}/files/{uniqueFileName}";
+          //  string fileUrl = $"{settingValue}/files/{uniqueFileName}";
+          // string fileUrl = Path.Combine(settingValue,"files", uniqueFileName);
 
             return fileUrl;
+           // return new string(fileUrl);
         }
-
-
 
         public async Task<bool> DeleteFile(string fileName)
         {
