@@ -20,11 +20,5 @@ jobs:
 
       - name: Publish application
         run: |
-          # Nếu cần, cài đặt các phụ thuộc hoặc chạy build trước khi publish
-          # dotnet publish -c Release -o ~/BE_Process_Exam_Manage/ExamProcessManage/publish
-
-          # Xóa các file cũ trên server
-          ssh -p 9001 ${{ secrets.USERNAME }}@${{ secrets.SERVER_IP }} "rm -rf ~/BE_Process_Exam_Manage/ExamProcessManage/publish/*"
-
-          # Sao chép các file đã publish từ repository lên server
-          scp -P 9001 -r ~/BE_Process_Exam_Manage/ExamProcessManage/publish/* ${{ secrets.USERNAME }}@${{ secrets.SERVER_IP }}:~/BE_Process_Exam_Manage/ExamProcessManage/publish/
+           ssh -p 9001 ${{ secrets.USERNAME }}@${{ secrets.HOST }} "rm -rf ~/BE_Process_Exam_Manage/ExamProcessManage/publish/*"
+           scp -P 9001 -r ~/BE_Process_Exam_Manage/ExamProcessManage/publish/* ${{ secrets.USERNAME }}@${{ secrets.HOST }}:~/BE_Process_Exam_Manage/ExamProcessManage/publish/
