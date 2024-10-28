@@ -263,7 +263,7 @@ namespace ExamProcessManage.Repository
             try
             {
                 if (examSetDTO == null)
-                    return new BaseResponseId { status = 400, message = "Bộ đề rỗng" };
+                    return new BaseResponseId { status = 500, message = "Bộ đề rỗng" };
 
                 var errors = new List<ErrorDetail>();
 
@@ -340,7 +340,7 @@ namespace ExamProcessManage.Repository
                 {
                     return new BaseResponseId
                     {
-                        status = 400,
+                        status = 500,
                         message = "Validation Failed",
                         errors = errors
                     };

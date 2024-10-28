@@ -156,7 +156,7 @@ namespace ExamProcessManage.Controllers
                 if (findProp.data?.user.id != userId && !isAdmin)
                     return Forbid();
 
-                var upProposal = await _repository.UpdateProposalAsync(proposal, false, 1);
+                var upProposal = await _repository.UpdateProposalAsync(proposal);
 
                 // Trả về kết quả phù hợp
                 if (upProposal.data != null)

@@ -399,9 +399,9 @@ namespace ExamProcessManage.Data
                     .HasMaxLength(255)
                     .HasColumnName("name");
 
-                entity.Property(e => e.Position)
-                    .HasMaxLength(255)
-                    .HasColumnName("position_id");
+                //entity.Property(e => e.Position)
+                //    .HasMaxLength(255)
+                //    .HasColumnName("position_id");
 
                 entity.Property(e => e.ProgressTeach).HasColumnName("progress_teach");
 

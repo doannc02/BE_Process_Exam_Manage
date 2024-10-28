@@ -60,14 +60,19 @@ namespace ExamProcessManage.Repository
 
             foreach (var item in listAcademicYears)
             {
-                var academic = new UserDTO()
-                {
-                    id = item.Id.ToString(),
-                    name = item.Email,
-                    fullname = teachers.FirstOrDefault(i => i.Id == item.TeacherId)?.Name ?? "",
-                };
+                var fullname = teachers.FirstOrDefault(i => i.Id == item.TeacherId)?.Name;
 
-                userDTOs.Add(academic);
+                if (!string.IsNullOrEmpty(fullname)) // Kiểm tra nếu fullname không rỗng
+                {
+                    var academic = new UserDTO()
+                    {
+                        id = item.Id.ToString(),
+                        name = item.Email,
+                        fullname = fullname
+                    };
+
+                    userDTOs.Add(academic);
+                }
             }
 
             return new PageResponse<UserDTO>()
@@ -80,5 +85,6 @@ namespace ExamProcessManage.Repository
                 numberOfElements = userDTOs.Count
             };
         }
+
     }
 }
