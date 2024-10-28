@@ -13,7 +13,7 @@ namespace ExamProcessManage.Models
         public ulong Id { get; set; }
         public string Name { get; set; } = null!;
         public string Slug { get; set; } = null!;
-        public string? Position { get; set; }
+       // public string? Position { get; set; }
         public string? Address { get; set; }
         public string? LinkFacebook { get; set; }
         public string? LinkInsta { get; set; }
