@@ -13,19 +13,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up SSH
+      - name: Set up SSH and Publish Application
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: 9001
+          script: |
+            # Build and publish ứng dụng lên thư mục local
+            dotnet publish -c Release -o ./publish
 
-      - name: Publish application
-        run: |
-          dotnet publish -c Release -o ~/BE_Process_Exam_Manage/ExamProcessManage/publish
-          # Xóa các file cũ trên server
-          ssh -p 9001 ${{ secrets.USERNAME }}@${{ secrets.HOST }} "rm -rf ~/BE_Process_Exam_Manage/ExamProcessManage/publish/*"
+            # Xóa các file cũ trên server
+            ssh -p 9001 ${{ secrets.USERNAME }}@${{ secrets.HOST }} "rm -rf ~/BE_Process_Exam_Manage/ExamProcessManage/publish/*"
 
-          # Sao chép các file đã publish từ repository lên server
-          scp -P 9001 -r ~/BE_Process_Exam_Manage/ExamProcessManage/publish/* ${{ secrets.USERNAME }}@${{ secrets.HOST }}:~/BE_Process_Exam_Manage/ExamProcessManage/publish/
+            # Upload các file đã publish lên server
+            scp -P 9001 -r ./publish/* ${{ secrets.USERNAME }}@${{ secrets.HOST }}:~/BE_Process_Exam_Manage/ExamProcessManage/publish/
