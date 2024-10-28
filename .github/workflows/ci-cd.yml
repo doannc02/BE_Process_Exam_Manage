@@ -22,7 +22,7 @@ jobs:
           port: 9001
           script: |
             # Build and publish ứng dụng lên thư mục local
-            dotnet publish -c Release -o ./publish
+            dotnet publish ./ExamProcessManage/ExamProcessManage.csproj -c Release -o ./publish
 
             # Xóa các file cũ trên server
             ssh -p 9001 ${{ secrets.USERNAME }}@${{ secrets.HOST }} "rm -rf ~/BE_Process_Exam_Manage/ExamProcessManage/publish/*"
