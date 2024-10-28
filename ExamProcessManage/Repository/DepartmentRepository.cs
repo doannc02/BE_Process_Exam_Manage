@@ -18,9 +18,49 @@ namespace ExamProcessManage.Repository
 
         public async Task<PageResponse<DepartmentResponse>> GetListDepartmentAsync(QueryObject queryObject)
         {
+            // Validate QueryObject
+            if (queryObject.page <= 0)
+            {
+                throw new ArgumentException("Page number must be greater than zero.");
+            }
+
+            if (queryObject.size <= 0)
+            {
+                throw new ArgumentException("Page size must be greater than zero.");
+            }
+
             var response = new List<DepartmentResponse>();
             var queryDepartments = _context.Departments.AsQueryable();
+
+            // Apply sorting if specified (you can adjust the sort logic as needed)
+            if (!string.IsNullOrEmpty(queryObject.sort))
+            {
+                queryDepartments = queryObject.sort.ToLower() switch
+                {
+                    "name" => queryDepartments.OrderBy(d => d.DepartmentName),
+                    "name_desc" => queryDepartments.OrderByDescending(d => d.DepartmentName),
+                    _ => queryDepartments.OrderBy(d => d.DepartmentId), // Default sorting
+                };
+            }
+
+            // Apply pagination
             var totalCount = await queryDepartments.CountAsync();
+
+            // If no records found, return empty content
+            if (totalCount == 0)
+            {
+                return new PageResponse<DepartmentResponse>
+                {
+                    content = response, // Empty array
+                    totalElements = totalCount,
+                    totalPages = 0, // No pages available
+                    size = queryObject.size,
+                    page = queryObject.page.Value,
+                    numberOfElements = response.Count,
+                    sort = queryObject.sort ?? string.Empty
+                };
+            }
+
             var listDepartments = await queryDepartments
                 .Skip((queryObject.page.Value - 1) * queryObject.size)
                 .Take(queryObject.size)
@@ -38,14 +78,15 @@ namespace ExamProcessManage.Repository
             return new PageResponse<DepartmentResponse>
             {
                 content = response,
-                page = queryObject.page.Value,
-                size = queryObject.size,
                 totalElements = totalCount,
                 totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
+                size = queryObject.size,
+                page = queryObject.page.Value,
                 numberOfElements = response.Count,
                 sort = queryObject.sort ?? string.Empty
             };
         }
+
 
         public async Task<BaseResponse<DepartmentResponse>> GetDetailDepartmentAsync(int id)
         {
