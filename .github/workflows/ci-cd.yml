@@ -26,7 +26,9 @@ jobs:
           script: |
             # Build and publish ứng dụng lên thư mục local
             cd BE_Process_Exam_Manage/ExamProcessManage
-            dotnet publish ExamProcessManage.csproj -c Release -o ./publish -nowarn:CS8601,CS8602,CS8629,CS8714
+            pwd
+            ls
+            dotnet publish ExamProcessManage.csproj -c Release -o ./publish -p:NoWarn=CS8601,CS8602,CS8629,CS8714
 
             # Xóa các file cũ trên server
             ssh -p 9001 ${{ secrets.USERNAME }}@${{ secrets.HOST }} "rm -rf ~/BE_Process_Exam_Manage/ExamProcessManage/publish/*"
