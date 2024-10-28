@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         
       - name: Print working directory
         run: pwd
@@ -27,11 +27,10 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: 9001
           script: |
-           cd BE_Process_Exam_Manage/ExamProcessManage
-           pwd
-           ls
-           rm -rf ./publish
-           dotnet publish ExamProcessManage.csproj -c Release -o ./publish -p:NoWarn=CS8601,CS8602,CS8629,CS8714
-           ls ./publish  # Kiểm tra xem thư mục publish có tồn tại hay không
-           ssh -p 9001 ${{ secrets.USERNAME }}@${{ secrets.HOST }} "rm -rf ~/BE_Process_Exam_Manage/ExamProcessManage/publish/*"
-           scp -P 9001 -r ./publish/* ${{ secrets.USERNAME }}@${{ secrets.HOST }}:~/BE_Process_Exam_Manage/ExamProcessManage/publish/
+            cd BE_Process_Exam_Manage/ExamProcessManage
+            pwd
+            ls
+            rm -rf ./publish
+            dotnet publish ExamProcessManage.csproj -c Release -o ./publish -p:NoWarn=CS8601;CS8602;CS8629;CS8714 || { echo "Publish failed"; exit 1; }
+            ls ./publish  # Kiểm tra xem thư mục publish có tồn tại hay không
+            scp -P 9001 -r ./publish/* ${{ secrets.USERNAME }}@${{ secrets.HOST }}:~/BE_Process_Exam_Manage/ExamProcessManage/publish/
