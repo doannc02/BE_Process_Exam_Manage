@@ -27,29 +27,11 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: 9001
           script: |
-            # Đến thư mục chứa ứng dụng
-            cd BE_Process_Exam_Manage/ExamProcessManage
-            
-            # Kiểm tra vị trí hiện tại
-            pwd
-            
-            # Liệt kê tất cả các file trong thư mục hiện tại
-            ls -R
-            
-            # Xóa thư mục publish nếu có
-            rm -rf ./publish
-            
-            # Biên dịch và publish ứng dụng
-            dotnet publish ExamProcessManage.csproj -c Release -o ./publish -p:NoWarn=CS8601;CS8602;CS8629;CS8714
-            
-            # Kiểm tra nếu thư mục publish có tồn tại sau khi publish
-            echo "Checking published files:"
-            ls -R ./publish
-            
-            # Xóa các file cũ trên server
-            echo "Cleaning up old files on the server..."
-            ssh -p 9001 ${{ secrets.USERNAME }}@${{ secrets.HOST }} "rm -rf ~/BE_Process_Exam_Manage/ExamProcessManage/publish/*"
-
-            # Upload các file đã publish lên server
-            echo "Uploading published files to the server..."
-            scp -P 9001 -r ./publish/* ${{ secrets.USERNAME }}@${{ secrets.HOST }}:~/BE_Process_Exam_Manage/ExamProcessManage/publish/
+           cd BE_Process_Exam_Manage/ExamProcessManage
+           pwd
+           ls
+           rm -rf ./publish
+           dotnet publish ExamProcessManage.csproj -c Release -o ./publish -p:NoWarn=CS8601,CS8602,CS8629,CS8714
+           ls ./publish  # Kiểm tra xem thư mục publish có tồn tại hay không
+           ssh -p 9001 ${{ secrets.USERNAME }}@${{ secrets.HOST }} "rm -rf ~/BE_Process_Exam_Manage/ExamProcessManage/publish/*"
+           scp -P 9001 -r ./publish/* ${{ secrets.USERNAME }}@${{ secrets.HOST }}:~/BE_Process_Exam_Manage/ExamProcessManage/publish/
