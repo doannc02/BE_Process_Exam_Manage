@@ -30,7 +30,12 @@ namespace ExamProcessManage.Repository
             var users = await _context.Users.AsNoTracking().Select(u => new { u.Id, u.TeacherId, u.Email }).ToDictionaryAsync(u => u.Id, u => new { u.TeacherId, u.Email });
 
 
-            var teachers = await _context.Teachers.AsNoTracking().ToDictionaryAsync(t => t.Id);
+            var teachers = await _context.Teachers.AsNoTracking().Select(t => new { t.Id, t.Name }).ToListAsync();
+
+           
+
+            // Chuyển danh sách thành từ điển
+            var teachersDict = teachers.ToDictionary(t => t.Id, t => t.Name);
 
             if (query.exceptValues != null && query.exceptValues.Any())
             {
@@ -111,9 +116,12 @@ namespace ExamProcessManage.Repository
                 } : null,
                 user = p.CreatorId.HasValue && users.ContainsKey((ulong)p.CreatorId.Value) ? new
                 {
-                    id = p.CreatorId.HasValue,
+                    id = p.CreatorId.Value,
                     name = users[(ulong)p.CreatorId.Value].Email ?? "",
-                    fullname = users[(ulong)p.CreatorId.Value].TeacherId.HasValue && teachers.ContainsKey(users[(ulong)p.CreatorId.Value].TeacherId.Value) ? teachers[users[(ulong)p.CreatorId.Value].TeacherId.Value].Name : ""
+                    fullname = users[(ulong)p.CreatorId.Value].TeacherId.HasValue &&
+                       teachersDict.ContainsKey(users[(ulong)p.CreatorId.Value].TeacherId.Value)
+                ? teachersDict[users[(ulong)p.CreatorId.Value].TeacherId.Value] 
+                : ""
                 } : null,
                 create_at = p.CreateAt.ToString(),
                 academic_year = p.AcademicYearId.HasValue && academicYears.ContainsKey(p.AcademicYearId.Value) ? new CommonObject

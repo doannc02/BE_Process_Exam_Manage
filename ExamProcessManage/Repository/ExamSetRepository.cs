@@ -82,7 +82,11 @@ namespace ExamProcessManage.Repository
 
                 // Preload related data for DTO mapping
                 var departments = await _context.Departments.AsNoTracking().ToDictionaryAsync(d => d.DepartmentId);
-                var teachers = await _context.Teachers.AsNoTracking().ToDictionaryAsync(t => t.Id);
+                var teachers = await _context.Teachers.AsNoTracking().Select(t => new { t.Id, t.Name }).ToListAsync();
+
+                // Chuyển danh sách thành từ điển
+                var teachersDict = teachers.ToDictionary(t => t.Id, t => t.Name);
+
                 var courses = await _context.Courses.AsNoTracking().ToDictionaryAsync(c => c.CourseId);
                 var majors = await _context.Majors.AsNoTracking().ToDictionaryAsync(m => m.MajorId);
                 var users = await _context.Users.AsNoTracking().ToDictionaryAsync(u => u.Id);
@@ -133,7 +137,7 @@ namespace ExamProcessManage.Repository
                     {
                         id = (int)user.Id,
                         name = user.Email ?? "",
-                        fullname = user.TeacherId.HasValue && teachers.TryGetValue(user.TeacherId.Value, out var teacher) ? teacher.Name : ""
+                        fullname = user.TeacherId.HasValue && teachersDict.TryGetValue(user.TeacherId.Value, out var teacherName) ? teacherName : ""
                     } : null,
                 }).ToList();
 
