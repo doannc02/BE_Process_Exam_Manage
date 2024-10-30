@@ -32,8 +32,9 @@ namespace ExamProcessManage.Repository
                     examSetQuery = examSetQuery.Where(p => !queryObject.exceptValues.Contains(p.ExamSetId));
 
                 if (!string.IsNullOrEmpty(queryObject.search))
-                    examSetQuery = examSetQuery.Where(p => p.ExamSetName.Contains(queryObject.search));
-
+                {
+                    examSetQuery = examSetQuery.Where(p => p.ExamSetName != null && p.ExamSetName.Contains(queryObject.search));
+                }
                 if (!string.IsNullOrEmpty(queryObject.stateExamSet))
                     examSetQuery = examSetQuery.Where(e => e.Status == queryObject.stateExamSet);
 
@@ -54,7 +55,7 @@ namespace ExamProcessManage.Repository
                         examSetQuery = examSetQuery.Where(p => p.ProposalId.HasValue && proposalIds.Contains(p.ProposalId.Value));
                 }
 
-                if ((bool)queryObject.isParamAddProposal)
+                if (queryObject.isParamAddProposal ?? false)
                 {
                     examSetQuery = examSetQuery.Where(e => e.ProposalId == null);
 
@@ -98,9 +99,9 @@ namespace ExamProcessManage.Repository
                     update_at = p.UpdateAt.ToString(),
                     course = p.CourseId.HasValue && courses.TryGetValue(p.CourseId.Value, out var course) ? new CommonObject
                     {
-                        id = course.CourseId,
-                        name = course.CourseName,
-                        code = course.CourseCode
+                        id = course?.CourseId ?? 0,
+                        name = course?.CourseName ?? "unknown",
+                        code = course?.CourseCode ?? "N?A"
                     } : null,
                     department = p.DepartmentId.HasValue && departments.TryGetValue(p.DepartmentId.Value, out var department) ? new CommonObject
                     {
@@ -110,14 +111,14 @@ namespace ExamProcessManage.Repository
                     proposal = p.ProposalId != null ? new CommonObject
                     {
                         id = (int)p.ProposalId,
-                        code = p.Proposal.PlanCode
+                        code = p.Proposal?.PlanCode
                     } : null,
                     major = p.MajorId.HasValue && majors.TryGetValue(p.MajorId.Value, out var major) ? new CommonObject
                     {
                         id = (int)p.MajorId.Value,
                         name = major.MajorName
                     } : null,
-                    exams = (bool)queryObject.isParamAddProposal ? examQuery.Where(e => e.ExamSetId == p.ExamSetId).Select(e => new ExamDTO
+                    exams = queryObject.isParamAddProposal ?? false ? examQuery.Where(e => e.ExamSetId == p.ExamSetId).Select(e => new ExamDTO
                     {
                         code = e.ExamCode,
                         comment = e.Comment,

@@ -19,24 +19,34 @@ namespace ExamProcessManage.Repository
 
         public async Task<PageResponse<ExamDTO>> GetListExamsAsync(ExamRequestParams query, int? userId)
         {
-            var startRow = (query.page.Value - 1) * query.size;
+            if (query == null)
+            {
+                throw new ArgumentNullException(nameof(query));
+            }
+
+            var startRow = (query.page ?? 1 - 1) * (query.size);
             var baseQuery = _context.Exams.AsNoTracking().AsQueryable();
-            var users = await _context.Users.AsNoTracking().ToDictionaryAsync(u => u.Id);
+
+            var users = await _context.Users.AsNoTracking().Select(u => new { u.Id, u.TeacherId, u.Email }).ToDictionaryAsync(u => u.Id, u => new { u.TeacherId, u.Email });
+
+
             var teachers = await _context.Teachers.AsNoTracking().ToDictionaryAsync(t => t.Id);
+
             if (query.exceptValues != null && query.exceptValues.Any())
             {
                 baseQuery = baseQuery.Where(p => !query.exceptValues.Contains(p.ExamId));
             }
-            // Apply search filter
+
             if (!string.IsNullOrEmpty(query.search))
             {
                 baseQuery = baseQuery.Where(e => e.ExamCode.Contains(query.search) || e.ExamName.Contains(query.search));
             }
-            if ((bool)query.isGetForAddExamSet)
+
+            if (query.isGetForAddExamSet == true)
             {
                 baseQuery = baseQuery.Where(e => e.ExamSetId == null);
             }
-            // Apply filters based on query parameters
+
             if (query.exam_set_id != null)
             {
                 baseQuery = baseQuery.Where(p => p.ExamSetId == query.exam_set_id);
@@ -54,81 +64,71 @@ namespace ExamProcessManage.Repository
 
             if (query.month_upload > 0)
             {
-                baseQuery = baseQuery.Where(e => e.CreateAt.Value.Month == query.month_upload);
+                baseQuery = baseQuery.Where(e => e.CreateAt.HasValue && e.CreateAt.Value.Month == query.month_upload);
             }
 
-            // Apply userId filter if provided
             if (userId.HasValue)
             {
                 baseQuery = baseQuery.Where(e => e.CreatorId == userId.Value);
             }
 
-            // Apply sorting
-            if (!string.IsNullOrEmpty(query.sort))
+            baseQuery = query.sort?.ToLower() switch
             {
-                baseQuery = query.sort.ToLower() switch
-                {
-                    "code" => baseQuery.OrderBy(e => e.ExamCode),
-                    "code_desc" => baseQuery.OrderByDescending(e => e.ExamCode),
-                    "name" => baseQuery.OrderBy(e => e.ExamName),
-                    "name_desc" => baseQuery.OrderByDescending(e => e.ExamName),
-                    "create_at" => baseQuery.OrderBy(e => e.CreateAt),
-                    "create_at_desc" => baseQuery.OrderByDescending(e => e.CreateAt),
-                    "status" => baseQuery.OrderBy(e => e.Status),
-                    "status_desc" => baseQuery.OrderByDescending(e => e.Status),
-                    _ => baseQuery.OrderBy(e => e.ExamId)
-                };
-            }
+                "code" => baseQuery.OrderBy(e => e.ExamCode),
+                "code_desc" => baseQuery.OrderByDescending(e => e.ExamCode),
+                "name" => baseQuery.OrderBy(e => e.ExamName),
+                "name_desc" => baseQuery.OrderByDescending(e => e.ExamName),
+                "create_at" => baseQuery.OrderBy(e => e.CreateAt),
+                "create_at_desc" => baseQuery.OrderByDescending(e => e.CreateAt),
+                "status" => baseQuery.OrderBy(e => e.Status),
+                "status_desc" => baseQuery.OrderByDescending(e => e.Status),
+                _ => baseQuery.OrderBy(e => e.ExamId)
+            };
 
-            // Total number of records after filtering
             var totalCount = await baseQuery.CountAsync();
 
-            // Fetch distinct AcademicYearIds
             var academicYearIds = await baseQuery.Select(p => p.AcademicYearId).Distinct().ToListAsync();
             var academicYears = await _context.AcademicYears
             .Where(a => academicYearIds.Contains(a.AcademicYearId))
             .ToDictionaryAsync(a => a.AcademicYearId, a => a.YearName);
 
-            // Fetch paginated exam list
             var exams = await baseQuery
-                .OrderBy(p => p.ExamId)
-                .Skip(startRow)
-                .Take(query.size)
-                .Select(p => new ExamDTO
+            .Skip(startRow)
+            .Take(query.size)
+            .Select(p => new ExamDTO
+            {
+                comment = p.Comment,
+                attached_file = p.AttachedFile,
+                description = p.Description,
+                code = p.ExamCode,
+                id = p.ExamId,
+                name = p.ExamName,
+                status = p.Status,
+                exam_set = p.ExamSetId != null ? new CommonObject
                 {
-                    comment = p.Comment,
-                    attached_file = p.AttachedFile,
-                    description = p.Description,
-                    code = p.ExamCode,
-                    id = p.ExamId,
-                    name = p.ExamName,
-                    status = p.Status,
-                    exam_set = p.ExamSetId != null ? new CommonObject
-                    {
-                        id = (int)p.ExamSetId,
-                        name = p.ExamSet.ExamSetName
-                    } : null,
-                    user = p.CreatorId.HasValue && users.ContainsKey((ulong)p.CreatorId.Value) ? new
-                    {
-                        id = (int)users[(ulong)p.CreatorId.Value].Id,
-                        name = users[(ulong)p.CreatorId.Value].Email ?? "",
-                        fullname = users[(ulong)p.CreatorId.Value].TeacherId.HasValue && teachers.ContainsKey(users[(ulong)p.CreatorId.Value].TeacherId.Value) ? teachers[users[(ulong)p.CreatorId.Value].TeacherId.Value].Name : ""
-                    } : null,
-                    create_at = p.CreateAt.ToString(),
-                    academic_year = p.AcademicYearId.HasValue && academicYears.ContainsKey(p.AcademicYearId.Value) ? new CommonObject
-                    {
-                        id = p.AcademicYearId.Value,
-                        name = academicYears[p.AcademicYearId.Value]
-                    } : null
-                }).ToListAsync();
+                    id = (int)p.ExamSetId,
+                    name = p.ExamSet.ExamSetName
+                } : null,
+                user = p.CreatorId.HasValue && users.ContainsKey((ulong)p.CreatorId.Value) ? new
+                {
+                    id = p.CreatorId.HasValue,
+                    name = users[(ulong)p.CreatorId.Value].Email ?? "",
+                    fullname = users[(ulong)p.CreatorId.Value].TeacherId.HasValue && teachers.ContainsKey(users[(ulong)p.CreatorId.Value].TeacherId.Value) ? teachers[users[(ulong)p.CreatorId.Value].TeacherId.Value].Name : ""
+                } : null,
+                create_at = p.CreateAt.ToString(),
+                academic_year = p.AcademicYearId.HasValue && academicYears.ContainsKey(p.AcademicYearId.Value) ? new CommonObject
+                {
+                    id = p.AcademicYearId.Value,
+                    name = academicYears[p.AcademicYearId.Value]
+                } : null
+            }).ToListAsync();
 
-            // Return paginated result
             return new PageResponse<ExamDTO>
             {
                 totalElements = totalCount,
-                totalPages = (int)Math.Ceiling((double)totalCount / query.size),
-                size = query.size,
-                page = query.page.Value,
+                totalPages = (int)Math.Ceiling((double)totalCount / (query.size)),
+                size = query.size ,
+                page = query.page ?? 1,
                 content = exams,
             };
         }
