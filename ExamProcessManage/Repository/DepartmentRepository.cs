@@ -31,7 +31,11 @@ namespace ExamProcessManage.Repository
 
             var response = new List<DepartmentResponse>();
             var queryDepartments = _context.Departments.AsQueryable();
-
+            // Apply search filter
+            if (!string.IsNullOrEmpty(queryObject.search))
+            {
+                queryDepartments = queryDepartments.Where(m => m.DepartmentName.Contains(queryObject.search));
+            }
             // Apply sorting if specified (you can adjust the sort logic as needed)
             if (!string.IsNullOrEmpty(queryObject.sort))
             {

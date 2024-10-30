@@ -21,8 +21,15 @@ namespace ExamProcessManage.Repository
             var yearResponses = new List<AcademicYearResponse>();
             var queryAcademicYears = _context.AcademicYears.AsQueryable();
 
+            // Apply search filter
+            if (!string.IsNullOrEmpty(queryObject.search))
+            {
+                queryAcademicYears = queryAcademicYears.Where(m => m.YearName.Contains(queryObject.search));
+            }
             // Đếm tổng số bản ghi
             var totalCount = await queryAcademicYears.CountAsync();
+
+
 
             // Nếu không có bản ghi nào, trả về PageResponse với content là mảng rỗng
             if (totalCount == 0)

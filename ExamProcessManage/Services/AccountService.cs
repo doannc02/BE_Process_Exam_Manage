@@ -21,6 +21,10 @@ namespace ExamProcessManage.Services
         public AuthenticateResponse Authenticate(LoginDto model)
         {
             var user = _context.Users.SingleOrDefault(x => x.Email == model.UserName);
+            if (user.RoleId != 1 && user.TeacherId == null)
+            {
+                return null;
+            }
             var role = _context.Roles.AsNoTracking().ToList();
             if (user == null)
             {

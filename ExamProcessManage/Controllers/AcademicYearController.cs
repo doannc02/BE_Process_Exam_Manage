@@ -41,12 +41,12 @@ namespace ExamProcessManage.Controllers
             var academic = await _repository.GetDetailAcademicYearAsync(id);
             if (academic != null && academic.data != null)
             {
-                var yearResponse = _createCommon.CreateResponse(academic.message, HttpContext, academic.data);
+                var yearResponse = _createCommon.CreateResponse(academic.message ?? "Thành công", HttpContext, academic.data);
                 return Ok(yearResponse);
             }
             else
             {
-                return new CustomJsonResult(404, HttpContext, academic.message);
+                return new CustomJsonResult(404, HttpContext, academic.message ?? "error");
             }
         }
 
@@ -65,12 +65,12 @@ namespace ExamProcessManage.Controllers
 
                 if (yearAdd.data != null)
                 {
-                    var response = _createCommon.CreateResponse(yearAdd.message, HttpContext, yearAdd.data);
+                    var response = _createCommon.CreateResponse(yearAdd.message ?? "success", HttpContext, yearAdd.data);
                     return Ok(response);
                 }
                 else
                 {
-                    return new CustomJsonResult(409, HttpContext, yearAdd.message);
+                    return new CustomJsonResult(409, HttpContext, yearAdd.message ?? "error");
                 }
             }
             else
@@ -96,16 +96,16 @@ namespace ExamProcessManage.Controllers
 
                 if (yearUpdate.data != null)
                 {
-                    var response = _createCommon.CreateResponse(yearUpdate.message, HttpContext, yearUpdate.data);
+                    var response = _createCommon.CreateResponse(yearUpdate.message ?? "success", HttpContext, yearUpdate.data);
                     return Ok(response);
                 }
-                else if (yearUpdate.message.Contains("no changes"))
+                else if ((yearUpdate.message ?? "").Contains("no changes"))
                 {
-                    return new CustomJsonResult(418, HttpContext, yearUpdate.message);
+                    return new CustomJsonResult(418, HttpContext, yearUpdate.message ?? "");
                 }
                 else
                 {
-                    return new CustomJsonResult(404, HttpContext, yearUpdate.message);
+                    return new CustomJsonResult(404, HttpContext, yearUpdate.message ?? "");
                 }
             }
             else
@@ -123,12 +123,12 @@ namespace ExamProcessManage.Controllers
 
             if (yearDel.data != null)
             {
-                var response = _createCommon.CreateResponse(yearDel.message, HttpContext, yearDel.data);
+                var response = _createCommon.CreateResponse(yearDel.message ?? "success", HttpContext, yearDel.data);
                 return Ok(response);
             }
             else
             {
-                return new CustomJsonResult(404, HttpContext, yearDel.message);
+                return new CustomJsonResult(404, HttpContext, yearDel.message ?? "error");
             }
         }
     }

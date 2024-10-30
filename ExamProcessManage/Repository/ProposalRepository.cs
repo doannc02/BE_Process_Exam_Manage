@@ -410,16 +410,17 @@ namespace ExamProcessManage.Repository
                             }
                             else
                             {
+
                                 var existingExamSet = existingExamSets.First(e => e.ExamSetId == examSet.id);
-                                existingExamSet.Status = proposalDTO.status; // Cập nhật trạng thái của examSet
+                                if(existingExamSet.Status != "approved") existingExamSet.Status = proposalDTO.status; // Cập nhật trạng thái của examSet
 
                                 foreach (var examDTO in examSet.exams)
                                 {
                                     var existingExam = await _context.Exams.FirstOrDefaultAsync(e => e.ExamId == examDTO.id);
-                                    if (existingExam != null)
+                                    if (existingExam != null && existingExam.Status != "approved")
                                     {
                                         existingExam.Comment = examDTO.comment;
-                                        existingExam.Status = proposalDTO.status; // Cập nhật trạng thái của exam theo examSet
+                                        existingExam.Status = proposalDTO.status; 
                                     }
                                     else
                                     {

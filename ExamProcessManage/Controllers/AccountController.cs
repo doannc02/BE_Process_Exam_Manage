@@ -52,7 +52,7 @@ namespace ExamProcessManage.Controllers
                 var err = new ErrorCodes
                 {
                     code = "401",
-                    message = "Không tìm thấy tài khoản trong hệ thống!!",
+                    message = "Tài khoản không tồn tại hoặc chưa được gán với giảng viên nào!!",
                 };
                 var result = new ErrorMessage<ErrorCodes>
                 {

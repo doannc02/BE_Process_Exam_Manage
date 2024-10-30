@@ -4,6 +4,7 @@ using ExamProcessManage.Interfaces;
 using ExamProcessManage.Models;
 using ExamProcessManage.ResponseModels;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection.Metadata.Ecma335;
 
 namespace ExamProcessManage.Repository
 {
@@ -174,11 +175,10 @@ namespace ExamProcessManage.Repository
                     {
                         var newCourse = new Course
                         {
-                            CourseId = inputCourse.id,
                             CourseCode = inputCourse.code,
                             CourseName = inputCourse.name,
                             CourseCredit = inputCourse.credit,
-                            MajorId = inputCourse.major.id
+                            MajorId = inputCourse.major.id 
                         };
 
                         newCourses.Add(newCourse);
@@ -219,14 +219,10 @@ namespace ExamProcessManage.Repository
 
                 if (existCourse != null)
                 {
-                    if (existCourse.CourseName != updateCourse.name &&
-                        existCourse.CourseCredit != updateCourse.credit &&
-                        existCourse.MajorId != updateCourse.major.id)
-                    {
+                   
                         var checkConflictCourse = await _context.Courses.AnyAsync(c => c.CourseName == updateCourse.name);
 
-                        if (!checkConflictCourse)
-                        {
+                      
                             existCourse.CourseName = updateCourse.name;
                             existCourse.CourseCredit = updateCourse.credit;
                             existCourse.MajorId = updateCourse.major.id > 0 ? updateCourse.major.id : existCourse.MajorId;
@@ -235,16 +231,9 @@ namespace ExamProcessManage.Repository
 
                             response.message = "update successfully";
                             response.data = updateCourse;
-                        }
-                        else
-                        {
-                            response.message = $"course name = '{updateCourse.name}' already exists";
-                        }
-                    }
-                    else
-                    {
-                        response.message = "no changes detected";
-                    }
+                      
+                    
+                   
                 }
                 else
                 {
