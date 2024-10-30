@@ -43,7 +43,6 @@ namespace ExamProcessManage.Repository
         public async Task<PageResponse<UserDTO>> GetListUsersAsync(QueryObject queryObject)
         {
             var startRow = (queryObject.page.Value - 1) * queryObject.size;
-
             var userDTOs = new List<UserDTO>();
             var teachers = _context.Teachers.AsNoTracking().ToList();
             var queryAcademicYears = _context.Users.AsNoTracking().AsQueryable();
@@ -52,7 +51,9 @@ namespace ExamProcessManage.Repository
             {
                 queryAcademicYears = queryAcademicYears.Where(p => p.Email.Contains(queryObject.search));
             }
-            queryAcademicYears = queryAcademicYears.Where(u => u.RoleId != 1);
+
+            queryAcademicYears = queryAcademicYears.Where(u => u.RoleId.HasValue && u.RoleId.Value != 1);
+
             var totalCount = await queryAcademicYears.CountAsync();
             var listAcademicYears = await queryAcademicYears
                 .Skip(startRow).Take(queryObject.size)
@@ -60,7 +61,7 @@ namespace ExamProcessManage.Repository
 
             foreach (var item in listAcademicYears)
             {
-                var fullname = teachers.FirstOrDefault(i => i.Id == item.TeacherId)?.Name;
+                var fullname = item.TeacherId.HasValue ? teachers.FirstOrDefault(i => i.Id == item.TeacherId.Value)?.Name : null;
 
                 if (!string.IsNullOrEmpty(fullname)) // Kiểm tra nếu fullname không rỗng
                 {
@@ -85,6 +86,7 @@ namespace ExamProcessManage.Repository
                 numberOfElements = userDTOs.Count
             };
         }
+
 
     }
 }
