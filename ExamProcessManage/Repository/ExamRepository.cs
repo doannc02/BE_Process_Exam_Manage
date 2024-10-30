@@ -11,7 +11,7 @@ namespace ExamProcessManage.Repository
     public class ExamRepository : IExamRepository
     {
         private readonly ApplicationDbContext _context;
-        private readonly List<string> validStatus = new() { "in_progress", "rejected", "approved", "pending_approval" };
+        private readonly List<string> _validStatus = new() { "in_progress", "rejected", "approved", "pending_approval" };
         public ExamRepository(ApplicationDbContext context)
         {
             _context = context;
@@ -44,7 +44,7 @@ namespace ExamProcessManage.Repository
 
             if (!string.IsNullOrEmpty(query.search))
             {
-                baseQuery = baseQuery.Where(e => e.ExamCode.Contains(query.search) || e.ExamName.Contains(query.search));
+                baseQuery = baseQuery.Where(e => e.ExamName != null && (e.ExamCode.Contains(query.search) || e.ExamName.Contains(query.search)));
             }
 
             if (query.isGetForAddExamSet == true)
@@ -112,15 +112,15 @@ namespace ExamProcessManage.Repository
                 exam_set = p.ExamSetId != null ? new CommonObject
                 {
                     id = (int)p.ExamSetId,
-                    name = p.ExamSet.ExamSetName
+                    name = p.ExamSet!.ExamSetName
                 } : null,
                 user = p.CreatorId.HasValue && users.ContainsKey((ulong)p.CreatorId.Value) ? new
                 {
                     id = p.CreatorId.Value,
-                    name = users[(ulong)p.CreatorId.Value].Email ?? "",
+                    name = users[(ulong)p.CreatorId.Value].Email,
                     fullname = users[(ulong)p.CreatorId.Value].TeacherId.HasValue &&
-                       teachersDict.ContainsKey(users[(ulong)p.CreatorId.Value].TeacherId.Value)
-                ? teachersDict[users[(ulong)p.CreatorId.Value].TeacherId.Value] 
+                       teachersDict.ContainsKey(users[(ulong)p.CreatorId.Value].TeacherId!.Value)
+                ? teachersDict[users[(ulong)p.CreatorId.Value].TeacherId!.Value] 
                 : ""
                 } : null,
                 create_at = p.CreateAt.ToString(),
@@ -181,12 +181,12 @@ namespace ExamProcessManage.Repository
                     user = exam.CreatorId.HasValue && users.TryGetValue((ulong)exam.CreatorId.Value, out var user) ? new
                     {
                         id = (int)user.Id,
-                        name = user.Email ?? "",
+                        name = user.Email,
                         fullname = user.TeacherId.HasValue && teachers.TryGetValue(user.TeacherId.Value, out var teacher) ? teacher.Name : ""
                     } : null,
                     status = exam.Status,
                     create_at = exam.CreateAt.ToString(),
-                    academic_year = academicYears.TryGetValue((int)exam.AcademicYearId, out var yearName)
+                    academic_year = academicYears.TryGetValue((int)exam.AcademicYearId!, out var yearName)
                         ? new CommonObject
                         {
                             id = exam.AcademicYearId.Value,
@@ -207,12 +207,12 @@ namespace ExamProcessManage.Repository
                 {
                     status = 500,
                     message = "An error occured: " + ex.Message,
-                    errors = new() { new() { message = ex.InnerException.ToString() } }
+                    errors = new() { new() { message = ex.InnerException!.ToString() } }
                 };
             }
         }
 
-        public async Task<BaseResponse<List<DetailResponse>>> CreateExamsAsync(List<ExamDTO> exams, int userId)
+        public async Task<BaseResponse<List<DetailResponse>>> CreateExamsAsync(List<ExamDTO>? exams, int userId)
         {
             try
             {
@@ -313,7 +313,7 @@ namespace ExamProcessManage.Repository
                     }
 
                     // Validate status
-                    if (string.IsNullOrEmpty(examDTO.status) || examDTO.status == "string" || !validStatus.Contains(examDTO.status))
+                    if (string.IsNullOrEmpty(examDTO.status) || examDTO.status == "string" || !_validStatus.Contains(examDTO.status))
                     {
                         errors.Add(new()
                         {
@@ -333,7 +333,7 @@ namespace ExamProcessManage.Repository
                     }
 
                     // Validate academic year
-                    if (!academicYearIds.Contains(examDTO.academic_year.id))
+                    if (examDTO.academic_year != null && !academicYearIds.Contains(examDTO.academic_year.id))
                     {
                         errors.Add(new()
                         {
@@ -387,7 +387,7 @@ namespace ExamProcessManage.Repository
                 {
                     status = 500,
                     message = "An error occurred: " + ex.Message,
-                    errors = new() { new() { message = ex.InnerException.ToString() } }
+                    errors = new() { new() { message = ex.InnerException!.ToString() } }
                 };
             }
         }
@@ -428,7 +428,7 @@ namespace ExamProcessManage.Repository
                     };
                 }
 
-                if (!validStatus.Contains(examDTO.status))
+                if (!_validStatus.Contains(examDTO.status))
                 {
                     return new BaseResponseId
                     {
@@ -468,7 +468,7 @@ namespace ExamProcessManage.Repository
                 else
                 {
                     if (examDTO.academic_year != null && examDTO.academic_year.id <= 0 ||
-                        !await _context.AcademicYears.AnyAsync(a => a.AcademicYearId == examDTO.academic_year.id))
+                        !await _context.AcademicYears.AnyAsync(a => examDTO.academic_year != null && a.AcademicYearId == examDTO.academic_year.id))
                     {
                         return new BaseResponseId
                         {
@@ -560,7 +560,7 @@ namespace ExamProcessManage.Repository
                             // Kiểm tra các trường hợp trạng thái bị pha trộn
                             bool anyExamInProgress = examsByExamSet.Any(exam => exam.Status == "in_progress");
                             bool anyExamRejected = examsByExamSet.Any(exam => exam.Status == "rejected");
-                            bool anyExamApproved = examsByExamSet.Any(exam => exam.Status == "approved");
+                            //bool anyExamApproved = examsByExamSet.Any(exam => exam.Status == "approved");
 
                             // Nếu có bất kỳ exam nào đang ở "in_progress" hoặc bị "rejected", es chuyển về "in_progress"
                             if (anyExamInProgress || anyExamRejected)
