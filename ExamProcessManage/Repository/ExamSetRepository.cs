@@ -11,7 +11,7 @@ namespace ExamProcessManage.Repository
     public class ExamSetRepository : IExamSetRepository
     {
         private readonly ApplicationDbContext _context;
-        private readonly List<string> validStatus = new() { "in_progress", "rejected", "approved", "pending_approval" };
+        private readonly List<string> _validStatus = new() { "in_progress", "rejected", "approved", "pending_approval" };
 
         public ExamSetRepository(ApplicationDbContext context)
         {
@@ -22,136 +22,148 @@ namespace ExamProcessManage.Repository
         {
             try
             {
-                var startRow = (queryObject.page.Value - 1) * queryObject.size;
-
-                // Build base query for ExamSets
-                var examSetQuery = _context.ExamSets.AsNoTracking().AsQueryable();
-                var examQuery = _context.Exams.AsNoTracking().AsQueryable();
-
-                if (queryObject.exceptValues != null && queryObject.exceptValues.Any())
-                    examSetQuery = examSetQuery.Where(p => !queryObject.exceptValues.Contains(p.ExamSetId));
-
-                if (!string.IsNullOrEmpty(queryObject.search))
-                    examSetQuery = examSetQuery.Where(p => p.ExamSetName.Contains(queryObject.search));
-
-                if (!string.IsNullOrEmpty(queryObject.stateExamSet))
-                    examSetQuery = examSetQuery.Where(e => e.Status == queryObject.stateExamSet);
-
-                if (queryObject.courseId > 0)
-                    examSetQuery = examSetQuery.Where(e => e.CourseId == queryObject.courseId);
-
-                if (userId.HasValue)
-                    examSetQuery = examSetQuery.Where(q => q.CreatorId == userId);
-
-                if (queryObject.userId.HasValue && !userId.HasValue)
+                if (queryObject.page != null)
                 {
-                    var proposalIds = await _context.TeacherProposals
-                    .Where(tp => tp.UserId == (ulong)queryObject.userId.Value)
-                    .Select(tp => tp.ProposalId)
-                    .ToListAsync();
+                    var startRow = (queryObject.page.Value - 1) * queryObject.size;
 
-                    if (proposalIds.Any())
-                        examSetQuery = examSetQuery.Where(p => p.ProposalId.HasValue && proposalIds.Contains(p.ProposalId.Value));
+                    // Build base query for ExamSets
+                    var examSetQuery = _context.ExamSets.AsNoTracking().AsQueryable();
+                    var examQuery = _context.Exams.AsNoTracking().AsQueryable();
+
+                    if (queryObject.exceptValues != null && queryObject.exceptValues.Any())
+                        examSetQuery = examSetQuery.Where(p => !queryObject.exceptValues.Contains(p.ExamSetId));
+
+                    if (!string.IsNullOrEmpty(queryObject.search))
+                    {
+                        examSetQuery = examSetQuery.Where(p => p.ExamSetName != null && p.ExamSetName.Contains(queryObject.search));
+                    }
+                    if (!string.IsNullOrEmpty(queryObject.stateExamSet))
+                        examSetQuery = examSetQuery.Where(e => e.Status == queryObject.stateExamSet);
+
+                    if (queryObject.courseId > 0)
+                        examSetQuery = examSetQuery.Where(e => e.CourseId == queryObject.courseId);
+
+                    if (userId.HasValue)
+                        examSetQuery = examSetQuery.Where(q => q.CreatorId == userId);
+
+                    if (queryObject.userId.HasValue && !userId.HasValue)
+                    {
+                        var proposalIds = await _context.TeacherProposals
+                            .Where(tp => tp.UserId == (ulong)queryObject.userId.Value)
+                            .Select(tp => tp.ProposalId)
+                            .ToListAsync();
+
+                        if (proposalIds.Any())
+                            examSetQuery = examSetQuery.Where(p => p.ProposalId.HasValue && proposalIds.Contains(p.ProposalId.Value));
+                    }
+
+                    if (queryObject.isParamAddProposal ?? false)
+                    {
+                        examSetQuery = examSetQuery.Where(e => e.ProposalId == null);
+
+                        // Filter exams by ExamSetId
+                        var examSetIds = await examSetQuery.Select(e => e.ExamSetId).ToListAsync();
+
+                        examQuery = examQuery.Where(p => p.ExamSetId.HasValue && examSetIds.Contains(p.ExamSetId.Value));
+                    }
+
+                    if (queryObject.proposalId.HasValue)
+                        examSetQuery = examSetQuery.Where(p => p.ProposalId == queryObject.proposalId);
+
+                    // Count total elements before pagination
+                    var totalCount = await examSetQuery.CountAsync();
+
+                    // Fetch paginated data
+                    var examSets = await examSetQuery
+                        .OrderBy(p => p.ExamSetId)
+                        .Skip(startRow)
+                        .Take(queryObject.size)
+                        .Include(p => p.Proposal)
+                        .ThenInclude(tp => tp!.TeacherProposals)
+                        .ToListAsync();
+
+                    // Preload related data for DTO mapping
+                    var departments = await _context.Departments.AsNoTracking().ToDictionaryAsync(d => d.DepartmentId);
+                    var teachers = await _context.Teachers.AsNoTracking().Select(t => new { t.Id, t.Name }).ToListAsync();
+
+                    // Chuyển danh sách thành từ điển
+                    var teachersDict = teachers.ToDictionary(t => t.Id, t => t.Name);
+
+                    var courses = await _context.Courses.AsNoTracking().ToDictionaryAsync(c => c.CourseId);
+                    var majors = await _context.Majors.AsNoTracking().ToDictionaryAsync(m => m.MajorId);
+                    var users = await _context.Users.AsNoTracking().ToDictionaryAsync(u => u.Id);
+
+                    // Map to DTOs
+                    var examSetDTOs = examSets.Select(p => new ExamSetDTO
+                    {
+                        id = p.ExamSetId,
+                        name = p.ExamSetName,
+                        description = p.Description,
+                        status = p.Status,
+                        exam_quantity = p.ExamQuantity,
+                        create_at = p.CreateAt.ToString(),
+                        update_at = p.UpdateAt.ToString(),
+                        course = p.CourseId.HasValue && courses.TryGetValue(p.CourseId.Value, out var course) ? new CommonObject
+                        {
+                            id = course?.CourseId ?? 0,
+                            name = course?.CourseName ?? "unknown",
+                            code = course?.CourseCode ?? "N?A"
+                        } : null,
+                        department = p.DepartmentId.HasValue && departments.TryGetValue(p.DepartmentId.Value, out var department) ? new CommonObject
+                        {
+                            id = department.DepartmentId,
+                            name = department.DepartmentName
+                        } : null,
+                        proposal = p.ProposalId != null ? new CommonObject
+                        {
+                            id = (int)p.ProposalId,
+                            code = p.Proposal?.PlanCode
+                        } : null,
+                        major = p.MajorId.HasValue && majors.TryGetValue(p.MajorId.Value, out var major) ? new CommonObject
+                        {
+                            id = p.MajorId.Value,
+                            name = major.MajorName
+                        } : null,
+                        exams = queryObject.isParamAddProposal ?? false ? examQuery.Where(e => e.ExamSetId == p.ExamSetId).Select(e => new ExamDTO
+                        {
+                            code = e.ExamCode,
+                            comment = e.Comment,
+                            description = e.Description,
+                            attached_file = e.AttachedFile,
+                            create_at = e.CreateAt.ToString(),
+                            status = e.Status,
+                            id = e.ExamId,
+                            name = e.ExamName
+                        }).ToList() : Enumerable.Empty<ExamDTO>().AsQueryable(),
+                        user = p.CreatorId.HasValue && users.TryGetValue((ulong)p.CreatorId.Value, out var user) ? new
+                        {
+                            id = (int)user.Id,
+                            name = user.Email,
+                            fullname = user.TeacherId.HasValue && teachersDict.TryGetValue(user.TeacherId.Value, out var teacherName) ? teacherName : ""
+                        } : null,
+                    }).ToList();
+
+                    // Build page response
+                    var pageResponse = new PageResponse<ExamSetDTO>
+                    {
+                        totalElements = totalCount,
+                        totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
+                        size = queryObject.size,
+                        page = queryObject.page.Value,
+                        content = examSetDTOs.ToArray()
+                    };
+
+                    return pageResponse;
                 }
-
-                if ((bool)queryObject.isParamAddProposal)
+                else
                 {
-                    examSetQuery = examSetQuery.Where(e => e.ProposalId == null);
-
-                    // Filter exams by ExamSetId
-                    var examSetIds = await examSetQuery.Select(e => e.ExamSetId).ToListAsync();
-
-                    examQuery = examQuery.Where(p => p.ExamSetId.HasValue && examSetIds.Contains(p.ExamSetId.Value));
+                    return new PageResponse<ExamSetDTO>();
                 }
-
-                if (queryObject.proposalId.HasValue)
-                    examSetQuery = examSetQuery.Where(p => p.ProposalId == queryObject.proposalId);
-
-                // Count total elements before pagination
-                var totalCount = await examSetQuery.CountAsync();
-
-                // Fetch paginated data
-                var examSets = await examSetQuery
-                .OrderBy(p => p.ExamSetId)
-                .Skip(startRow)
-                .Take(queryObject.size)
-                .Include(p => p.Proposal)
-                .ThenInclude(tp => tp.TeacherProposals)
-                .ToListAsync();
-
-                // Preload related data for DTO mapping
-                var departments = await _context.Departments.AsNoTracking().ToDictionaryAsync(d => d.DepartmentId);
-                var teachers = await _context.Teachers.AsNoTracking().ToDictionaryAsync(t => t.Id);
-                var courses = await _context.Courses.AsNoTracking().ToDictionaryAsync(c => c.CourseId);
-                var majors = await _context.Majors.AsNoTracking().ToDictionaryAsync(m => m.MajorId);
-                var users = await _context.Users.AsNoTracking().ToDictionaryAsync(u => u.Id);
-
-                // Map to DTOs
-                var examSetDTOs = examSets.Select(p => new ExamSetDTO
-                {
-                    id = p.ExamSetId,
-                    name = p.ExamSetName,
-                    description = p.Description,
-                    status = p.Status,
-                    exam_quantity = p.ExamQuantity,
-                    create_at = p.CreateAt.ToString(),
-                    update_at = p.UpdateAt.ToString(),
-                    course = p.CourseId.HasValue && courses.TryGetValue(p.CourseId.Value, out var course) ? new CommonObject
-                    {
-                        id = course.CourseId,
-                        name = course.CourseName,
-                        code = course.CourseCode
-                    } : null,
-                    department = p.DepartmentId.HasValue && departments.TryGetValue(p.DepartmentId.Value, out var department) ? new CommonObject
-                    {
-                        id = department.DepartmentId,
-                        name = department.DepartmentName
-                    } : null,
-                    proposal = p.ProposalId != null ? new CommonObject
-                    {
-                        id = (int)p.ProposalId,
-                        code = p.Proposal.PlanCode
-                    } : null,
-                    major = p.MajorId.HasValue && majors.TryGetValue(p.MajorId.Value, out var major) ? new CommonObject
-                    {
-                        id = (int)p.MajorId.Value,
-                        name = major.MajorName
-                    } : null,
-                    exams = (bool)queryObject.isParamAddProposal ? examQuery.Where(e => e.ExamSetId == p.ExamSetId).Select(e => new ExamDTO
-                    {
-                        code = e.ExamCode,
-                        comment = e.Comment,
-                        description = e.Description,
-                        attached_file = e.AttachedFile,
-                        create_at = e.CreateAt.ToString(),
-                        status = e.Status,
-                        id = e.ExamId,
-                        name = e.ExamName
-                    }).ToList() : Enumerable.Empty<ExamDTO>().AsQueryable(),
-                    user = p.CreatorId.HasValue && users.TryGetValue((ulong)p.CreatorId.Value, out var user) ? new
-                    {
-                        id = (int)user.Id,
-                        name = user.Email ?? "",
-                        fullname = user.TeacherId.HasValue && teachers.TryGetValue(user.TeacherId.Value, out var teacher) ? teacher.Name : ""
-                    } : null,
-                }).ToList();
-
-                // Build page response
-                var pageResponse = new PageResponse<ExamSetDTO>
-                {
-                    totalElements = totalCount,
-                    totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
-                    size = queryObject.size,
-                    page = queryObject.page.Value,
-                    content = examSetDTOs.ToArray()
-                };
-
-                return pageResponse;
             }
-            catch (Exception ex)
+            catch
             {
                 // Log the exception (ex) here if needed
-                return null;
+                return new PageResponse<ExamSetDTO>();
             }
         }
 
@@ -171,7 +183,7 @@ namespace ExamProcessManage.Repository
                 var examSet = await _context.ExamSets
                     .AsNoTracking()
                     .Include(p => p.Proposal)
-                    .ThenInclude(p => p.TeacherProposals)
+                    .ThenInclude(p => p!.TeacherProposals)
                     .FirstOrDefaultAsync(p => p.ExamSetId == id);
 
                 // Return early if the ExamSet is not found
@@ -180,7 +192,7 @@ namespace ExamProcessManage.Repository
                     return new BaseResponse<ExamSetDTO>
                     {
                         message = $"Proposal with id = {id} could not be found",
-                        data = null
+                        data = new ExamSetDTO()
                     };
                 }
 
@@ -192,8 +204,8 @@ namespace ExamProcessManage.Repository
                     {
                         academic_year = new CommonObject
                         {
-                            id = (int)e.AcademicYearId,
-                            name = e.AcademicYear.YearName ?? string.Empty,
+                            id = (int)e.AcademicYearId!,
+                            name = e.AcademicYear!.YearName ?? string.Empty,
                         },
                         attached_file = e.AttachedFile,
                         comment = e.Comment,
@@ -230,7 +242,7 @@ namespace ExamProcessManage.Repository
                     user = examSet.CreatorId.HasValue && users.TryGetValue((ulong)examSet.CreatorId.Value, out var user) ? new
                     {
                         id = (int)user.Id,
-                        name = user.Email ?? string.Empty,
+                        name = user.Email,
                         fullname = user.TeacherId.HasValue && teachers.TryGetValue(user.TeacherId.Value, out var teacher) ? teacher.Name : string.Empty
                     } : null,
                     department = examSet.DepartmentId.HasValue && departments.TryGetValue(examSet.DepartmentId.Value, out var department) ? new CommonObject
@@ -251,10 +263,10 @@ namespace ExamProcessManage.Repository
                     data = examSetDTO
                 };
             }
-            catch (Exception ex)
+            catch
             {
                 // Log the exception (ex) here if needed
-                return null;
+                return new BaseResponse<ExamSetDTO>();
             }
         }
 
@@ -262,9 +274,6 @@ namespace ExamProcessManage.Repository
         {
             try
             {
-                if (examSetDTO == null)
-                    return new BaseResponseId { status = 500, message = "Bộ đề rỗng" };
-
                 var errors = new List<ErrorDetail>();
 
                 // Kiểm tra tên bộ đề
@@ -277,12 +286,12 @@ namespace ExamProcessManage.Repository
                 }
 
                 // Kiểm tra trạng thái bộ đề
-                if (!validStatus.Contains(examSetDTO.status))
+                if (!_validStatus.Contains(examSetDTO.status))
                     errors.Add(new ErrorDetail { field = "status", message = "Trạng thái bộ đề không hợp lệ" });
 
                 // Kiểm tra học phần
                 var course = await _context.Courses.AsNoTracking()
-                    .Include(c => c.Major).ThenInclude(m => m.Department)
+                    .Include(c => c.Major).ThenInclude(m => m!.Department)
                     .FirstOrDefaultAsync(c => c.CourseId == examSetDTO.course.id);
 
                 if (course == null)
@@ -311,7 +320,7 @@ namespace ExamProcessManage.Repository
 
                     foreach (var examId in examIds)
                     {
-                        if (!examCodeSet.Add((int)examId))
+                        if (!examCodeSet.Add((int)examId!))
                         {
                             errors.Add(new ErrorDetail
                             {
@@ -350,9 +359,9 @@ namespace ExamProcessManage.Repository
                 var newExamSet = new ExamSet
                 {
                     ExamSetName = examSetDTO.name,
-                    DepartmentId = examSetDTO?.department?.id,
-                    MajorId = examSetDTO?.major?.id,
-                    ExamQuantity = (int)examSetDTO.exam_quantity,
+                    DepartmentId = examSetDTO.department?.id,
+                    MajorId = examSetDTO.major?.id,
+                    ExamQuantity = (int)examSetDTO.exam_quantity!,
                     CreatorId = userId,
                     Description = examSetDTO.description ?? string.Empty,
                     Status = examSetDTO.status,
@@ -388,18 +397,10 @@ namespace ExamProcessManage.Repository
                 var errorList = new List<ErrorDetail>();
 
                 // Check loi dau vao
-                if (examSet == null)
-                    return new BaseResponseId
-                    {
-                        status = 400,
-                        message = "Bad resuest",
-                        errors = new() { new() { message = "Null exam set." } }
-                    };
-
-                if (examSet?.id <= 0)
+                if (examSet.id <= 0)
                     errorList.Add(new() { field = "id", message = $"Invalid examset id {examSet.id}" });
 
-                if (!validStatus.Contains(examSet.status))
+                if (!_validStatus.Contains(examSet.status))
                     errorList.Add(new() { field = "status", message = $"Invalid status '{examSet.status}'" });
 
                 if (examSet.course.id < 0)
@@ -421,7 +422,7 @@ namespace ExamProcessManage.Repository
                             field = $"exams.{i}",
                             message = $"Invalid exam id {id}"
                         });
-                        if (!examIds.Add((int)examDTOs[i].id))
+                        if (!examIds.Add((int)examDTOs[i].id!))
                         {
                             errorList.Add(new()
                             {
@@ -632,7 +633,7 @@ namespace ExamProcessManage.Repository
                     }
 
                     // Thay doi hoc phan
-                    if (examSet.course != null && examSet.course.id > 0)
+                    if (examSet.course.id > 0)
                     {
                         if (!await _context.Courses.AnyAsync(c => c.CourseId == examSet.course.id)) errorList.Add(new()
                         {

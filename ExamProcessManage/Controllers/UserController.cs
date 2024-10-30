@@ -21,21 +21,16 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpGet]
-       // [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         //[AllowAnonymous]
         [Route("/api/v1/user/list")]
         public async Task<IActionResult> GetListUserAsync([FromQuery] QueryObject query)
         {
             var users = await _userRepository.GetListUsersAsync(query);
-            if (users != null && users.content != null && users.content.Any())
-            {
-                var response = _createCommonResponse.CreateResponse("Thành công", HttpContext, users);
-                return Ok(response);
-            }
-            else
-            {
-                return BadRequest();
-            }
+    
+            var response = _createCommonResponse.CreateResponse("Thành công", HttpContext, users);
+            return Ok(response);
+    
         }
 
         [HttpGet]

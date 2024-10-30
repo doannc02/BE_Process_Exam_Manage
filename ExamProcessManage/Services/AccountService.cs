@@ -21,16 +21,18 @@ namespace ExamProcessManage.Services
         public AuthenticateResponse Authenticate(LoginDto model)
         {
             var user = _context.Users.SingleOrDefault(x => x.Email == model.UserName);
-            if (user.RoleId != 1 && user.TeacherId == null)
-            {
-                return null;
-            }
-            var role = _context.Roles.AsNoTracking().ToList();
             if (user == null)
             {
                 // throw new ApplicationException("Username or password is incorrect");
                 return null;
             }
+
+            if (user.RoleId != 1 && user.TeacherId == null)
+            {
+                return null;
+            }
+            var role = _context.Roles.AsNoTracking().ToList();
+          
 
             if (!VerifyPassword.VerifyPasswordBCrypt(model.Password, user.Password))
             {

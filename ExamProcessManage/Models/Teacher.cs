@@ -20,7 +20,7 @@ namespace ExamProcessManage.Models
         public string? ProgressTeach { get; set; }
         public string? ReseachArea { get; set; }
         public string? CoverPath { get; set; }
-        public bool IsPinned { get; set; }
+        public bool? IsPinned { get; set; }
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public DateTime? DeletedAt { get; set; }
