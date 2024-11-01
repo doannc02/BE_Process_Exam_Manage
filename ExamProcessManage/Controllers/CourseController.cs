@@ -78,30 +78,34 @@ namespace ExamProcessManage.Controllers
         [HttpPost]
         public async Task<IActionResult> PostCourseAsync([FromBody] List<CourseReponse> inputCourses)
         {
-            if (inputCourses?.Any() != true)
+            try
             {
-                return new CustomJsonResult(400, HttpContext, "No course data provided");
-            }
-
-            foreach (var inputCourse in inputCourses)
-            {
-                if (inputCourse.id == 0 || inputCourse.name == "string" || inputCourse.major.id == 0)
+                if (inputCourses.Any() != true)
                 {
-                    return new CustomJsonResult(400, HttpContext, "invalid input for one or more courses");
+                    return new CustomJsonResult(400, HttpContext, "No course data provided");
                 }
-            }
 
-            var newCourseResponse = await _repository.CreateCourseAsync(inputCourses);
+                if (inputCourses.Any(inputCourse =>
+                        inputCourse.id == 0 || inputCourse.name == "string" || inputCourse.major.id == 0))
+                {
+                    return new CustomJsonResult(400, HttpContext, "Invalid for one or more courses");
+                }
 
-            if (newCourseResponse.data != null)
-            {
+                var newCourseResponse = await _repository.CreateCourseAsync(inputCourses);
+
                 var response =
-                    _createCommon.CreateResponse(newCourseResponse.message, HttpContext, newCourseResponse.data);
+                    _createCommon.CreateResponse(newCourseResponse.message!, HttpContext, newCourseResponse.data);
                 return Ok(response);
             }
-            else
+            catch (Exception e)
             {
-                return new CustomJsonResult(409, HttpContext, newCourseResponse.message);
+                return new CustomJsonResult(500, HttpContext, "Internal Server Error", new List<ErrorDetail>
+                {
+                    new()
+                    {
+                        message = $"{e.Message}: {e.InnerException?.Message}"
+                    }
+                });
             }
         }
 
