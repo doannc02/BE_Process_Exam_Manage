@@ -33,15 +33,13 @@ namespace ExamProcessManage.Controllers
             {
                 var academics = await _repository.GetListAcademicYearAsync(queryObject);
 
-                if (academics != null)
-                {
-                    var commonResponse = _createCommon.CreateResponse(Success, HttpContext, academics);
-                    return Ok(commonResponse);
-                }
-                else
+                if (academics is { content: null })
                 {
                     return new CustomJsonResult(500, HttpContext, "An internal server error occured");
                 }
+
+                var commonResponse = _createCommon.CreateResponse(Success, HttpContext, academics);
+                return Ok(commonResponse);
             }
             catch (Exception e)
             {
@@ -59,16 +57,28 @@ namespace ExamProcessManage.Controllers
         [HttpGet("detail")]
         public async Task<IActionResult> GetDetailAcademicYearAsync([FromQuery] [Required] int id)
         {
-            var academic = await _repository.GetDetailAcademicYearAsync(id);
-            if (academic != null && academic.data != null)
+            try
             {
+                var academic = await _repository.GetDetailAcademicYearAsync(id);
+                
+                if (academic is { data: null })
+                {
+                    return new CustomJsonResult(404, HttpContext, academic.message ?? "Not Found");
+                }
+
                 var yearResponse =
-                    _createCommon.CreateResponse(academic.message ?? "Thành công", HttpContext, academic.data);
+                    _createCommon.CreateResponse(academic.message ?? Success, HttpContext, academic.data);
                 return Ok(yearResponse);
             }
-            else
+            catch (Exception e)
             {
-                return new CustomJsonResult(404, HttpContext, academic.message ?? "error");
+                return new CustomJsonResult(500, HttpContext, "Internal Server Error", new List<ErrorDetail>
+                {
+                    new()
+                    {
+                        message = $"{e.Message}: {e.InnerException?.Message}"
+                    }
+                });
             }
         }
 
