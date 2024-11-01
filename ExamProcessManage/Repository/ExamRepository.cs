@@ -11,7 +11,7 @@ namespace ExamProcessManage.Repository
     public class ExamRepository : IExamRepository
     {
         private readonly ApplicationDbContext _context;
-        private readonly List<string> validStatus = new() { "in_progress", "rejected", "approved", "pending_approval" };
+        private readonly List<string> _validStatus = new() { $"in_progress", $"rejected", $"approved", $"pending_approval" };
         public ExamRepository(ApplicationDbContext context)
         {
             _context = context;
@@ -313,7 +313,7 @@ namespace ExamProcessManage.Repository
                     }
 
                     // Validate status
-                    if (string.IsNullOrEmpty(examDTO.status) || examDTO.status == "string" || !validStatus.Contains(examDTO.status))
+                    if (string.IsNullOrEmpty(examDTO.status) || examDTO.status == "string" || !_validStatus.Contains(examDTO.status))
                     {
                         errors.Add(new()
                         {
@@ -428,7 +428,7 @@ namespace ExamProcessManage.Repository
                     };
                 }
 
-                if (!validStatus.Contains(examDTO.status))
+                if (!_validStatus.Contains(examDTO.status))
                 {
                     return new BaseResponseId
                     {

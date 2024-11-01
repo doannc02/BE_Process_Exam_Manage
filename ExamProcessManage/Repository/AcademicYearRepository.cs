@@ -24,7 +24,7 @@ namespace ExamProcessManage.Repository
             // Apply search filter
             if (!string.IsNullOrEmpty(queryObject.search))
             {
-                queryAcademicYears = queryAcademicYears.Where(m => m.YearName.Contains(queryObject.search));
+                queryAcademicYears = queryAcademicYears.Where(m => m.YearName!.Contains(queryObject.search));
             }
             // Đếm tổng số bản ghi
             var totalCount = await queryAcademicYears.CountAsync();
@@ -40,14 +40,14 @@ namespace ExamProcessManage.Repository
                     totalElements = totalCount,
                     totalPages = 0, // Không có trang nào
                     size = queryObject.size,
-                    page = queryObject.page.Value,
+                    page = queryObject.page!.Value,
                     numberOfElements = yearResponses.Count
                 };
             }
 
             // Lấy danh sách bản ghi theo phân trang
             var listAcademicYears = await queryAcademicYears
-                .Skip((queryObject.page.Value - 1) * queryObject.size)
+                .Skip((queryObject.page!.Value - 1) * queryObject.size)
                 .Take(queryObject.size)
                 .ToListAsync();
 
@@ -57,8 +57,8 @@ namespace ExamProcessManage.Repository
                 {
                     id = item.AcademicYearId,
                     name = item.YearName ?? string.Empty,
-                    start_year = (int)item.StartYear,
-                    end_year = (int)item.EndYear
+                    start_year = (int)item.StartYear!,
+                    end_year = (int)item.EndYear!
                 };
 
                 yearResponses.Add(academic);
@@ -89,8 +89,8 @@ namespace ExamProcessManage.Repository
                     {
                         id = academicYear.AcademicYearId,
                         name = academicYear.YearName ?? string.Empty,
-                        start_year = (int)academicYear.StartYear,
-                        end_year = (int)academicYear.EndYear
+                        start_year = (int)academicYear.StartYear!,
+                        end_year = (int)academicYear.EndYear!
                     }
                 };
             }
@@ -210,8 +210,8 @@ namespace ExamProcessManage.Repository
                 {
                     id = existYear.AcademicYearId,
                     name = existYear.YearName,
-                    start_year = (int)existYear.StartYear,
-                    end_year = (int)existYear.EndYear
+                    start_year = (int)existYear.StartYear!,
+                    end_year = (int)existYear.EndYear!
                 };
             }
             else

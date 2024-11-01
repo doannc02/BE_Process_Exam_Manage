@@ -34,7 +34,7 @@ namespace ExamProcessManage.Repository
             // Apply search filter
             if (!string.IsNullOrEmpty(queryObject.search))
             {
-                queryDepartments = queryDepartments.Where(m => m.DepartmentName.Contains(queryObject.search));
+                queryDepartments = queryDepartments.Where(m => m.DepartmentName!.Contains(queryObject.search));
             }
             // Apply sorting if specified (you can adjust the sort logic as needed)
             if (!string.IsNullOrEmpty(queryObject.sort))
@@ -59,14 +59,14 @@ namespace ExamProcessManage.Repository
                     totalElements = totalCount,
                     totalPages = 0, // No pages available
                     size = queryObject.size,
-                    page = queryObject.page.Value,
+                    page = queryObject.page!.Value,
                     numberOfElements = response.Count,
                     sort = queryObject.sort ?? string.Empty
                 };
             }
 
             var listDepartments = await queryDepartments
-                .Skip((queryObject.page.Value - 1) * queryObject.size)
+                .Skip((queryObject.page!.Value - 1) * queryObject.size)
                 .Take(queryObject.size)
                 .ToListAsync();
 
@@ -121,7 +121,7 @@ namespace ExamProcessManage.Repository
             try
             {
                 var existed = await _context.Departments.AnyAsync(d => d.DepartmentId == department.id ||
-                d.DepartmentName.Contains(department.name));
+                d.DepartmentName!.Contains(department.name));
 
                 if (!existed)
                 {
