@@ -14,6 +14,8 @@ namespace ExamProcessManage.Controllers
         private readonly ICourseRepository _repository;
         private readonly CreateCommonResponse _createCommon;
 
+        private const string Success = "Success";
+
         public CourseController(ICourseRepository courseRepository)
         {
             _repository = courseRepository;
@@ -22,20 +24,31 @@ namespace ExamProcessManage.Controllers
 
         // GET: api/<ValuesController>
         [HttpGet("list")]
-        public async Task<IActionResult> GetListCourseAsync([FromQuery] int majorId, [FromQuery] QueryObject queryObject)
+        public async Task<IActionResult> GetListCourseAsync([FromQuery] int majorId,
+            [FromQuery] QueryObject queryObject)
         {
-            var listCourse = await _repository.GetListCourseAsync(majorId, queryObject);
+            try
+            {
+                var listCourse = await _repository.GetListCourseAsync(majorId, queryObject);
 
-
-            var commonResponse = _createCommon.CreateResponse("success", HttpContext, listCourse);
-            return Ok(commonResponse);
-
-
+                var commonResponse = _createCommon.CreateResponse(Success, HttpContext, listCourse);
+                return Ok(commonResponse);
+            }
+            catch (Exception e)
+            {
+                return new CustomJsonResult(500, HttpContext, "Internal Server Error", new List<ErrorDetail>
+                {
+                    new()
+                    {
+                        message = $"{e.Message}: {e.InnerException?.Message}"
+                    }
+                });
+            }
         }
-
+        
         // GET api/<ValuesController>/5
         [HttpGet("detail")]
-        public async Task<IActionResult> GetDetailCourseAsync([FromQuery][Required] int id)
+        public async Task<IActionResult> GetDetailCourseAsync([FromQuery] [Required] int id)
         {
             var course = await _repository.GetDetailCourseAsync(id);
 
@@ -71,7 +84,8 @@ namespace ExamProcessManage.Controllers
 
             if (newCourseResponse.data != null)
             {
-                var response = _createCommon.CreateResponse(newCourseResponse.message, HttpContext, newCourseResponse.data);
+                var response =
+                    _createCommon.CreateResponse(newCourseResponse.message, HttpContext, newCourseResponse.data);
                 return Ok(response);
             }
             else
@@ -110,7 +124,7 @@ namespace ExamProcessManage.Controllers
 
         // DELETE api/<ValuesController>/5
         [HttpDelete]
-        public async Task<IActionResult> DeleteCourseAsync([FromQuery][Required] int id)
+        public async Task<IActionResult> DeleteCourseAsync([FromQuery] [Required] int id)
         {
             var delCourse = await _repository.DeleteCourseAsync(id);
 
