@@ -19,6 +19,9 @@ namespace ExamProcessManage.Controllers
 
         private const string Success = "Success";
 
+        // Matches years between 2000 and 2099
+        private const string YearPattern = @"^20\d{2}$";
+
         public AcademicYearController(IAcademicYearRepository repository)
         {
             _repository = repository;
@@ -87,25 +90,35 @@ namespace ExamProcessManage.Controllers
         [Authorize(Roles = "Admin, Writer")]
         public async Task<IActionResult> PostAcademicYearAsync([FromBody] AcademicYearResponse year)
         {
-            // Matches years between 2000 and 2099  
-            const string yearPattern = @"^20\d{2}$";
-
-            if (year is not { id: > 0, start_year: > 0 } || year.start_year <= year.end_year ||
-                !Regex.IsMatch(year.start_year.ToString(), yearPattern))
+            try
             {
-                return new CustomJsonResult(400, HttpContext, "Invalid academic year");
+                if (year is not { id: > 0, start_year: > 0 } || year.start_year <= year.end_year ||
+                    !Regex.IsMatch(year.start_year.ToString(), YearPattern))
+                {
+                    return new CustomJsonResult(400, HttpContext, "Invalid academic year");
+                }
+
+                var yearAdd = await _repository.CreateAcademicYearAsync(year);
+
+                if (yearAdd is { data: null })
+                {
+                    return new CustomJsonResult(500, HttpContext, yearAdd.message ?? "Error");
+                }
+
+                var response =
+                    _createCommon.CreateResponse(yearAdd.message ?? Success, HttpContext, yearAdd.data);
+                return Ok(response);
             }
-
-            var yearAdd = await _repository.CreateAcademicYearAsync(year);
-
-            if (yearAdd is { data: null })
+            catch (Exception e)
             {
-                return new CustomJsonResult(500, HttpContext, yearAdd.message ?? "Error");
+                return new CustomJsonResult(500, HttpContext, "Internal Server Error", new List<ErrorDetail>
+                {
+                    new()
+                    {
+                        message = $"{e.Message}: {e.InnerException?.Message}"
+                    }
+                });
             }
-
-            var response =
-                _createCommon.CreateResponse(yearAdd.message ?? Success, HttpContext, yearAdd.data);
-            return Ok(response);
         }
 
         // PUT api/<AcademicYearController>/5
@@ -113,34 +126,36 @@ namespace ExamProcessManage.Controllers
         [Authorize(Roles = "Admin, Writer")]
         public async Task<IActionResult> PutAcademicYearAsync([FromBody] AcademicYearResponse year)
         {
-            // Matches years between 2000 and 2099
-            string yearPattern = @"^20\d{2}$";
-
-            if (year.id > 0 && year.start_year > 0 && year.end_year > 0 &&
-                year.start_year < year.end_year &&
-                Regex.IsMatch(year.start_year.ToString(), yearPattern) &&
-                Regex.IsMatch(year.end_year.ToString(), yearPattern))
+            try
             {
+                if (year is not { id: > 0, start_year: > 0, end_year: > 0 } ||
+                    year.start_year >= year.end_year ||
+                    !Regex.IsMatch(year.start_year.ToString(), YearPattern) ||
+                    !Regex.IsMatch(year.end_year.ToString(), YearPattern))
+                {
+                    return new CustomJsonResult(400, HttpContext, "Invalid academic year");
+                }
+
                 var yearUpdate = await _repository.UpdateAcademicYearAsync(year);
 
-                if (yearUpdate.data != null)
-                {
-                    var response =
-                        _createCommon.CreateResponse(yearUpdate.message ?? "success", HttpContext, yearUpdate.data);
-                    return Ok(response);
-                }
-                else if ((yearUpdate.message ?? "").Contains("no changes"))
-                {
-                    return new CustomJsonResult(418, HttpContext, yearUpdate.message ?? "");
-                }
-                else
+                if (yearUpdate is { data: null })
                 {
                     return new CustomJsonResult(404, HttpContext, yearUpdate.message ?? "");
                 }
+
+                var response =
+                    _createCommon.CreateResponse(yearUpdate.message ?? Success, HttpContext, yearUpdate.data);
+                return Ok(response);
             }
-            else
+            catch (Exception e)
             {
-                return new CustomJsonResult(400, HttpContext, "invalid input");
+                return new CustomJsonResult(500, HttpContext, "Internal Server Error", new List<ErrorDetail>
+                {
+                    new()
+                    {
+                        message = $"{e.Message}: {e.InnerException?.Message}"
+                    }
+                });
             }
         }
 
@@ -149,16 +164,28 @@ namespace ExamProcessManage.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteAcademicYearAsync([FromQuery] [Required] int id)
         {
-            var yearDel = await _repository.DeleteAcademicYearAsync(id);
-
-            if (yearDel.data != null)
+            try
             {
-                var response = _createCommon.CreateResponse(yearDel.message ?? "success", HttpContext, yearDel.data);
+                var yearDel = await _repository.DeleteAcademicYearAsync(id);
+
+                if (yearDel is { data: null })
+                {
+                    return new CustomJsonResult(500, HttpContext, yearDel.message ?? "Error");
+                }
+
+                var response =
+                    _createCommon.CreateResponse(yearDel.message ?? Success, HttpContext, yearDel.data);
                 return Ok(response);
             }
-            else
+            catch (Exception e)
             {
-                return new CustomJsonResult(404, HttpContext, yearDel.message ?? "error");
+                return new CustomJsonResult(500, HttpContext, "Internal Server Error", new List<ErrorDetail>
+                {
+                    new()
+                    {
+                        message = $"{e.Message}: {e.InnerException?.Message}"
+                    }
+                });
             }
         }
     }
