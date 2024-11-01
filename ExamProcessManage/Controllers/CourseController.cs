@@ -45,21 +45,32 @@ namespace ExamProcessManage.Controllers
                 });
             }
         }
-        
+
         // GET api/<ValuesController>/5
         [HttpGet("detail")]
         public async Task<IActionResult> GetDetailCourseAsync([FromQuery] [Required] int id)
         {
-            var course = await _repository.GetDetailCourseAsync(id);
-
-            if (course != null && course.data != null)
+            try
             {
-                var response = _createCommon.CreateResponse(course.message, HttpContext, course.data);
+                var course = await _repository.GetDetailCourseAsync(id);
+
+                if (course is { data: not null })
+                {
+                    return new CustomJsonResult(404, HttpContext, course.message!);
+                }
+
+                var response = _createCommon.CreateResponse(Success, HttpContext, course.data);
                 return Ok(response);
             }
-            else
+            catch (Exception e)
             {
-                return new CustomJsonResult(404, HttpContext, course.message);
+                return new CustomJsonResult(500, HttpContext, "Internal Server Error", new List<ErrorDetail>
+                {
+                    new()
+                    {
+                        message = $"{e.Message}: {e.InnerException?.Message}"
+                    }
+                });
             }
         }
 
