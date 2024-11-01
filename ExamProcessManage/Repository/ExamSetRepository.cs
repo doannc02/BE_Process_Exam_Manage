@@ -11,18 +11,18 @@ namespace ExamProcessManage.Repository
     public class ExamSetRepository : IExamSetRepository
     {
         private readonly ApplicationDbContext _context;
-        private readonly List<string> _validStatus = new() { $"in_progress", $"rejected", $"approved", $"pending_approval" };
+        private readonly List<string> validStatus = new() { "in_progress", "rejected", "approved", "pending_approval" };
 
         public ExamSetRepository(ApplicationDbContext context)
         {
             _context = context;
         }
 
-        public async Task<PageResponse<ExamSetDTO>?> GetListExamSetAsync(int? userId, RequestParamsExamSets queryObject)
+        public async Task<PageResponse<ExamSetDTO>> GetListExamSetAsync(int? userId, RequestParamsExamSets queryObject)
         {
             try
             {
-                var startRow = (queryObject.page!.Value - 1) * queryObject.size;
+                var startRow = (queryObject.page.Value - 1) * queryObject.size;
 
                 // Build base query for ExamSets
                 var examSetQuery = _context.ExamSets.AsNoTracking().AsQueryable();
@@ -77,7 +77,7 @@ namespace ExamProcessManage.Repository
                 .Skip(startRow)
                 .Take(queryObject.size)
                 .Include(p => p.Proposal)
-                .ThenInclude(tp => tp!.TeacherProposals)
+                .ThenInclude(tp => tp.TeacherProposals)
                 .ToListAsync();
 
                 // Preload related data for DTO mapping
@@ -92,7 +92,7 @@ namespace ExamProcessManage.Repository
                 var users = await _context.Users.AsNoTracking().ToDictionaryAsync(u => u.Id);
 
                 // Map to DTOs
-                var examSetDtOs = examSets.Select(p => new ExamSetDTO
+                var examSetDTOs = examSets.Select(p => new ExamSetDTO
                 {
                     id = p.ExamSetId,
                     name = p.ExamSetName,
@@ -119,7 +119,7 @@ namespace ExamProcessManage.Repository
                     } : null,
                     major = p.MajorId.HasValue && majors.TryGetValue(p.MajorId.Value, out var major) ? new CommonObject
                     {
-                        id = p.MajorId.Value,
+                        id = (int)p.MajorId.Value,
                         name = major.MajorName
                     } : null,
                     exams = queryObject.isParamAddProposal ?? false ? examQuery.Where(e => e.ExamSetId == p.ExamSetId).Select(e => new ExamDTO
@@ -137,7 +137,7 @@ namespace ExamProcessManage.Repository
                     {
                         id = (int)user.Id,
                         name = user.Email ?? "",
-                        fullname = user.TeacherId.HasValue && teachersDict.TryGetValue(user.TeacherId.Value, out var teacherName) ? teacherName : $""
+                        fullname = user.TeacherId.HasValue && teachersDict.TryGetValue(user.TeacherId.Value, out var teacherName) ? teacherName : ""
                     } : null,
                 }).ToList();
 
@@ -148,7 +148,7 @@ namespace ExamProcessManage.Repository
                     totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
                     size = queryObject.size,
                     page = queryObject.page.Value,
-                    content = examSetDtOs.ToArray()
+                    content = examSetDTOs.ToArray()
                 };
 
                 return pageResponse;
@@ -160,7 +160,7 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public async Task<BaseResponse<ExamSetDTO?>?> GetDetailExamSetAsync(int? userId, int id)
+        public async Task<BaseResponse<ExamSetDTO>> GetDetailExamSetAsync(int? userId, int id)
         {
             try
             {
@@ -182,7 +182,7 @@ namespace ExamProcessManage.Repository
                 // Return early if the ExamSet is not found
                 if (examSet == null)
                 {
-                    return new BaseResponse<ExamSetDTO?>
+                    return new BaseResponse<ExamSetDTO>
                     {
                         message = $"Proposal with id = {id} could not be found",
                         data = null
@@ -197,8 +197,8 @@ namespace ExamProcessManage.Repository
                     {
                         academic_year = new CommonObject
                         {
-                            id = (int)e.AcademicYearId!,
-                            name = e.AcademicYear!.YearName ?? string.Empty,
+                            id = (int)e.AcademicYearId,
+                            name = e.AcademicYear.YearName ?? string.Empty,
                         },
                         attached_file = e.AttachedFile,
                         comment = e.Comment,
@@ -212,50 +212,49 @@ namespace ExamProcessManage.Repository
                     .ToListAsync();
 
                 // Create the DTO mapping using the pre-fetched dictionaries
-                string empty = string.Empty;
-                var examSetDto = new ExamSetDTO
+                var examSetDTO = new ExamSetDTO
+                {
+                    id = examSet.ExamSetId,
+                    name = examSet.ExamSetName,
+                    description = examSet.Description,
+                    exam_quantity = examSet.ExamQuantity,
+                    status = examSet.Status,
+                    create_at = examSet.CreateAt.ToString(),
+                    update_at = examSet.UpdateAt.ToString(),
+                    course = examSet.CourseId.HasValue && courses.TryGetValue(examSet.CourseId.Value, out var course) ? new CommonObject
                     {
-                        id = examSet.ExamSetId,
-                        name = examSet.ExamSetName,
-                        description = examSet.Description,
-                        exam_quantity = examSet.ExamQuantity,
-                        status = examSet.Status,
-                        create_at = examSet.CreateAt.ToString(),
-                        update_at = examSet.UpdateAt.ToString(),
-                        course = examSet.CourseId.HasValue && courses.TryGetValue(examSet.CourseId.Value, out var course) ? new CommonObject
-                        {
-                            id = course.CourseId,
-                            name = course.CourseName,
-                            code = course.CourseCode
-                        } : null,
-                        proposal = examSet.ProposalId.HasValue ? new CommonObject
-                        {
-                            id = (int)examSet.ProposalId,
-                            name = proposals.TryGetValue((int)examSet.ProposalId, out var proposal) ? proposal.PlanCode : null,
-                        } : null,
-                        user = examSet.CreatorId.HasValue && users.TryGetValue((ulong)examSet.CreatorId.Value, out var user) ? new
-                        {
-                            id = (int)user.Id,
-                            name = user.Email ?? empty,
-                            fullname = user.TeacherId.HasValue && teachers.TryGetValue(user.TeacherId.Value, out var teacher) ? teacher.Name : empty
-                        } : null,
-                        department = examSet.DepartmentId.HasValue && departments.TryGetValue(examSet.DepartmentId.Value, out var department) ? new CommonObject
-                        {
-                            id = department.DepartmentId,
-                            name = department.DepartmentName
-                        } : null,
-                        exams = exams,
-                        major = examSet.MajorId.HasValue && majors.TryGetValue(examSet.MajorId.Value, out var major) ? new CommonObject
-                        {
-                            id = major.MajorId,
-                            name = major.MajorName
-                        } : null
-                    };
+                        id = course.CourseId,
+                        name = course.CourseName,
+                        code = course.CourseCode
+                    } : null,
+                    proposal = examSet.ProposalId.HasValue ? new CommonObject
+                    {
+                        id = (int)examSet.ProposalId,
+                        name = proposals.TryGetValue((int)examSet.ProposalId, out var proposal) ? proposal.PlanCode : null,
+                    } : null,
+                    user = examSet.CreatorId.HasValue && users.TryGetValue((ulong)examSet.CreatorId.Value, out var user) ? new
+                    {
+                        id = (int)user.Id,
+                        name = user.Email ?? string.Empty,
+                        fullname = user.TeacherId.HasValue && teachers.TryGetValue(user.TeacherId.Value, out var teacher) ? teacher.Name : string.Empty
+                    } : null,
+                    department = examSet.DepartmentId.HasValue && departments.TryGetValue(examSet.DepartmentId.Value, out var department) ? new CommonObject
+                    {
+                        id = department.DepartmentId,
+                        name = department.DepartmentName
+                    } : null,
+                    exams = exams,
+                    major = examSet.MajorId.HasValue && majors.TryGetValue(examSet.MajorId.Value, out var major) ? new CommonObject
+                    {
+                        id = major.MajorId,
+                        name = major.MajorName
+                    } : null
+                };
 
-                return new BaseResponse<ExamSetDTO?>
-                    {
-                        data = examSetDto
-                    };
+                return new BaseResponse<ExamSetDTO>
+                {
+                    data = examSetDTO
+                };
             }
             catch (Exception ex)
             {
@@ -264,29 +263,32 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public async Task<BaseResponseId> CreateExamSetAsync(int userId, ExamSetDTO examSetDto)
+        public async Task<BaseResponseId> CreateExamSetAsync(int userId, ExamSetDTO examSetDTO)
         {
             try
             {
+                if (examSetDTO == null)
+                    return new BaseResponseId { status = 500, message = "Bộ đề rỗng" };
+
                 var errors = new List<ErrorDetail>();
 
                 // Kiểm tra tên bộ đề
-                if (!string.IsNullOrEmpty(examSetDto.name) && examSetDto.name != $"string")
+                if (!string.IsNullOrEmpty(examSetDTO.name) && examSetDTO.name != "string")
                 {
                     bool isExistingName = await _context.ExamSets.AsNoTracking()
-                        .AnyAsync(e => examSetDto.name == e.ExamSetName);
+                        .AnyAsync(e => examSetDTO.name == e.ExamSetName);
                     if (isExistingName)
                         errors.Add(new ErrorDetail { field = "name", message = "Tên bộ đề đã tồn tại" });
                 }
 
                 // Kiểm tra trạng thái bộ đề
-                if (!_validStatus.Contains(examSetDto.status))
-                    errors.Add(new ErrorDetail { field = $"status", message = "Trạng thái bộ đề không hợp lệ" });
+                if (!validStatus.Contains(examSetDTO.status))
+                    errors.Add(new ErrorDetail { field = "status", message = "Trạng thái bộ đề không hợp lệ" });
 
                 // Kiểm tra học phần
                 var course = await _context.Courses.AsNoTracking()
                     .Include(c => c.Major).ThenInclude(m => m.Department)
-                    .FirstOrDefaultAsync(c => c.CourseId == examSetDto.course.id);
+                    .FirstOrDefaultAsync(c => c.CourseId == examSetDTO.course.id);
 
                 if (course == null)
                     errors.Add(new ErrorDetail { field = "course", message = "Học phần không hợp lệ" });
@@ -296,25 +298,25 @@ namespace ExamProcessManage.Repository
                     errors.Add(new ErrorDetail { field = "department", message = "Khoa không hợp lệ" });
 
                 // Kiểm tra đề xuất
-                if (examSetDto.proposal != null && examSetDto.proposal.id > 0)
+                if (examSetDTO.proposal != null && examSetDTO.proposal.id > 0)
                 {
                     bool isExistingProposal = await _context.Proposals.AsNoTracking()
-                        .AnyAsync(p => p.ProposalId == examSetDto.proposal.id || p.PlanCode == examSetDto.proposal.code);
+                        .AnyAsync(p => p.ProposalId == examSetDTO.proposal.id || p.PlanCode == examSetDTO.proposal.code);
                     if (!isExistingProposal)
                         errors.Add(new ErrorDetail { field = "exam_set.proposal", message = "Không tìm thấy Đề xuất" });
                 }
 
                 // Kiểm tra các bài thi
                 var examList = new List<Exam>();
-                if (examSetDto.exams != null && examSetDto.exams.Any())
+                if (examSetDTO.exams != null && examSetDTO.exams.Any())
                 {
-                    var examIds = examSetDto.exams.Select(e => e.id).ToList();
+                    var examIds = examSetDTO.exams.Select(e => e.id).ToList();
                     var existingExams = await _context.Exams.Where(e => examIds.Contains(e.ExamId)).ToListAsync();
                     var examCodeSet = new HashSet<int>();
 
                     foreach (var examId in examIds)
                     {
-                        if (!examCodeSet.Add(examId!))
+                        if (!examCodeSet.Add((int)examId))
                         {
                             errors.Add(new ErrorDetail
                             {
@@ -322,31 +324,18 @@ namespace ExamProcessManage.Repository
                                 message = $"Bài thi bị trùng lặp {examId}"
                             });
                         }
+                        else if (!existingExams.Any(e => e.ExamId == examId))
+                        {
+                            errors.Add(new ErrorDetail
+                            {
+                                field = $"exam_set.exams.{examId}",
+                                message = $"Không tồn tại bài thi {examId}"
+                            });
+                        }
                         else
                         {
-                            bool all = true;
-                            foreach (var e in existingExams)
-                            {
-                                if (e.ExamId == examId)
-                                {
-                                    all = false;
-                                    break;
-                                }
-                            }
-
-                            if (all)
-                            {
-                                errors.Add(new ErrorDetail
-                                {
-                                    field = $"exam_set.exams.{examId}",
-                                    message = $"Không tồn tại bài thi {examId}"
-                                });
-                            }
-                            else
-                            {
-                                var exam = existingExams.First(e => e.ExamId == examId);
-                                examList.Add(exam);
-                            }
+                            var exam = existingExams.First(e => e.ExamId == examId);
+                            examList.Add(exam);
                         }
                     }
                 }
@@ -365,15 +354,15 @@ namespace ExamProcessManage.Repository
                 // Tạo bộ đề mới
                 var newExamSet = new ExamSet
                 {
-                    ExamSetName = examSetDto.name,
-                    DepartmentId = examSetDto?.department?.id,
-                    MajorId = examSetDto?.major?.id,
-                    ExamQuantity = (int)examSetDto!.exam_quantity!,
+                    ExamSetName = examSetDTO.name,
+                    DepartmentId = examSetDTO?.department?.id,
+                    MajorId = examSetDTO?.major?.id,
+                    ExamQuantity = (int)examSetDTO.exam_quantity,
                     CreatorId = userId,
-                    Description = examSetDto.description ?? string.Empty,
-                    Status = examSetDto.status,
-                    CourseId = course!.CourseId,
-                    ProposalId = examSetDto.proposal?.id > 0 ? examSetDto.proposal.id : null,
+                    Description = examSetDTO.description ?? string.Empty,
+                    Status = examSetDTO.status,
+                    CourseId = course?.CourseId,
+                    ProposalId = examSetDTO.proposal?.id > 0 ? examSetDTO.proposal.id : null,
                     CreateAt = DateOnly.FromDateTime(DateTime.Now),
                     Exams = examList
                 };
@@ -397,20 +386,26 @@ namespace ExamProcessManage.Repository
             }
         }
 
-        public async Task<BaseResponseId> UpdateExamSetAsync(int userId, ExamSetDTO? examSet, bool isAdmin)
+        public async Task<BaseResponseId> UpdateExamSetAsync(int userId, ExamSetDTO examSet, bool isAdmin)
         {
-            var examDtOs = examSet!.exams?.ToList();
             try
             {
                 var errorList = new List<ErrorDetail>();
 
                 // Check loi dau vao
+                if (examSet == null)
+                    return new BaseResponseId
+                    {
+                        status = 400,
+                        message = "Bad resuest",
+                        errors = new() { new() { message = "Null exam set." } }
+                    };
 
                 if (examSet?.id <= 0)
-                    errorList.Add(new() { field = "id", message = $"Invalid exam set id {examSet.id}" });
+                    errorList.Add(new() { field = "id", message = $"Invalid examset id {examSet.id}" });
 
-                if (!_validStatus.Contains(examSet!.status))
-                    errorList.Add(new() { field = $"status", message = $"Invalid status '{examSet.status}'" });
+                if (!validStatus.Contains(examSet.status))
+                    errorList.Add(new() { field = "status", message = $"Invalid status '{examSet.status}'" });
 
                 if (examSet.course.id < 0)
                     errorList.Add(new() { field = "course.id", message = $"Invalid course id {examSet.course.id}" });
@@ -419,18 +414,19 @@ namespace ExamProcessManage.Repository
                     errorList.Add(new() { field = "exam_quantity", message = $"Invalid exam quantity {examSet.exam_quantity}" });
 
                 // Kiem tra tinh hop le, trung exam
-                if (examDtOs != null && examDtOs.Any())
+                var examDTOs = examSet.exams?.ToList();
+                if (examDTOs != null && examDTOs.Any())
                 {
                     var examIds = new HashSet<int>();
-                    for (int i = 0; i < examDtOs.Count; i++)
+                    for (int i = 0; i < examDTOs.Count; i++)
                     {
-                        var id = examDtOs[i].id;
+                        var id = examDTOs[i].id;
                         if (id <= 0) errorList.Add(new()
                         {
                             field = $"exams.{i}",
                             message = $"Invalid exam id {id}"
                         });
-                        if (!examIds.Add(examDtOs[i].id!))
+                        if (!examIds.Add((int)examDTOs[i].id))
                         {
                             errorList.Add(new()
                             {
@@ -460,7 +456,7 @@ namespace ExamProcessManage.Repository
                     };
 
                 // Bao loi khi bo de da duoc phe duyet
-                if (existExamSet.Status == $"approved")
+                if (existExamSet.Status == "approved")
                     return new BaseResponseId
                     {
                         status = 405,
@@ -479,7 +475,7 @@ namespace ExamProcessManage.Repository
                 if (isAdmin)
                 {
                     // Ensure the exam set is pending approval and the new status is valid
-                    if (existExamSet.Status != $"pending_approval" || (examSet.status != $"approved" && examSet.status != $"rejected"))
+                    if (existExamSet.Status != "pending_approval" || (examSet.status != "approved" && examSet.status != "rejected"))
                     {
                         errorList.Add(new() { field = "status", message = "Invalid status for exam set." });
                         return new BaseResponseId
@@ -490,22 +486,22 @@ namespace ExamProcessManage.Repository
                         };
                     }
 
-                    if (examDtOs != null)
+                    if (examDTOs != null)
                     {
                         int i = 0;
-                        foreach (var examDto in examDtOs)
+                        foreach (var examDTO in examDTOs)
                         {
-                            var exam = existExams.FirstOrDefault(e => e.ExamId == examDto.id);
+                            var exam = existExams.FirstOrDefault(e => e.ExamId == examDTO.id);
 
                             if (exam == null)
                             {
-                                errorList.Add(new() { field = $"exam_set.exams.{i}", message = $"Exam not match {examDto.id}" });
+                                errorList.Add(new() { field = $"exam_set.exams.{i}", message = $"Exam not match {examDTO.id}" });
                                 i++;
                                 continue;
                             }
 
                             // Exam already approved, cannot update
-                            if (exam.Status == $"approved")
+                            if (exam.Status == "approved")
                             {
                                 errorList.Add(new() { message = "The exam has been approved, and cannot be updated." });
                                 i++;
@@ -513,10 +509,10 @@ namespace ExamProcessManage.Repository
                             }
 
                             // Check for valid status transitions (only pending exams can be approved/rejected)
-                            if (exam.Status == $"pending_approval" && (examDto.status == $"approved" || examDto.status == $"rejected"))
+                            if (exam.Status == "pending_approval" && (examDTO.status == "approved" || examDTO.status == "rejected"))
                             {
                                 // Validate the comment
-                                if (string.IsNullOrEmpty(examDto.comment) || examDto.comment == "string")
+                                if (string.IsNullOrEmpty(examDTO.comment) || examDTO.comment == "string")
                                 {
                                     return new BaseResponseId
                                     {
@@ -527,8 +523,8 @@ namespace ExamProcessManage.Repository
                                 }
 
                                 // Update exam details
-                                exam.Comment = examDto.comment;
-                                exam.Status = examDto.status;
+                                exam.Comment = examDTO.comment;
+                                exam.Status = examDTO.status;
                                 exam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
                             }
                             else
@@ -540,7 +536,7 @@ namespace ExamProcessManage.Repository
                         }
                     }
 
-                    if (examSet.status == $"approved")
+                    if (examSet.status == "approved")
                     {
                         // Check if all exams are already approved
                         var allExamsApproved = existExams.All(e => e.Status == "approved");
@@ -555,7 +551,7 @@ namespace ExamProcessManage.Repository
                             errorList.Add(new() { field = "status", message = "Not all exams are approved." });
                         }
                     }
-                    else if (examSet.status == $"rejected")
+                    else if (examSet.status == "rejected")
                     {
                         // If the status is rejected, set the exam set status to rejected directly
                         existExamSet.Status = "rejected";
@@ -593,13 +589,13 @@ namespace ExamProcessManage.Repository
                         return new BaseResponseId
                         {
                             status = 405,
-                            message = $"Forbidden",
+                            message = "Forbiden",
                             errors = new() { new() { message = "You do not have the right to update this exam set." } }
                         };
                     }
 
                     // Trang thai dau vao chi danh cho admin
-                    if (examSet.status == $"approved" || examSet.status == $"rejected")
+                    if (examSet.status == "approved" || examSet.status == "rejected")
                         return new BaseResponseId
                         {
                             status = 405,
@@ -641,7 +637,7 @@ namespace ExamProcessManage.Repository
                     }
 
                     // Thay doi hoc phan
-                    if (examSet.course.id > 0)
+                    if (examSet.course != null && examSet.course.id > 0)
                     {
                         if (!await _context.Courses.AnyAsync(c => c.CourseId == examSet.course.id)) errorList.Add(new()
                         {
@@ -663,11 +659,11 @@ namespace ExamProcessManage.Repository
 
 
                     // Cap nhat exams
-                    if (examDtOs != null)
+                    if (examDTOs != null)
                     {
                         // Lấy danh sách kỳ thi mới dựa trên thông tin từ examDTO
                         var newExams = await _context.Exams
-                            .Where(e => examDtOs.Select(dto => dto.id).Contains(e.ExamId))
+                            .Where(e => examDTOs.Select(dto => dto.id).Contains(e.ExamId))
                             .ToListAsync();
 
                         // Tạo tập hợp ID của các kỳ thi mới để kiểm tra kỳ thi cũ
@@ -684,7 +680,7 @@ namespace ExamProcessManage.Repository
                                 }
                                 else
                                 {
-                                    oldExam.Status = oldExam.Status == $"pending_approval" ? $"in_progress" : oldExam.Status;
+                                    oldExam.Status = oldExam.Status == "pending_approval" ? "in_progress" : oldExam.Status;
                                     oldExam.ExamSetId = null;
                                     oldExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
                                 }
@@ -696,8 +692,7 @@ namespace ExamProcessManage.Repository
 
 
                         // Tạo dictionary để nhanh chóng truy cập trạng thái kỳ thi theo id
-                        var examStatusDict = new Dictionary<int, string>();
-                        foreach (var o in examDtOs) examStatusDict.Add(o.id, o.status);
+                        var examStatusDict = examDTOs.ToDictionary(e => e.id, e => e.status);
                         int i = 0;
 
                         // Cập nhật trạng thái kỳ thi mới dựa trên examDTO
@@ -705,35 +700,28 @@ namespace ExamProcessManage.Repository
                         {
                             if ((newExam.ExamSetId == null || newExam.ExamSetId == existExamSet.ExamSetId) && newExam.CreatorId == userId)
                             {
-                                if (examStatusDict.TryGetValue(newExam.ExamId, out var newStatus) && newExam.Status != examDtOs[i].status)
+                                if (examStatusDict.TryGetValue(newExam.ExamId, out var newStatus))
                                 {
-                                    switch (newStatus)
-                                    {
-                                        case "approved":
-                                        case "rejected":
-                                            errorList.Add(new() { field = $"exam_set.exams.{i}", message = "Users are not allowed to approve the exam." });
-                                            break;
-                                        default:
-                                        {
-                                            if (newExam.Status == $"in_progress" && examDtOs[i].status == $"pending_approval")
-                                            {
-                                                newExam.Status = examDtOs[i].status;
-                                                newExam.Comment = string.Empty;
-                                            }
-                                            else if (newExam.Status == $"pending_approval" && examDtOs[i].status == $"in_progress")
-                                                newExam.Status = examDtOs[i].status;
-                                            else if (newExam.Status == $"rejected" && examDtOs[i].status == $"in_progress")
-                                                newExam.Status = examDtOs[i].status;
-                                            else
-                                                errorList.Add(new()
-                                                {
-                                                    field = $"exams.{i}.status",
-                                                    message = $"Invalid status for exam {newExam.ExamId}: '{newExam.Status}' to '{examDtOs[i].status}'."
-                                                });
+                                    if (newExam.Status != examDTOs[i].status)
 
-                                            break;
+                                        if (newStatus == "approved" || newStatus == "rejected")
+                                            errorList.Add(new() { field = $"exam_set.exams.{i}", message = "Users are not allowed to approve the exam." });
+                                        else
+                                            if (newExam.Status == "in_progress" && examDTOs[i].status == "pending_approval")
+                                        {
+                                            newExam.Status = examDTOs[i].status;
+                                            newExam.Comment = string.Empty;
                                         }
-                                    }
+                                        else if (newExam.Status == "pending_approval" && examDTOs[i].status == "in_progress")
+                                            newExam.Status = examDTOs[i].status;
+                                        else if (newExam.Status == "rejected" && examDTOs[i].status == "in_progress")
+                                            newExam.Status = examDTOs[i].status;
+                                        else
+                                            errorList.Add(new()
+                                            {
+                                                field = $"exams.{i}.status",
+                                                message = $"Invalid status for exam {newExam.ExamId}: '{newExam.Status}' to '{examDTOs[i].status}'."
+                                            });
                                 }
                             }
                             else
@@ -833,7 +821,7 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         status = 405,
-                        message = $"Forbidden",
+                        message = "Forbidden",
                         errors = new() { new() { message = "You do not have the right to delete this exam set." } }
                     };
 
@@ -842,7 +830,7 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         status = 405,
-                        message = $"Forbidden",
+                        message = "Forbidden",
                         errors = new() { new() { message = "The exam set has been approved and cannot be deleted." } }
                     };
 
@@ -851,7 +839,7 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         status = 405,
-                        message = $"Forbidden",
+                        message = "Forbidden",
                         errors = new() { new() { message = "This exam set is currently assigned to a proposal and cannot be deleted." } }
                     };
 
@@ -868,7 +856,7 @@ namespace ExamProcessManage.Repository
                             return new BaseResponseId
                             {
                                 status = 405,
-                                message = $"Forbidden",
+                                message = "Forbidden",
                                 errors = new() { new() { message = "One or more exams have been approved, the exam set cannot be deleted." } }
                             };
 
@@ -886,7 +874,7 @@ namespace ExamProcessManage.Repository
                             return new BaseResponseId
                             {
                                 status = 405,
-                                message = $"Forbidden",
+                                message = "Forbidden",
                                 errors = new() { new() { message = "One or more exams have been approved, the exam set cannot be deleted." } }
                             };
 
@@ -896,7 +884,7 @@ namespace ExamProcessManage.Repository
                             return new BaseResponseId
                             {
                                 status = 405,
-                                message = $"Forbidden",
+                                message = "Forbidden",
                                 errors = new() { new() { message = "One or more exams are not yours, and cannot be deleted." } }
                             };
 
