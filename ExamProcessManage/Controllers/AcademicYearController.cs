@@ -60,7 +60,7 @@ namespace ExamProcessManage.Controllers
             try
             {
                 var academic = await _repository.GetDetailAcademicYearAsync(id);
-                
+
                 if (academic is { data: null })
                 {
                     return new CustomJsonResult(404, HttpContext, academic.message ?? "Not Found");
@@ -85,31 +85,27 @@ namespace ExamProcessManage.Controllers
         // POST an academic_year
         [HttpPost]
         [Authorize(Roles = "Admin, Writer")]
-        public async Task<IActionResult> PostAcdemicYearAsync([FromBody] AcademicYearResponse year)
+        public async Task<IActionResult> PostAcademicYearAsync([FromBody] AcademicYearResponse year)
         {
-            // Matches years between 2000 and 2099
-            string yearPattern = @"^20\d{2}$";
+            // Matches years between 2000 and 2099  
+            const string yearPattern = @"^20\d{2}$";
 
-            if (year.id > 0 && year.start_year > 0 && year.start_year > year.end_year &&
-                Regex.IsMatch(year.start_year.ToString(), yearPattern))
+            if (year is not { id: > 0, start_year: > 0 } || year.start_year <= year.end_year ||
+                !Regex.IsMatch(year.start_year.ToString(), yearPattern))
             {
-                var yearAdd = await _repository.CreateAcademicYearAsync(year);
+                return new CustomJsonResult(400, HttpContext, "Invalid academic year");
+            }
 
-                if (yearAdd.data != null)
-                {
-                    var response =
-                        _createCommon.CreateResponse(yearAdd.message ?? "success", HttpContext, yearAdd.data);
-                    return Ok(response);
-                }
-                else
-                {
-                    return new CustomJsonResult(409, HttpContext, yearAdd.message ?? "error");
-                }
-            }
-            else
+            var yearAdd = await _repository.CreateAcademicYearAsync(year);
+
+            if (yearAdd is { data: null })
             {
-                return new CustomJsonResult(400, HttpContext, "invalid input");
+                return new CustomJsonResult(500, HttpContext, yearAdd.message ?? "Error");
             }
+
+            var response =
+                _createCommon.CreateResponse(yearAdd.message ?? Success, HttpContext, yearAdd.data);
+            return Ok(response);
         }
 
         // PUT api/<AcademicYearController>/5
