@@ -33,15 +33,13 @@ namespace ExamProcessManage.Controllers
             {
                 var academics = await _repository.GetListAcademicYearAsync(queryObject);
 
-                if (academics != null)
-                {
-                    var commonResponse = _createCommon.CreateResponse(Success, HttpContext, academics);
-                    return Ok(commonResponse);
-                }
-                else
+                if (academics is { content: null })
                 {
                     return new CustomJsonResult(500, HttpContext, "An internal server error occured");
                 }
+
+                var commonResponse = _createCommon.CreateResponse(Success, HttpContext, academics);
+                return Ok(commonResponse);
             }
             catch (Exception e)
             {
@@ -60,7 +58,7 @@ namespace ExamProcessManage.Controllers
         public async Task<IActionResult> GetDetailAcademicYearAsync([FromQuery] [Required] int id)
         {
             var academic = await _repository.GetDetailAcademicYearAsync(id);
-            if (academic != null && academic.data != null)
+            if (academic is { data: not null })
             {
                 var yearResponse =
                     _createCommon.CreateResponse(academic.message ?? "Thành công", HttpContext, academic.data);
