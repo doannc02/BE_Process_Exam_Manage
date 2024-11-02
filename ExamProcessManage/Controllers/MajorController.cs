@@ -53,9 +53,6 @@ namespace ExamProcessManage.Controllers
         [HttpPost]
         public async Task<IActionResult> PostMajorAsync([FromBody] MajorResponse inputMajor)
         {
-            if (inputMajor != null && inputMajor.id > 0 &&
-                inputMajor.name != "string" && inputMajor.department.id != 0)
-            {
                 var newCourse = await _majorRepository.CreateMajorAsync(inputMajor);
 
                 if (newCourse.data != null)
@@ -67,11 +64,6 @@ namespace ExamProcessManage.Controllers
                 {
                     return new CustomJsonResult(409, HttpContext, newCourse.message);
                 }
-            }
-            else
-            {
-                return new CustomJsonResult(400, HttpContext, "invalid input");
-            }
         }
 
         // PUT api/<MajorController>/5

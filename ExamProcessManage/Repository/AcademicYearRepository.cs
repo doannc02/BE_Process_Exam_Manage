@@ -118,7 +118,6 @@ namespace ExamProcessManage.Repository
                 {
                     var academicYear = new AcademicYear
                     {
-                        AcademicYearId = year.id,
                         YearName = year.name,
                         StartYear = year.start_year,
                         EndYear = year.end_year

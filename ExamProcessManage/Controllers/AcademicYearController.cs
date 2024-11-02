@@ -55,12 +55,7 @@ namespace ExamProcessManage.Controllers
         [Authorize(Roles = "Admin, Writer")]
         public async Task<IActionResult> PostAcdemicYearAsync([FromBody] AcademicYearResponse year)
         {
-            // Matches years between 2000 and 2099
-            string yearPattern = @"^20\d{2}$";
-
-            if (year.id > 0 && year.start_year > 0 && year.start_year > year.end_year &&
-                Regex.IsMatch(year.start_year.ToString(), yearPattern))
-            {
+    
                 var yearAdd = await _repository.CreateAcademicYearAsync(year);
 
                 if (yearAdd.data != null)
@@ -72,11 +67,6 @@ namespace ExamProcessManage.Controllers
                 {
                     return new CustomJsonResult(409, HttpContext, yearAdd.message ?? "error");
                 }
-            }
-            else
-            {
-                return new CustomJsonResult(400, HttpContext, "invalid input");
-            }
         }
 
         // PUT api/<AcademicYearController>/5
