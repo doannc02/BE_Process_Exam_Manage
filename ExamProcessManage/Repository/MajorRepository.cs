@@ -91,7 +91,7 @@ namespace ExamProcessManage.Repository
                     name = item.MajorName ?? string.Empty,
                     department = new CommonObject
                     {
-                        id = departmentMajor?.DepartmentId ?? (int)item.DepartmentId,
+                        id = departmentMajor?.DepartmentId ?? (int)item.DepartmentId!,
                         code = departmentMajor?.DepartmentId.ToString() ?? string.Empty,
                         name = departmentMajor?.DepartmentName ?? string.Empty
                     }
@@ -118,7 +118,8 @@ namespace ExamProcessManage.Repository
 
             if (major != null)
             {
-                var department = await _context.Departments.FirstOrDefaultAsync(d => d.DepartmentId == major.DepartmentId);
+                var department =
+                    await _context.Departments.FirstOrDefaultAsync(d => d.DepartmentId == major.DepartmentId);
 
                 response.message = "success";
                 response.data = new MajorResponse
@@ -127,7 +128,7 @@ namespace ExamProcessManage.Repository
                     name = major.MajorName,
                     department = new CommonObject
                     {
-                        id = department.DepartmentId,
+                        id = department!.DepartmentId,
                         code = department.DepartmentId.ToString(),
                         name = department.DepartmentName
                     }
@@ -147,13 +148,13 @@ namespace ExamProcessManage.Repository
             {
                 var response = new BaseResponse<MajorResponse>();
 
-                var existMajor = await _context.Majors.AnyAsync(m => m.MajorId == inputMajor.id || m.MajorName == inputMajor.name);
+                var existMajor =
+                    await _context.Majors.AnyAsync(m => m.MajorId == inputMajor.id || m.MajorName == inputMajor.name);
 
                 if (!existMajor)
                 {
                     var newMajor = new Major
                     {
-                        MajorId = inputMajor.id,
                         MajorName = inputMajor.name,
                         DepartmentId = inputMajor.department.id
                     };
@@ -189,28 +190,23 @@ namespace ExamProcessManage.Repository
 
                 if (existMajor != null)
                 {
-                    if (existMajor.MajorName != updateMajor.name && existMajor.DepartmentId != updateMajor.department.id)
+                    var checkConflictMajor = await _context.Majors.AnyAsync(m => m.MajorName == updateMajor.name);
+
+                    if (!checkConflictMajor)
                     {
-                        var checkConflictMajor = await _context.Majors.AnyAsync(m => m.MajorName == updateMajor.name);
+                        existMajor.MajorName = updateMajor.name;
+                        existMajor.DepartmentId = updateMajor.department.id > 0
+                            ? updateMajor.department.id
+                            : existMajor.DepartmentId;
 
-                        if (!checkConflictMajor)
-                        {
-                            existMajor.MajorName = updateMajor.name;
-                            existMajor.DepartmentId = updateMajor.department.id > 0 ? updateMajor.department.id : existMajor.DepartmentId;
+                        await _context.SaveChangesAsync();
 
-                            await _context.SaveChangesAsync();
-
-                            response.message = "update successfully";
-                            response.data = updateMajor;
-                        }
-                        else
-                        {
-                            response.message = $"major name = '{updateMajor.name}' already exists";
-                        }
+                        response.message = "update successfully";
+                        response.data = updateMajor;
                     }
                     else
                     {
-                        response.message = "no changes detected";
+                        response.message = $"major name = '{updateMajor.name}' already exists";
                     }
                 }
                 else
@@ -246,7 +242,7 @@ namespace ExamProcessManage.Repository
                     {
                         id = existMajor.MajorId,
                         name = existMajor.MajorName,
-                        department = new CommonObject { id = (int)existMajor.DepartmentId }
+                        department = new CommonObject { id = (int)existMajor.DepartmentId! }
                     };
                 }
                 else
