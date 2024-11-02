@@ -318,7 +318,7 @@ namespace ExamProcessManage.Repository
                     AcademicYear = proposalDTO.academic_year.name ?? string.Empty,
                     CreateAt = DateOnly.FromDateTime(DateTime.Now),
                     ExamSets = examSets,
-                    IsCreatedByAdmin = role == "Admin" ? true : null,
+                    IsCreatedByAdmin = role == "Admin" ? true : false,
                 };
 
                 await _context.Proposals.AddAsync(newProposal);
