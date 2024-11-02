@@ -2,7 +2,6 @@
 using ExamProcessManage.Dtos;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
-using ExamProcessManage.ResponseModels;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamProcessManage.Repository
@@ -13,19 +12,19 @@ namespace ExamProcessManage.Repository
         public UserRepository(ApplicationDbContext context) {
             _context = context;
         }
-        public async Task<BaseResponse<UserDTO>> GetDetailUserAsync(int userID)
+        public async Task<BaseResponse<UserDTO>> GetDetailUserAsync(int userId)
         {
-            var findUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == (ulong)userID);
+            var findUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == (ulong)userId);
             if (findUser == null)
             {
                 return new BaseResponse<UserDTO>
                 {
-                    data = null,
+                    data = null!,
                     message = "Khong tim thay user"
                 };
             }
             var teachers = _context.Teachers.Where(t => t.Id == findUser.TeacherId).AsNoTracking().FirstOrDefault();
-            var userDTO = new UserDTO
+            var userDto = new UserDTO
             {
                avatarPath = findUser?.AvatarPath,
                email = findUser?.Email,
@@ -35,15 +34,15 @@ namespace ExamProcessManage.Repository
             return new BaseResponse<UserDTO>
             {
                 message = "Thành công",
-                data = userDTO
+                data = userDto
             };
 
         }
 
         public async Task<PageResponse<UserDTO>> GetListUsersAsync(QueryObject queryObject)
         {
-            var startRow = (queryObject.page.Value - 1) * queryObject.size;
-            var userDTOs = new List<UserDTO>();
+            var startRow = (queryObject.page!.Value - 1) * queryObject.size;
+            var userDtOs = new List<UserDTO>();
             var teachers = _context.Teachers.AsNoTracking().ToList();
             var queryAcademicYears = _context.Users.AsNoTracking().AsQueryable();
 
@@ -72,18 +71,18 @@ namespace ExamProcessManage.Repository
                         fullname = fullname
                     };
 
-                    userDTOs.Add(academic);
+                    userDtOs.Add(academic);
                 }
             }
 
             return new PageResponse<UserDTO>()
             {
-                content = userDTOs,
+                content = userDtOs,
                 totalElements = totalCount,
                 totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
                 size = queryObject.size,
                 page = queryObject.page.Value,
-                numberOfElements = userDTOs.Count
+                numberOfElements = userDtOs.Count
             };
         }
 

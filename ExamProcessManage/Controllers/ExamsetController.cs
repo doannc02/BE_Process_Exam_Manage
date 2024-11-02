@@ -158,7 +158,7 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpPut]
-        public async Task<IActionResult> PutExamSetAsync([FromBody] ExamSetDTO examSet)
+        public async Task<IActionResult> PutExamSetAsync([FromBody] ExamSetDTO? examSet)
         {
             try
             {

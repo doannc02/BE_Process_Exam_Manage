@@ -5,6 +5,7 @@ using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using System.Net;
 using System.Text.RegularExpressions;
 
 namespace ExamProcessManage.Controllers
@@ -16,6 +17,8 @@ namespace ExamProcessManage.Controllers
         private readonly IAcademicYearRepository _repository;
         private readonly CreateCommonResponse _createCommon;
 
+        private const string Success = "Success";
+
         public AcademicYearController(IAcademicYearRepository repository)
         {
             _repository = repository;
@@ -26,27 +29,56 @@ namespace ExamProcessManage.Controllers
         [HttpGet("list")]
         public async Task<IActionResult> GetListAcademicYearAsync([FromQuery] QueryObject queryObject)
         {
-            var academics = await _repository.GetListAcademicYearAsync(queryObject);
+            try
+            {
+                var academics = await _repository.GetListAcademicYearAsync(queryObject);
 
-          
-             var commonResponse = _createCommon.CreateResponse("success", HttpContext, academics);
-             return Ok(commonResponse);
-          
+                if (academics is { content: null })
+                {
+                    return new CustomJsonResult(500, HttpContext, "An internal server error occured");
+                }
+
+                var commonResponse = _createCommon.CreateResponse(Success, HttpContext, academics);
+                return Ok(commonResponse);
+            }
+            catch (Exception e)
+            {
+                return new CustomJsonResult(500, HttpContext, "Internal Server Error", new List<ErrorDetail>
+                {
+                    new()
+                    {
+                        message = $"{e.Message}: {e.InnerException?.Message}"
+                    }
+                });
+            }
         }
 
         // GET detail of an academic_year
         [HttpGet("detail")]
-        public async Task<IActionResult> GetDetailAcademicYearAsync([FromQuery][Required] int id)
+        public async Task<IActionResult> GetDetailAcademicYearAsync([FromQuery] [Required] int id)
         {
-            var academic = await _repository.GetDetailAcademicYearAsync(id);
-            if (academic != null && academic.data != null)
+            try
             {
-                var yearResponse = _createCommon.CreateResponse(academic.message ?? "Thành công", HttpContext, academic.data);
+                var academic = await _repository.GetDetailAcademicYearAsync(id);
+                
+                if (academic is { data: null })
+                {
+                    return new CustomJsonResult(404, HttpContext, academic.message ?? "Not Found");
+                }
+
+                var yearResponse =
+                    _createCommon.CreateResponse(academic.message ?? Success, HttpContext, academic.data);
                 return Ok(yearResponse);
             }
-            else
+            catch (Exception e)
             {
-                return new CustomJsonResult(404, HttpContext, academic.message ?? "error");
+                return new CustomJsonResult(500, HttpContext, "Internal Server Error", new List<ErrorDetail>
+                {
+                    new()
+                    {
+                        message = $"{e.Message}: {e.InnerException?.Message}"
+                    }
+                });
             }
         }
 
@@ -60,7 +92,8 @@ namespace ExamProcessManage.Controllers
 
                 if (yearAdd.data != null)
                 {
-                    var response = _createCommon.CreateResponse(yearAdd.message ?? "success", HttpContext, yearAdd.data);
+                    var response =
+                        _createCommon.CreateResponse(yearAdd.message ?? "success", HttpContext, yearAdd.data);
                     return Ok(response);
                 }
                 else
@@ -86,7 +119,8 @@ namespace ExamProcessManage.Controllers
 
                 if (yearUpdate.data != null)
                 {
-                    var response = _createCommon.CreateResponse(yearUpdate.message ?? "success", HttpContext, yearUpdate.data);
+                    var response =
+                        _createCommon.CreateResponse(yearUpdate.message ?? "success", HttpContext, yearUpdate.data);
                     return Ok(response);
                 }
                 else if ((yearUpdate.message ?? "").Contains("no changes"))
@@ -107,7 +141,7 @@ namespace ExamProcessManage.Controllers
         // DELETE api/<AcademicYearController>/5
         [HttpDelete]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteAcademicYearAsync([FromQuery][Required] int id)
+        public async Task<IActionResult> DeleteAcademicYearAsync([FromQuery] [Required] int id)
         {
             var yearDel = await _repository.DeleteAcademicYearAsync(id);
 

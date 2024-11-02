@@ -4,7 +4,6 @@ using ExamProcessManage.Interfaces;
 using ExamProcessManage.Models;
 using ExamProcessManage.ResponseModels;
 using Microsoft.EntityFrameworkCore;
-using System.Reflection.Metadata.Ecma335;
 
 namespace ExamProcessManage.Repository
 {
@@ -45,8 +44,8 @@ namespace ExamProcessManage.Repository
             if (!string.IsNullOrEmpty(queryObject.search))
             {
                 courseQueryable = courseQueryable.Where(c =>
-                    c.CourseName.Contains(queryObject.search) ||
-                    c.CourseCode.Contains(queryObject.search));
+                    c.CourseName!.Contains(queryObject.search) ||
+                    c.CourseCode!.Contains(queryObject.search));
             }
 
             // Apply sorting
@@ -79,27 +78,36 @@ namespace ExamProcessManage.Repository
                     totalElements = totalCount,
                     totalPages = 0, // No pages available
                     size = queryObject.size,
-                    page = queryObject.page.Value,
+                    page = queryObject.page!.Value,
                     numberOfElements = responses.Count
                 };
             }
 
             // Retrieve the paginated list of courses
             var courseList = await courseQueryable
-                .Skip((queryObject.page.Value - 1) * queryObject.size)
+                .Skip((queryObject.page!.Value - 1) * queryObject.size)
                 .Take(queryObject.size)
                 .ToListAsync();
 
             // Create response objects for each course in the current page
             foreach (var item in courseList)
             {
-                var majorCourse = majorList.FirstOrDefault(m => m.MajorId == item.MajorId);
+                Major? majorCourse = null;
+                foreach (var m in majorList)
+                {
+                    if (m.MajorId == item.MajorId)
+                    {
+                        majorCourse = m;
+                        break;
+                    }
+                }
+
                 var course = new CourseReponse
                 {
                     id = item.CourseId,
                     code = item.CourseCode ?? string.Empty,
                     name = item.CourseName ?? string.Empty,
-                    credit = item?.CourseCredit ?? 0,
+                    credit = item.CourseCredit ?? 0,
                     major = new CommonObject
                     {
                         id = majorCourse?.MajorId ?? 0,  // Handle potential null value
@@ -138,7 +146,7 @@ namespace ExamProcessManage.Repository
                     id = course.CourseId,
                     code = course.CourseCode ?? string.Empty,
                     name = course.CourseName ?? string.Empty,
-                    credit = course?.CourseCredit ?? 0,
+                    credit = course.CourseCredit ?? 0,
                     major = new CommonObject
                     {
                         id = major?.MajorId ?? 0,
@@ -220,7 +228,7 @@ namespace ExamProcessManage.Repository
                 if (existCourse != null)
                 {
                    
-                        var checkConflictCourse = await _context.Courses.AnyAsync(c => c.CourseName == updateCourse.name);
+                        await _context.Courses.AnyAsync(c => c.CourseName == updateCourse.name);
 
                       
                             existCourse.CourseName = updateCourse.name;
@@ -269,8 +277,8 @@ namespace ExamProcessManage.Repository
                         id = existCourse.CourseId,
                         code = existCourse.CourseCode,
                         name = existCourse.CourseName,
-                        credit = (int)existCourse.CourseCredit,
-                        major = new CommonObject { id = (int)existCourse.MajorId }
+                        credit = (int)existCourse.CourseCredit!,
+                        major = new CommonObject { id = (int)existCourse.MajorId! }
                     };
                 }
                 else

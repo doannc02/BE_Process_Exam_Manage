@@ -41,7 +41,7 @@ namespace ExamProcessManage.Repository
             // Apply search filter
             if (!string.IsNullOrEmpty(queryObject.search))
             {
-                baseQuery = baseQuery.Where(m => m.MajorName.Contains(queryObject.search));
+                baseQuery = baseQuery.Where(m => m.MajorName!.Contains(queryObject.search));
             }
 
             // Apply sorting if specified
@@ -67,14 +67,14 @@ namespace ExamProcessManage.Repository
                     totalElements = totalCount,
                     totalPages = 0, // No pages available
                     size = queryObject.size,
-                    page = queryObject.page.Value,
+                    page = queryObject.page!.Value,
                     numberOfElements = listMajors.Count
                 };
             }
 
             // Get the list of majors with pagination
             var majorList = await baseQuery
-                .Skip((queryObject.page.Value - 1) * queryObject.size)
+                .Skip((queryObject.page!.Value - 1) * queryObject.size)
                 .Take(queryObject.size)
                 .ToListAsync();
 
@@ -84,7 +84,7 @@ namespace ExamProcessManage.Repository
             // Create response objects for each major
             foreach (var item in majorList)
             {
-                var departmentMajor = departmentList.FirstOrDefault(d => d.DepartmentId == item.DepartmentId);
+                var departmentMajor = Enumerable.FirstOrDefault(departmentList, d => d.DepartmentId == item.DepartmentId);
                 listMajors.Add(new MajorResponse
                 {
                     id = item.MajorId,
