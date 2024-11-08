@@ -3,7 +3,7 @@
     public class QueryObject
     {
         public int? userId { get; set; }
-        public string? sort { get; set; } = null;
+        public string? sort { get; set; } = "desc";
         public int? page { get; set; } = 1;
         public int size { get; set; } = 20;
         public string search { get; set; } = "";
