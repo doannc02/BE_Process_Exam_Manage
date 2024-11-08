@@ -422,7 +422,8 @@ namespace ExamProcessManage.Repository
                     {
                         status = 404,
                         message = "Not Found",
-                        errors = new List<ErrorDetail> { new() { field = "id", message = $"Exam not found {examDto.id}" } }
+                        errors = new List<ErrorDetail>
+                            { new() { field = "id", message = $"Exam not found {examDto.id}" } }
                     };
                 }
 
@@ -458,10 +459,11 @@ namespace ExamProcessManage.Repository
                     };
                 }
 
+                // Nếu là admin
                 if (isAdmin)
                 {
                     if (existExam.Status == "pending_approval" &&
-                        (examDto.status == "approved" || examDto.status == "rejected"))
+                        examDto.status is "approved" or "rejected")
                     {
                         if (!string.IsNullOrEmpty(examDto.comment) && examDto.comment != "string")
                             existExam.Comment = examDto.comment;
@@ -487,10 +489,12 @@ namespace ExamProcessManage.Repository
                         };
                     }
                 }
+                // Nếu là giảng viên
                 else
                 {
-                    if (examDto.academic_year != null && examDto.academic_year.id <= 0 ||
-                        !await _context.AcademicYears.AnyAsync(a => a.AcademicYearId == examDto.academic_year.id))
+                    if (examDto.academic_year is { id: <= 0 } ||
+                        !await _context.AcademicYears.AnyAsync(a =>
+                            examDto.academic_year != null && a.AcademicYearId == examDto.academic_year.id))
                     {
                         return new BaseResponseId
                         {
@@ -501,26 +505,26 @@ namespace ExamProcessManage.Repository
                         };
                     }
 
-                    if (examDto.exam_set != null && examDto.exam_set.id < 0)
+                    switch (examDto.exam_set)
                     {
-                        return new BaseResponseId
-                        {
-                            status = 400,
-                            message = "Bad request",
-                            errors = new List<ErrorDetail>
-                                { new() { field = "exam_set", message = "Invalid exam set." } }
-                        };
+                        case { id: < 0 }:
+                            return new BaseResponseId
+                            {
+                                status = 400,
+                                message = "Bad request",
+                                errors = new List<ErrorDetail>
+                                    { new() { field = "exam_set", message = "Invalid exam set." } }
+                            };
+                        case { id: > 0 } when
+                            !await _context.ExamSets.AnyAsync(e => e.ExamSetId == examDto.exam_set.id):
+                            return new BaseResponseId
+                            {
+                                status = 404,
+                                message = "Not found",
+                                errors = new List<ErrorDetail>
+                                    { new() { field = "exam_set", message = "Exam set not found." } }
+                            };
                     }
-
-                    if (examDto.exam_set != null && examDto.exam_set.id > 0 &&
-                        !await _context.ExamSets.AnyAsync(e => e.ExamSetId == examDto.exam_set.id))
-                        return new BaseResponseId
-                        {
-                            status = 404,
-                            message = "Not found",
-                            errors = new List<ErrorDetail>
-                                { new() { field = "exam_set", message = "Exam set not found." } }
-                        };
 
 
                     // Cập nhật trạng thái
@@ -551,6 +555,7 @@ namespace ExamProcessManage.Repository
                                 }
 
                                 existExam.Status = examDto.status;
+                                existExam.Comment = string.Empty;
                                 break;
                             }
                             default:
@@ -581,67 +586,61 @@ namespace ExamProcessManage.Repository
                     existExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
                 }
 
-                // Lấy danh sách tất cả các Exam trong ExamSet
-                var examsByExamSet = await _context.Exams.Where(e => e.ExamSetId == existExam.ExamSetId).ToListAsync();
 
-                if (examsByExamSet.Any())
+                // Lấy Exam Set cùng với Exam
+                var examSetById = await _context.ExamSets.Include(ex => ex.Exams)
+                    .FirstOrDefaultAsync(es => es.ExamSetId == existExam.ExamSetId);
+
+                if (examSetById != null)
                 {
+                    // Lấy danh sách tất cả các Exam trong ExamSet
+                    var examsByExamSet = examSetById.Exams;
+                    var isEnough = examSetById.ExamQuantity == examSetById.Exams.Count;
+
                     // Kiểm tra nếu tất cả các exam có cùng trạng thái
                     var allExamsInProgress = examsByExamSet.All(exam => exam.Status == "in_progress");
                     var allExamsPendingApproval = examsByExamSet.All(exam => exam.Status == "pending_approval");
                     var allExamsApproved = examsByExamSet.All(exam => exam.Status == "approved");
                     var allExamsRejected = examsByExamSet.All(exam => exam.Status == "rejected");
 
-                    var examSet = await _context.ExamSets.FindAsync(existExam.ExamSetId);
-                    if (examSet != null)
+                    if (examsByExamSet.Any())
                     {
                         // Nếu tất cả các exam có cùng trạng thái, chuyển trạng thái của exam_set theo
                         if (allExamsInProgress)
-                        {
-                            examSet.Status = "in_progress";
-                        }
-                        else if (allExamsPendingApproval)
-                        {
-                            examSet.Status = "pending_approval";
-                        }
-                        else if (allExamsApproved)
-                        {
-                            examSet.Status = "approved";
-                        }
-                        else if (allExamsRejected)
-                        {
-                            examSet.Status = "rejected";
-                        }
+                            examSetById.Status = "in_progress";
                         else
-                        {
-                            // Kiểm tra các trường hợp trạng thái bị pha trộn
-                            var anyExamInProgress = examsByExamSet.Any(exam => exam.Status == "in_progress");
-                            var anyExamRejected = examsByExamSet.Any(exam => exam.Status == "rejected");
-                            var anyExamApproved = examsByExamSet.Any(exam => exam.Status == "approved");
+                            switch (isEnough)
+                            {
+                                case true when allExamsPendingApproval:
+                                    examSetById.Status = "pending_approval";
+                                    break;
+                                case true when allExamsApproved:
+                                    examSetById.Status = "approved";
+                                    break;
+                                case true when allExamsRejected:
+                                    examSetById.Status = "rejected";
+                                    break;
+                                default:
+                                {
+                                    // Kiểm tra các trường hợp trạng thái bị pha trộn
+                                    var anyExamInProgress = examsByExamSet.Any(exam => exam.Status == "in_progress");
+                                    var anyExamRejected = examsByExamSet.Any(exam => exam.Status == "rejected");
 
-                            // Nếu có bất kỳ exam nào đang ở "in_progress" hoặc bị "rejected", es chuyển về "in_progress"
-                            if (anyExamInProgress || anyExamRejected)
-                            {
-                                examSet.Status = "in_progress";
+                                    // Nếu có bất kỳ exam nào đang ở "in_progress" hoặc bị "rejected", es chuyển về "in_progress"
+                                    if (anyExamInProgress || anyExamRejected)
+                                        examSetById.Status = "in_progress";
+                                    break;
+                                }
                             }
-                            // Nếu tất cả các exam còn lại là "approved", es chuyển về "approved"
-                            else if (allExamsApproved)
-                            {
-                                examSet.Status = "approved";
-                            }
-                            // Nếu các exam còn lại là "pending_approval", es giữ ở "pending_approval"
-                            else if (examsByExamSet.All(exam => exam.Status == "pending_approval"))
-                            {
-                                examSet.Status = "pending_approval";
-                            }
-                        }
 
-                        _context.ExamSets.Update(examSet);
+                        _context.ExamSets.Update(examSetById);
                     }
                 }
 
+
+                // Lưu thay đổi vào DB
                 _context.Exams.Update(existExam);
-                await _context.SaveChangesAsync(); // Lưu thay đổi vào DB
+                await _context.SaveChangesAsync();
 
                 return new BaseResponseId
                 {
