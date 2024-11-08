@@ -63,7 +63,8 @@ namespace ExamProcessManage.Controllers
                 
                 if (academic is { data: null })
                 {
-                    return new CustomJsonResult(404, HttpContext, academic.message ?? "Not Found");
+                    return new CustomJsonResult(500, HttpContext, $"Server error", new() {
+                        new() { message ="Không tìm thấy năm học trong hệ thống!!!" } });
                 }
 
                 var yearResponse =
@@ -123,13 +124,10 @@ namespace ExamProcessManage.Controllers
                         _createCommon.CreateResponse(yearUpdate.message ?? "success", HttpContext, yearUpdate.data);
                     return Ok(response);
                 }
-                else if ((yearUpdate.message ?? "").Contains("no changes"))
-                {
-                    return new CustomJsonResult(418, HttpContext, yearUpdate.message ?? "");
-                }
                 else
                 {
-                    return new CustomJsonResult(404, HttpContext, yearUpdate.message ?? "");
+                    return new CustomJsonResult(500, HttpContext, $"Server error", new() {
+                        new() { message ="Cập nhật thông tin thất bại!!!" } });
                 }
             }
             else
