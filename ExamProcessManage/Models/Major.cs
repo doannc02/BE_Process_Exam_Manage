@@ -13,6 +13,8 @@ namespace ExamProcessManage.Models
         public int MajorId { get; set; }
         public string? MajorName { get; set; }
         public int? DepartmentId { get; set; }
+        public DateTime? CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
 
         public virtual Department? Department { get; set; }
         public virtual ICollection<Course> Courses { get; set; }

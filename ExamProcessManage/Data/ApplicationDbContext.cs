@@ -228,6 +228,10 @@ namespace ExamProcessManage.Data
                 entity.Property(e => e.MajorId).HasColumnName("major_id");
 
                 entity.Property(e => e.DepartmentId).HasColumnName("department_id");
+                
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("date").IsRequired(false);
+
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("date").IsRequired(false);
 
                 entity.Property(e => e.MajorName)
                     .HasMaxLength(255)
