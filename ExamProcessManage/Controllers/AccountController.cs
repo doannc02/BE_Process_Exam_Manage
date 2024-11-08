@@ -37,6 +37,7 @@ namespace ExamProcessManage.Controllers
             // return Unauthorized();
             return Ok(new
             {
+                status = 400, 
                 message = "Admin test 2"
             });
         }
@@ -49,36 +50,16 @@ namespace ExamProcessManage.Controllers
 
             if (valid == null)
             {
-                var err = new ErrorCodes
-                {
-                    code = "401",
-                    message = "Tài khoản không tồn tại hoặc chưa được gán với giảng viên nào!!",
-                };
-                var result = new ErrorMessage<ErrorCodes>
-                {
-                    errorCodes = new List<ErrorCodes> { err }
-
-                };
-                return Ok(result);
+                return new CustomJsonResult(500, HttpContext, $"Server error", new() {
+                    new() { message ="Tài khoản không tồn tại hoặc chưa được gán với giảng viên nào!!"  } });
             }
 
             if (valid.accessToken == null)
             {
-                var err = new ErrorCodes
-                {
-                    code = "password",
-                    message = "Mật khẩu không chính xác!!!",
-                };
-
-                var result = new ErrorMessage<ErrorCodes>
-                {
-                    errorCodes = new List<ErrorCodes> { err }
-
-                };
-                return Ok(result);
+                return new CustomJsonResult(500, HttpContext, $"Server error", new() {
+                    new() { message ="Mật khẩu không chính xác!!!" , field = "password" } });
             }
             return Ok(valid);
-
         }
 
     }

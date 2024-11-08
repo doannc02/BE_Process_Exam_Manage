@@ -21,7 +21,7 @@ namespace ExamProcessManage.Helpers
         public async Task ExecuteResultAsync(ActionContext context)
         {
             var response = context.HttpContext.Response;
-            response.StatusCode = _status;
+           // response.StatusCode = _status;
             response.ContentType = "application/json";
 
             var result = new

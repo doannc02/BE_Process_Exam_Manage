@@ -46,7 +46,8 @@ namespace ExamProcessManage.Controllers
             }
             else
             {
-                return new CustomJsonResult(404, HttpContext, course.message);
+               return new CustomJsonResult(500, HttpContext, $"Server error", new() {
+                        new() { message = course.message } });
             }
         }
 
@@ -56,14 +57,16 @@ namespace ExamProcessManage.Controllers
         {
             if (inputCourses?.Any() != true)
             {
-                return new CustomJsonResult(400, HttpContext, "No course data provided");
+                return new CustomJsonResult(500, HttpContext, $"Server error", new() {
+                    new() { message ="Dữ liệu không hợp lệ!!!" } });
             }
 
             foreach (var inputCourse in inputCourses)
             {
                 if (inputCourse.id == 0 || inputCourse.name == "string" || inputCourse.major.id == 0)
                 {
-                    return new CustomJsonResult(400, HttpContext, "invalid input for one or more courses");
+                    return new CustomJsonResult(500, HttpContext, $"Server error", new() {
+                        new() { message ="Dữ liệu không hợp lệ!!!"  } });
                 }
             }
 
@@ -76,7 +79,8 @@ namespace ExamProcessManage.Controllers
             }
             else
             {
-                return new CustomJsonResult(409, HttpContext, newCourseResponse.message);
+                return new CustomJsonResult(500, HttpContext, $"Server error", new() {
+                    new() { message ="Tạo mới học phần thất bại!!!"  } });
             }
         }
 
@@ -93,18 +97,17 @@ namespace ExamProcessManage.Controllers
                     var response = _createCommon.CreateResponse(updatedCourse.message, HttpContext, updatedCourse.data);
                     return Ok(response);
                 }
-                else if (updatedCourse.message.Contains("no changes"))
-                {
-                    return new CustomJsonResult(418, HttpContext, updatedCourse.message);
-                }
+                
                 else
                 {
-                    return new CustomJsonResult(404, HttpContext, updatedCourse.message);
+                    return new CustomJsonResult(500, HttpContext, $"Server error", new() {
+                        new() { message ="Cập nhật thông tin thất bại!!"  } });
                 }
             }
             else
             {
-                return new CustomJsonResult(400, HttpContext, "invalid input");
+                return new CustomJsonResult(500, HttpContext, $"Server error", new() {
+                    new() { message ="Dữ liệu không chính xác!!" } });
             }
         }
 
@@ -121,7 +124,8 @@ namespace ExamProcessManage.Controllers
             }
             else
             {
-                return new CustomJsonResult(404, HttpContext, delCourse.message);
+                return new CustomJsonResult(500, HttpContext, $"Server error", new() {
+                    new() { message ="Dữ liệu không đúng định dạng!" } });
             }
         }
     }

@@ -19,13 +19,13 @@ namespace ExamProcessManage.Controllers
         {
             if (file == null || file.Length == 0)
             {
-                return BadRequest("No file was uploaded.");
+                return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Không có dữ liệu file upload!!!" } });
             }
             var url = await _uploadFileService.UploadFile(file);
 
             if(url == null)
             {
-                return new CustomJsonResult(500, HttpContext, "Upload lỗi!");
+                return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Upload file thất bại!!!" } });
             }
             return Ok(url);
         }

@@ -6,6 +6,7 @@ using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using AggregateException = System.AggregateException;
 
 namespace ExamProcessManage.Controllers
 {
@@ -45,7 +46,7 @@ namespace ExamProcessManage.Controllers
                             var res = _createResponse.CreateResponse("Thành công", HttpContext, t);
                             return Ok(res);
                         }
-                        return new CustomJsonResult(500, HttpContext, $"Server error");
+                        return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
                     }
                     else
                     {
@@ -59,7 +60,7 @@ namespace ExamProcessManage.Controllers
                         }
                         else
                         {
-                            return new CustomJsonResult(500, HttpContext, "Error!");
+                            return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
                         }
                     }
                 }
@@ -68,7 +69,7 @@ namespace ExamProcessManage.Controllers
             }
             catch
             {
-                return new CustomJsonResult(500, HttpContext, "Server error!!");
+                return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
             }
         }
 
@@ -99,7 +100,7 @@ namespace ExamProcessManage.Controllers
                             var res = _createResponse.CreateResponse("Thành công", HttpContext, t);
                             return Ok(res);
                         }
-                        return new CustomJsonResult(500, HttpContext, $"Server error");
+                        return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
 
                     }
                     else
@@ -113,7 +114,7 @@ namespace ExamProcessManage.Controllers
                         }
                         else
                         {
-                            return new CustomJsonResult(500, HttpContext, "Error!");
+                            return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
                         }
                     }
                 }
@@ -122,7 +123,7 @@ namespace ExamProcessManage.Controllers
             }
             catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, "Server error!!");
+                return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
             }
 
         }
@@ -144,7 +145,7 @@ namespace ExamProcessManage.Controllers
                     var res = await _repository.CreateExamSetAsync(int.Parse(userId.Value), examSetDTO);
 
                     if (res != null) { return Ok(res); }
-                    else return new CustomJsonResult(500, HttpContext, "Error");
+                    return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
                 }
                 else
                 {
@@ -153,7 +154,7 @@ namespace ExamProcessManage.Controllers
             }
             catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, "Server error: " + ex.Message);
+                return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
             }
         }
 
@@ -206,11 +207,12 @@ namespace ExamProcessManage.Controllers
                     }
                     else return new CustomJsonResult((int)delExamSet.status, HttpContext, delExamSet.message, delExamSet.errors);
                 }
-                else return new CustomJsonResult(401, HttpContext, string.Empty);
+                else return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Chỉ người tạo bộ đề này mới được xóa!!" } });
             }
-            catch
+            catch(AggregateException ex)
             {
-                return new CustomJsonResult(500, HttpContext, "Server error");
+                return new CustomJsonResult(500, HttpContext, $"Server error: {ex.Message}", new() {
+                    new() { message = ex.InnerException?.ToString() ?? ex.Message } });
             }
         }
     }
