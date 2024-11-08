@@ -12,6 +12,7 @@ namespace ExamProcessManage.Repository
     {
         private readonly ApplicationDbContext _context;
         private readonly List<string> validStatus = new() { "in_progress", "rejected", "approved", "pending_approval" };
+
         public ExamRepository(ApplicationDbContext context)
         {
             _context = context;
@@ -27,15 +28,19 @@ namespace ExamProcessManage.Repository
             {
                 baseQuery = baseQuery.Where(p => !query.exceptValues.Contains(p.ExamId));
             }
+
             // Apply search filter
             if (!string.IsNullOrEmpty(query.search))
             {
-                baseQuery = baseQuery.Where(e => e.ExamCode.Contains(query.search) || e.ExamName.Contains(query.search));
+                baseQuery = baseQuery.Where(e =>
+                    e.ExamCode.Contains(query.search) || e.ExamName.Contains(query.search));
             }
+
             if ((bool)query.isGetForAddExamSet)
             {
                 baseQuery = baseQuery.Where(e => e.ExamSetId == null);
             }
+
             // Apply filters based on query parameters
             if (query.exam_set_id != null)
             {
@@ -86,8 +91,8 @@ namespace ExamProcessManage.Repository
             // Fetch distinct AcademicYearIds
             var academicYearIds = await baseQuery.Select(p => p.AcademicYearId).Distinct().ToListAsync();
             var academicYears = await _context.AcademicYears
-            .Where(a => academicYearIds.Contains(a.AcademicYearId))
-            .ToDictionaryAsync(a => a.AcademicYearId, a => a.YearName);
+                .Where(a => academicYearIds.Contains(a.AcademicYearId))
+                .ToDictionaryAsync(a => a.AcademicYearId, a => a.YearName);
 
             // Fetch paginated exam list
             var exams = await baseQuery
@@ -103,23 +108,32 @@ namespace ExamProcessManage.Repository
                     id = p.ExamId,
                     name = p.ExamName,
                     status = p.Status,
-                    exam_set = p.ExamSetId != null ? new CommonObject
-                    {
-                        id = (int)p.ExamSetId,
-                        name = p.ExamSet.ExamSetName
-                    } : null,
-                    user = p.CreatorId.HasValue && users.ContainsKey((ulong)p.CreatorId.Value) ? new
-                    {
-                        id = (int)users[(ulong)p.CreatorId.Value].Id,
-                        name = users[(ulong)p.CreatorId.Value].Email ?? "",
-                        fullname = users[(ulong)p.CreatorId.Value].TeacherId.HasValue && teachers.ContainsKey(users[(ulong)p.CreatorId.Value].TeacherId.Value) ? teachers[users[(ulong)p.CreatorId.Value].TeacherId.Value].Name : ""
-                    } : null,
+                    exam_set = p.ExamSetId != null
+                        ? new CommonObject
+                        {
+                            id = (int)p.ExamSetId,
+                            name = p.ExamSet.ExamSetName
+                        }
+                        : null,
+                    user = p.CreatorId.HasValue && users.ContainsKey((ulong)p.CreatorId.Value)
+                        ? new
+                        {
+                            id = (int)users[(ulong)p.CreatorId.Value].Id,
+                            name = users[(ulong)p.CreatorId.Value].Email ?? "",
+                            fullname = users[(ulong)p.CreatorId.Value].TeacherId.HasValue &&
+                                       teachers.ContainsKey(users[(ulong)p.CreatorId.Value].TeacherId.Value)
+                                ? teachers[users[(ulong)p.CreatorId.Value].TeacherId.Value].Name
+                                : ""
+                        }
+                        : null,
                     create_at = p.CreateAt.ToString(),
-                    academic_year = p.AcademicYearId.HasValue && academicYears.ContainsKey(p.AcademicYearId.Value) ? new CommonObject
-                    {
-                        id = p.AcademicYearId.Value,
-                        name = academicYears[p.AcademicYearId.Value]
-                    } : null
+                    academic_year = p.AcademicYearId.HasValue && academicYears.ContainsKey(p.AcademicYearId.Value)
+                        ? new CommonObject
+                        {
+                            id = p.AcademicYearId.Value,
+                            name = academicYears[p.AcademicYearId.Value]
+                        }
+                        : null
                 }).ToListAsync();
 
             // Return paginated result
@@ -165,17 +179,26 @@ namespace ExamProcessManage.Repository
                     code = exam.ExamCode,
                     id = exam.ExamId,
                     name = exam.ExamName,
-                    exam_set = exam.ExamSetId != null ? new CommonObject
-                    {
-                        id = (int)exam.ExamSetId,
-                        name = examSets.TryGetValue((int)exam.ExamSetId, out var exam_set) ? exam_set.ExamSetName : null,
-                    } : null,
-                    user = exam.CreatorId.HasValue && users.TryGetValue((ulong)exam.CreatorId.Value, out var user) ? new
-                    {
-                        id = (int)user.Id,
-                        name = user.Email ?? "",
-                        fullname = user.TeacherId.HasValue && teachers.TryGetValue(user.TeacherId.Value, out var teacher) ? teacher.Name : ""
-                    } : null,
+                    exam_set = exam.ExamSetId != null
+                        ? new CommonObject
+                        {
+                            id = (int)exam.ExamSetId,
+                            name = examSets.TryGetValue((int)exam.ExamSetId, out var exam_set)
+                                ? exam_set.ExamSetName
+                                : null,
+                        }
+                        : null,
+                    user = exam.CreatorId.HasValue && users.TryGetValue((ulong)exam.CreatorId.Value, out var user)
+                        ? new
+                        {
+                            id = (int)user.Id,
+                            name = user.Email ?? "",
+                            fullname = user.TeacherId.HasValue &&
+                                       teachers.TryGetValue(user.TeacherId.Value, out var teacher)
+                                ? teacher.Name
+                                : ""
+                        }
+                        : null,
                     status = exam.Status,
                     create_at = exam.CreateAt.ToString(),
                     academic_year = academicYears.TryGetValue((int)exam.AcademicYearId, out var yearName)
@@ -224,27 +247,27 @@ namespace ExamProcessManage.Repository
                 // Fetch existing codes, names, and attached files in one query each
                 var examCodes = exams.Select(x => x.code).ToList();
                 var existingCodes = await _context.Exams.AsNoTracking()
-                                          .Where(e => examCodes.Contains(e.ExamCode))
-                                          .Select(e => e.ExamCode)
-                                          .ToListAsync();
+                    .Where(e => examCodes.Contains(e.ExamCode))
+                    .Select(e => e.ExamCode)
+                    .ToListAsync();
 
                 var existingNames = await _context.Exams.AsNoTracking()
-                                          .Where(e => exams.Select(x => x.name).Contains(e.ExamName))
-                                          .Select(e => e.ExamName)
-                                          .ToListAsync();
+                    .Where(e => exams.Select(x => x.name).Contains(e.ExamName))
+                    .Select(e => e.ExamName)
+                    .ToListAsync();
 
                 var existingFiles = await _context.Exams.AsNoTracking()
-                                          .Where(e => exams.Select(x => x.attached_file).Contains(e.AttachedFile))
-                                          .Select(e => e.AttachedFile)
-                                          .ToListAsync();
+                    .Where(e => exams.Select(x => x.attached_file).Contains(e.AttachedFile))
+                    .Select(e => e.AttachedFile)
+                    .ToListAsync();
 
                 var examSetIds = await _context.ExamSets.AsNoTracking()
-                                          .Select(e => e.ExamSetId)
-                                          .ToListAsync();
+                    .Select(e => e.ExamSetId)
+                    .ToListAsync();
 
                 var academicYearIds = await _context.AcademicYears.AsNoTracking()
-                                              .Select(e => e.AcademicYearId)
-                                              .ToListAsync();
+                    .Select(e => e.AcademicYearId)
+                    .ToListAsync();
 
                 for (int i = 0; i < exams.Count; i++)
                 {
@@ -305,7 +328,8 @@ namespace ExamProcessManage.Repository
                     }
 
                     // Validate status
-                    if (string.IsNullOrEmpty(examDTO.status) || examDTO.status == "string" || !validStatus.Contains(examDTO.status))
+                    if (string.IsNullOrEmpty(examDTO.status) || examDTO.status == "string" ||
+                        !validStatus.Contains(examDTO.status))
                     {
                         errors.Add(new()
                         {
@@ -315,7 +339,8 @@ namespace ExamProcessManage.Repository
                     }
 
                     // Validate exam set
-                    if (examDTO.exam_set != null && examDTO.exam_set.id > 0 && !examSetIds.Contains(examDTO.exam_set.id))
+                    if (examDTO.exam_set != null && examDTO.exam_set.id > 0 &&
+                        !examSetIds.Contains(examDTO.exam_set.id))
                     {
                         errors.Add(new()
                         {
@@ -379,16 +404,17 @@ namespace ExamProcessManage.Repository
                 {
                     status = 500,
                     message = "An error occurred: " + ex.Message,
-                    errors = new() { new() { message = ex.InnerException.ToString() } }
+                    errors = new() { new() { message = ex.InnerException?.ToString() } }
                 };
             }
         }
 
-        public async Task<BaseResponseId> UpdateExamAsync(int userId, bool isAdmin, ExamDTO examDTO)
+        public async Task<BaseResponseId> UpdateExamAsync(int userId, bool isAdmin, ExamDTO examDto)
         {
             try
             {
-                var existExam = await _context.Exams.FirstOrDefaultAsync(e => e.ExamId == examDTO.id || e.ExamCode == examDTO.code);
+                var existExam =
+                    await _context.Exams.FirstOrDefaultAsync(e => e.ExamId == examDto.id || e.ExamCode == examDto.code);
 
                 if (existExam == null)
                 {
@@ -396,7 +422,7 @@ namespace ExamProcessManage.Repository
                     {
                         status = 404,
                         message = "Not Found",
-                        errors = new() { new() { field = "id", message = $"Exam not found {examDTO.id}" } }
+                        errors = new() { new() { field = "id", message = $"Exam not found {examDto.id}" } }
                     };
                 }
 
@@ -420,7 +446,7 @@ namespace ExamProcessManage.Repository
                     };
                 }
 
-                if (!validStatus.Contains(examDTO.status))
+                if (!validStatus.Contains(examDto.status))
                 {
                     return new BaseResponseId
                     {
@@ -432,10 +458,11 @@ namespace ExamProcessManage.Repository
 
                 if (isAdmin)
                 {
-                    if (existExam.Status == "pending_approval" && (examDTO.status == "approved" || examDTO.status == "rejected"))
+                    if (existExam.Status == "pending_approval" &&
+                        (examDto.status == "approved" || examDto.status == "rejected"))
                     {
-                        if (!string.IsNullOrEmpty(examDTO.comment) && examDTO.comment != "string")
-                            existExam.Comment = examDTO.comment;
+                        if (!string.IsNullOrEmpty(examDto.comment) && examDto.comment != "string")
+                            existExam.Comment = examDto.comment;
                         else
                             return new BaseResponseId
                             {
@@ -444,7 +471,7 @@ namespace ExamProcessManage.Repository
                                 errors = new() { new() { field = "comment", message = "Invalid comment." } }
                             };
 
-                        existExam.Status = examDTO.status;
+                        existExam.Status = examDto.status;
                         existExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
                     }
                     else
@@ -459,8 +486,8 @@ namespace ExamProcessManage.Repository
                 }
                 else
                 {
-                    if (examDTO.academic_year != null && examDTO.academic_year.id <= 0 ||
-                        !await _context.AcademicYears.AnyAsync(a => a.AcademicYearId == examDTO.academic_year.id))
+                    if (examDto.academic_year != null && examDto.academic_year.id <= 0 ||
+                        !await _context.AcademicYears.AnyAsync(a => a.AcademicYearId == examDto.academic_year.id))
                     {
                         return new BaseResponseId
                         {
@@ -470,7 +497,7 @@ namespace ExamProcessManage.Repository
                         };
                     }
 
-                    if (examDTO.exam_set != null && examDTO.exam_set.id < 0)
+                    if (examDto.exam_set != null && examDto.exam_set.id < 0)
                     {
                         return new BaseResponseId
                         {
@@ -480,7 +507,8 @@ namespace ExamProcessManage.Repository
                         };
                     }
 
-                    if (examDTO.exam_set != null && examDTO.exam_set.id > 0 && !await _context.ExamSets.AnyAsync(e => e.ExamSetId == examDTO.exam_set.id))
+                    if (examDto.exam_set != null && examDto.exam_set.id > 0 &&
+                        !await _context.ExamSets.AnyAsync(e => e.ExamSetId == examDto.exam_set.id))
                         return new BaseResponseId
                         {
                             status = 404,
@@ -488,32 +516,39 @@ namespace ExamProcessManage.Repository
                             errors = new() { new() { field = "exam_set", message = "Exam set not found." } }
                         };
 
-                    existExam.ExamName = examDTO.name != "string" && examDTO.name != existExam.ExamName
-                        ? examDTO.name : existExam.ExamName;
-                    existExam.AttachedFile = examDTO.attached_file != "string" && examDTO.attached_file != existExam.AttachedFile
-                        ? examDTO.attached_file : existExam.AttachedFile;
-                    existExam.Description = examDTO.description != "string" && examDTO.description != existExam.Description
-                        ? examDTO.description : existExam.Description;
-                    existExam.ExamSetId = examDTO.exam_set?.id == 0 ? existExam.ExamSetId : examDTO.exam_set?.id;
-                    existExam.AcademicYearId = examDTO.academic_year?.id;
+                    existExam.ExamName = examDto.name != "string" && examDto.name != existExam.ExamName
+                        ? examDto.name
+                        : existExam.ExamName;
+                    existExam.AttachedFile = examDto.attached_file != "string" &&
+                                             examDto.attached_file != existExam.AttachedFile
+                        ? examDto.attached_file
+                        : existExam.AttachedFile;
+                    existExam.Description =
+                        examDto.description != "string" && examDto.description != existExam.Description
+                            ? examDto.description
+                            : existExam.Description;
+                    existExam.ExamSetId = examDto.exam_set?.id == 0 ? existExam.ExamSetId : examDto.exam_set?.id;
+                    existExam.AcademicYearId = examDto.academic_year?.id;
                     existExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
 
-                    if (existExam.Status == "in_progress" && examDTO.status == "pending_approval")
-                    {
-                        existExam.Status = examDTO.status;
-                        existExam.Comment = string.Empty;
-                    }
-                    else if (existExam.Status == "pending_approval" && examDTO.status == "in_progress")
-                        existExam.Status = examDTO.status;
-                    else if (existExam.Status == "rejected" && examDTO.status == "in_progress")
-                        existExam.Status = examDTO.status;
-                    else
-                        return new BaseResponseId
+
+                    if (existExam.Status != examDto.status)
+                        if (existExam.Status == "in_progress" && examDto.status == "pending_approval")
                         {
-                            status = 400,
-                            message = "Bad request",
-                            errors = new() { new() { field = "status", message = "Invalid status." } }
-                        };
+                            existExam.Status = examDto.status;
+                            existExam.Comment = string.Empty;
+                        }
+                        else if (existExam.Status == "pending_approval" && examDto.status == "in_progress")
+                            existExam.Status = examDto.status;
+                        else if (existExam.Status == "rejected" && examDto.status == "in_progress")
+                            existExam.Status = examDto.status;
+                        else
+                            return new BaseResponseId
+                            {
+                                status = 400,
+                                message = "Bad request",
+                                errors = new() { new() { field = "status", message = "Invalid status." } }
+                            };
                 }
 
                 // Lấy danh sách tất cả các Exam trong ExamSet
@@ -607,7 +642,8 @@ namespace ExamProcessManage.Repository
                     {
                         status = 404,
                         message = "Not found",
-                        errors = new List<ErrorDetail> { new() { field = "examId", message = $"Exam not found {examId}" } }
+                        errors = new List<ErrorDetail>
+                            { new() { field = "examId", message = $"Exam not found {examId}" } }
                     };
                 }
 
@@ -617,7 +653,8 @@ namespace ExamProcessManage.Repository
                     {
                         status = 405,
                         message = "Method Not Allowed",
-                        errors = new List<ErrorDetail> { new() { message = "You do not have the right to delete other instructors' exams." } }
+                        errors = new List<ErrorDetail>
+                            { new() { message = "You do not have the right to delete other instructors' exams." } }
                     };
                 }
 
@@ -627,7 +664,8 @@ namespace ExamProcessManage.Repository
                     {
                         status = 405,
                         message = "Method Not Allowed",
-                        errors = new List<ErrorDetail> { new() { message = "Exam has been approved and cannot be deleted." } }
+                        errors = new List<ErrorDetail>
+                            { new() { message = "Exam has been approved and cannot be deleted." } }
                     };
                 }
 
