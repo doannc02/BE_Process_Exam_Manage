@@ -422,7 +422,7 @@ namespace ExamProcessManage.Repository
                     {
                         status = 404,
                         message = "Not Found",
-                        errors = new() { new() { field = "id", message = $"Exam not found {examDto.id}" } }
+                        errors = new List<ErrorDetail> { new() { field = "id", message = $"Exam not found {examDto.id}" } }
                     };
                 }
 
@@ -432,7 +432,8 @@ namespace ExamProcessManage.Repository
                     {
                         status = 405,
                         message = "Method Not Allowed",
-                        errors = new() { new() { message = "You do not have permission to update this exam." } }
+                        errors = new List<ErrorDetail>
+                            { new() { message = "You do not have permission to update this exam." } }
                     };
                 }
 
@@ -442,7 +443,8 @@ namespace ExamProcessManage.Repository
                     {
                         status = 405,
                         message = "Method Not Allowed",
-                        errors = new() { new() { message = "Exam has been approved and cannot updated." } }
+                        errors = new List<ErrorDetail>
+                            { new() { message = "Exam has been approved and cannot updated." } }
                     };
                 }
 
@@ -452,7 +454,7 @@ namespace ExamProcessManage.Repository
                     {
                         status = 400,
                         message = "Bad request",
-                        errors = new() { new() { field = "status", message = "Invalid status." } }
+                        errors = new List<ErrorDetail> { new() { field = "status", message = "Invalid status." } }
                     };
                 }
 
@@ -468,7 +470,8 @@ namespace ExamProcessManage.Repository
                             {
                                 status = 400,
                                 message = "Bad request",
-                                errors = new() { new() { field = "comment", message = "Invalid comment." } }
+                                errors = new List<ErrorDetail>
+                                    { new() { field = "comment", message = "Invalid comment." } }
                             };
 
                         existExam.Status = examDto.status;
@@ -480,7 +483,7 @@ namespace ExamProcessManage.Repository
                         {
                             status = 400,
                             message = "Bad request",
-                            errors = new() { new() { field = "status", message = "Invalid status." } }
+                            errors = new List<ErrorDetail> { new() { field = "status", message = "Invalid status." } }
                         };
                     }
                 }
@@ -493,7 +496,8 @@ namespace ExamProcessManage.Repository
                         {
                             status = 400,
                             message = "Bad request",
-                            errors = new() { new() { field = "academic_year", message = "Invalid academic year." } }
+                            errors = new List<ErrorDetail>
+                                { new() { field = "academic_year", message = "Invalid academic year." } }
                         };
                     }
 
@@ -503,7 +507,8 @@ namespace ExamProcessManage.Repository
                         {
                             status = 400,
                             message = "Bad request",
-                            errors = new() { new() { field = "exam_set", message = "Invalid exam set." } }
+                            errors = new List<ErrorDetail>
+                                { new() { field = "exam_set", message = "Invalid exam set." } }
                         };
                     }
 
@@ -513,9 +518,53 @@ namespace ExamProcessManage.Repository
                         {
                             status = 404,
                             message = "Not found",
-                            errors = new() { new() { field = "exam_set", message = "Exam set not found." } }
+                            errors = new List<ErrorDetail>
+                                { new() { field = "exam_set", message = "Exam set not found." } }
                         };
 
+
+                    // Cập nhật trạng thái
+                    if (existExam.Status != examDto.status)
+                        switch (existExam.Status)
+                        {
+                            case "in_progress" when examDto.status == "pending_approval":
+                                existExam.Status = examDto.status;
+                                existExam.Comment = string.Empty;
+                                break;
+                            case "pending_approval" when examDto.status == "in_progress":
+                                existExam.Status = examDto.status;
+                                break;
+                            case "rejected" when
+                                examDto.status is "in_progress" or "pending_approval":
+                            {
+                                // Bắt buộc phải có thay đổi
+                                if (examDto.name == existExam.ExamName &&
+                                    examDto.attached_file == existExam.AttachedFile &&
+                                    examDto.description == existExam.Description)
+                                {
+                                    return new BaseResponseId
+                                    {
+                                        status = 400,
+                                        message = "Bad request",
+                                        errors = new List<ErrorDetail> { new() { message = "No change detected." } }
+                                    };
+                                }
+
+                                existExam.Status = examDto.status;
+                                break;
+                            }
+                            default:
+                                return new BaseResponseId
+                                {
+                                    status = 400,
+                                    message = "Bad request",
+                                    errors = new List<ErrorDetail>
+                                        { new() { field = "status", message = "Invalid status." } }
+                                };
+                        }
+
+
+                    // Thay đổi cần thiết
                     existExam.ExamName = examDto.name != "string" && examDto.name != existExam.ExamName
                         ? examDto.name
                         : existExam.ExamName;
@@ -530,25 +579,6 @@ namespace ExamProcessManage.Repository
                     existExam.ExamSetId = examDto.exam_set?.id == 0 ? existExam.ExamSetId : examDto.exam_set?.id;
                     existExam.AcademicYearId = examDto.academic_year?.id;
                     existExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
-
-
-                    if (existExam.Status != examDto.status)
-                        if (existExam.Status == "in_progress" && examDto.status == "pending_approval")
-                        {
-                            existExam.Status = examDto.status;
-                            existExam.Comment = string.Empty;
-                        }
-                        else if (existExam.Status == "pending_approval" && examDto.status == "in_progress")
-                            existExam.Status = examDto.status;
-                        else if (existExam.Status == "rejected" && examDto.status == "in_progress")
-                            existExam.Status = examDto.status;
-                        else
-                            return new BaseResponseId
-                            {
-                                status = 400,
-                                message = "Bad request",
-                                errors = new() { new() { field = "status", message = "Invalid status." } }
-                            };
                 }
 
                 // Lấy danh sách tất cả các Exam trong ExamSet
@@ -557,10 +587,10 @@ namespace ExamProcessManage.Repository
                 if (examsByExamSet.Any())
                 {
                     // Kiểm tra nếu tất cả các exam có cùng trạng thái
-                    bool allExamsInProgress = examsByExamSet.All(exam => exam.Status == "in_progress");
-                    bool allExamsPendingApproval = examsByExamSet.All(exam => exam.Status == "pending_approval");
-                    bool allExamsApproved = examsByExamSet.All(exam => exam.Status == "approved");
-                    bool allExamsRejected = examsByExamSet.All(exam => exam.Status == "rejected");
+                    var allExamsInProgress = examsByExamSet.All(exam => exam.Status == "in_progress");
+                    var allExamsPendingApproval = examsByExamSet.All(exam => exam.Status == "pending_approval");
+                    var allExamsApproved = examsByExamSet.All(exam => exam.Status == "approved");
+                    var allExamsRejected = examsByExamSet.All(exam => exam.Status == "rejected");
 
                     var examSet = await _context.ExamSets.FindAsync(existExam.ExamSetId);
                     if (examSet != null)
@@ -585,9 +615,9 @@ namespace ExamProcessManage.Repository
                         else
                         {
                             // Kiểm tra các trường hợp trạng thái bị pha trộn
-                            bool anyExamInProgress = examsByExamSet.Any(exam => exam.Status == "in_progress");
-                            bool anyExamRejected = examsByExamSet.Any(exam => exam.Status == "rejected");
-                            bool anyExamApproved = examsByExamSet.Any(exam => exam.Status == "approved");
+                            var anyExamInProgress = examsByExamSet.Any(exam => exam.Status == "in_progress");
+                            var anyExamRejected = examsByExamSet.Any(exam => exam.Status == "rejected");
+                            var anyExamApproved = examsByExamSet.Any(exam => exam.Status == "approved");
 
                             // Nếu có bất kỳ exam nào đang ở "in_progress" hoặc bị "rejected", es chuyển về "in_progress"
                             if (anyExamInProgress || anyExamRejected)
@@ -626,7 +656,7 @@ namespace ExamProcessManage.Repository
                 {
                     status = 500,
                     message = $"An error occurred: {ex.Message}",
-                    errors = new() { new() { message = ex.InnerException?.ToString() } }
+                    errors = new List<ErrorDetail> { new() { message = ex.InnerException?.ToString() } }
                 };
             }
         }

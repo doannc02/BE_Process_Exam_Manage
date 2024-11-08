@@ -34,6 +34,7 @@ namespace ExamProcessManage.Controllers
                 {
                     return Forbid();
                 }
+
                 if (userId != null && roleClaim.Value != "Admin")
                 {
                     var exams1 = await _examRepository.GetListExamsAsync(examRequest, int.Parse(userId.Value));
@@ -41,11 +42,11 @@ namespace ExamProcessManage.Controllers
                     var res = _createCommon.CreateResponse("Lấy danh sách bài thi thành công", HttpContext, exams1);
                     return Ok(res);
                 }
+
                 var exams = await _examRepository.GetListExamsAsync(examRequest, null);
 
                 var response = _createCommon.CreateResponse("Lấy danh sách bài thi thành công", HttpContext, exams);
                 return Ok(response);
-
             }
             catch (Exception ex)
             {
@@ -67,7 +68,8 @@ namespace ExamProcessManage.Controllers
                 }
                 else
                 {
-                    return new CustomJsonResult((int)examDetail.status, HttpContext, examDetail.message, examDetail.errors);
+                    return new CustomJsonResult((int)examDetail.status, HttpContext, examDetail.message,
+                        examDetail.errors);
                 }
             }
             catch (Exception ex)
@@ -77,7 +79,7 @@ namespace ExamProcessManage.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> PostExamAsync([FromBody] IEnumerable<ExamDTO> examDTOs)
+        public async Task<IActionResult> PostExamAsync([FromBody] IEnumerable<ExamDTO> examDtOs)
         {
             try
             {
@@ -88,9 +90,10 @@ namespace ExamProcessManage.Controllers
                 {
                     return Forbid();
                 }
+
                 if (userId != null && roleClaim.Value != "Admin")
                 {
-                    var createExam = await _examRepository.CreateExamsAsync(examDTOs.ToList(), int.Parse(userId.Value));
+                    var createExam = await _examRepository.CreateExamsAsync(examDtOs.ToList(), int.Parse(userId.Value));
 
                     if (createExam != null && createExam.data != null)
                     {
@@ -99,20 +102,22 @@ namespace ExamProcessManage.Controllers
                     }
                     else
                     {
-                        return new CustomJsonResult((int)createExam.status, HttpContext, createExam.message, createExam.errors);
+                        return new CustomJsonResult((int)createExam.status, HttpContext, createExam.message,
+                            createExam.errors);
                     }
                 }
-                return Unauthorized();
 
+                return Unauthorized();
             }
             catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message} {ex.InnerException}");
+                return new CustomJsonResult(500, HttpContext,
+                    $"Internal Server Error: {ex.Message} {ex.InnerException}");
             }
         }
 
         [HttpPut]
-        public async Task<IActionResult> PutExamAsync([FromBody] ExamDTO examDTO)
+        public async Task<IActionResult> PutExamAsync([FromBody] ExamDTO examDto)
         {
             try
             {
@@ -123,9 +128,11 @@ namespace ExamProcessManage.Controllers
                 {
                     return Forbid();
                 }
+
                 if (userId != null)
                 {
-                    var updateExam = await _examRepository.UpdateExamAsync(int.Parse(userId.Value), roleClaim.Value == "Admin", examDTO);
+                    var updateExam = await _examRepository.UpdateExamAsync(int.Parse(userId.Value),
+                        roleClaim.Value == "Admin", examDto);
 
                     if (updateExam != null && updateExam.data != null)
                     {
@@ -134,19 +141,22 @@ namespace ExamProcessManage.Controllers
                     }
                     else
                     {
-                        return new CustomJsonResult((int)updateExam.status, HttpContext, updateExam.message, updateExam.errors);
+                        return new CustomJsonResult((int)updateExam.status, HttpContext, updateExam.message,
+                            updateExam.errors);
                     }
                 }
+
                 return Unauthorized();
             }
             catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message} {ex.InnerException}");
+                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message}",
+                    new List<ErrorDetail> { new() { message = ex.InnerException?.ToString() ?? "No additional details." } });
             }
         }
 
         [HttpDelete]
-        public async Task<IActionResult> DeleteExamAsync([FromQuery][Required] int id)
+        public async Task<IActionResult> DeleteExamAsync([FromQuery] [Required] int id)
         {
             try
             {
@@ -159,11 +169,13 @@ namespace ExamProcessManage.Controllers
                 if (deleteExam.data != null)
                     return Ok(_createCommon.CreateResponse(deleteExam.message, HttpContext, deleteExam.data));
                 else
-                    return new CustomJsonResult((int)deleteExam.status, HttpContext, deleteExam.message, deleteExam.errors);
+                    return new CustomJsonResult((int)deleteExam.status, HttpContext, deleteExam.message,
+                        deleteExam.errors);
             }
             catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, $"Internal Server Error: {ex.Message} {ex.InnerException}");
+                return new CustomJsonResult(500, HttpContext,
+                    $"Internal Server Error: {ex.Message} {ex.InnerException}");
             }
         }
     }
