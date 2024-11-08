@@ -22,93 +22,67 @@ namespace ExamProcessManage.Controllers
 
         // GET: api/<MajorController>
         [HttpGet("list")]
-        public async Task<IActionResult> GetListMajorAsync([FromQuery] int departmentId, [FromQuery] QueryObject queryObject)
+        public async Task<IActionResult> GetListMajorAsync([FromQuery] int departmentId,
+            [FromQuery] QueryObject queryObject)
         {
             var listMajors = await _majorRepository.GetListMajorAsync(departmentId, queryObject);
 
-
-            var commonResponse = _createCommonResponse.CreateResponse("success", HttpContext, listMajors);
+            var commonResponse = _createCommonResponse.CreateResponse("Thành công", HttpContext, listMajors);
             return Ok(commonResponse);
-
         }
 
         // GET api/<MajorController>/5
         [HttpGet("detail")]
-        public async Task<IActionResult> GetDetailMajorAsync([FromQuery][Required] int id)
+        public async Task<IActionResult> GetDetailMajorAsync([FromQuery] [Required] int id)
         {
             var major = await _majorRepository.GetDetailMajorAsync(id);
 
-            if (major != null && major.data != null)
-            {
-                var response = _createCommonResponse.CreateResponse(major.message, HttpContext, major.data);
-                return Ok(response);
-            }
-            else
-            {
-                return new CustomJsonResult(404, HttpContext, major.message);
-            }
+            if (major.status != 200)
+                return new CustomJsonResult(major.status, HttpContext, major.message, major.errors);
+
+            var response = _createCommonResponse.CreateResponse(major.message, HttpContext, major.data);
+            return Ok(response);
         }
 
         // POST api/<MajorController>
         [HttpPost]
         public async Task<IActionResult> PostMajorAsync([FromBody] MajorResponse inputMajor)
         {
-                var newCourse = await _majorRepository.CreateMajorAsync(inputMajor);
+            var newMajor = await _majorRepository.CreateMajorAsync(inputMajor);
 
-                if (newCourse.data != null)
-                {
-                    var response = _createCommonResponse.CreateResponse(newCourse.message, HttpContext, newCourse.data);
-                    return Ok(response);
-                }
-                else
-                {
-                    return new CustomJsonResult(409, HttpContext, newCourse.message);
-                }
+            if (newMajor.status != 200)
+                return new CustomJsonResult(newMajor.status, HttpContext, newMajor.message, newMajor.errors);
+
+            var response = _createCommonResponse.CreateResponse(newMajor.message, HttpContext, newMajor.data);
+            return Ok(response);
         }
 
         // PUT api/<MajorController>/5
         [HttpPut]
         public async Task<IActionResult> PutMajorAsync([FromBody] MajorResponse inputMajor)
         {
-            if (inputMajor != null && inputMajor.id > 0 && inputMajor.name != "string")
-            {
-                var updatedMajor = await _majorRepository.UpdateMajorAsync(inputMajor);
+            var updatedMajor = await _majorRepository.UpdateMajorAsync(inputMajor);
 
-                if (updatedMajor.data != null)
-                {
-                    var response = _createCommonResponse.CreateResponse(updatedMajor.message, HttpContext, updatedMajor.data);
-                    return Ok(response);
-                }
-                else if (updatedMajor.message.Contains("no changes"))
-                {
-                    return new CustomJsonResult(418, HttpContext, updatedMajor.message);
-                }
-                else
-                {
-                    return new CustomJsonResult(404, HttpContext, updatedMajor.message);
-                }
-            }
-            else
-            {
-                return new CustomJsonResult(400, HttpContext, "invalid input");
-            }
+            if (updatedMajor.status != 200)
+                return new CustomJsonResult(updatedMajor.status, HttpContext, updatedMajor.message,
+                    updatedMajor.errors);
+
+            var response =
+                _createCommonResponse.CreateResponse(updatedMajor.message, HttpContext, updatedMajor.data);
+            return Ok(response);
         }
 
         // DELETE api/<MajorController>/5
         [HttpDelete]
-        public async Task<IActionResult> DeleteMajorAsync([FromQuery][Required] int id)
+        public async Task<IActionResult> DeleteMajorAsync([FromQuery] [Required] int id)
         {
             var delMajor = await _majorRepository.DeleteMajorAsync(id);
 
-            if (delMajor.data != null)
-            {
-                var response = _createCommonResponse.CreateResponse(delMajor.message, HttpContext, delMajor.data);
-                return Ok(response);
-            }
-            else
-            {
-                return new CustomJsonResult(404, HttpContext, delMajor.message);
-            }
+            if (delMajor.status != 200)
+                return new CustomJsonResult(delMajor.status, HttpContext, delMajor.message, delMajor.errors);
+
+            var response = _createCommonResponse.CreateResponse(delMajor.message, HttpContext, delMajor.data);
+            return Ok(response);
         }
     }
 }

@@ -51,7 +51,7 @@ namespace ExamProcessManage.Repository
                 {
                     "name" => baseQuery.OrderBy(m => m.MajorName),
                     "name_desc" => baseQuery.OrderByDescending(m => m.MajorName),
-                    _ => baseQuery.OrderBy(m => m.MajorId)
+                    _ => baseQuery.OrderByDescending(m => m.MajorId)
                 };
             }
 
@@ -82,13 +82,15 @@ namespace ExamProcessManage.Repository
             var departmentList = await _context.Departments.ToListAsync();
 
             // Create response objects for each major
-            foreach (var item in majorList)
-            {
-                var departmentMajor = Enumerable.FirstOrDefault(departmentList, d => d.DepartmentId == item.DepartmentId);
-                listMajors.Add(new MajorResponse
+            listMajors.AddRange(from item in majorList
+                let departmentMajor =
+                    departmentList.FirstOrDefault(d => d.DepartmentId == item.DepartmentId)
+                select new MajorResponse
                 {
                     id = item.MajorId,
-                    name = item.MajorName ?? string.Empty,
+                    name = item.MajorName,
+                    created_at = item.CreatedAt.ToString(),
+                    updated_at = item.UpdatedAt.ToString(),
                     department = new CommonObject
                     {
                         id = departmentMajor?.DepartmentId ?? (int)item.DepartmentId!,
@@ -96,7 +98,6 @@ namespace ExamProcessManage.Repository
                         name = departmentMajor?.DepartmentName ?? string.Empty
                     }
                 });
-            }
 
             // Return paginated response
             return new PageResponse<MajorResponse>
@@ -110,153 +111,267 @@ namespace ExamProcessManage.Repository
             };
         }
 
-
         public async Task<BaseResponse<MajorResponse>> GetDetailMajorAsync(int majorId)
         {
-            var response = new BaseResponse<MajorResponse>();
             var major = await _context.Majors.FirstOrDefaultAsync(m => m.MajorId == majorId);
 
-            if (major != null)
-            {
-                var department =
-                    await _context.Departments.FirstOrDefaultAsync(d => d.DepartmentId == major.DepartmentId);
+            if (major == null)
+                return new BaseResponse<MajorResponse>
+                {
+                    status = 404,
+                    message = "Không tìm thấy chuyên ngành",
+                    errors = new List<ErrorDetail>()
+                    {
+                        new()
+                        {
+                            message = "Không tìm thấy chuyên ngành"
+                        }
+                    }
+                };
 
-                response.message = "success";
-                response.data = new MajorResponse
+            var department =
+                await _context.Departments.FirstOrDefaultAsync(d => d.DepartmentId == major.DepartmentId);
+
+            return new BaseResponse<MajorResponse>
+            {
+                status = 200,
+                message = "Thành công",
+                data = new MajorResponse
                 {
                     id = major.MajorId,
                     name = major.MajorName,
+                    created_at = major.CreatedAt.ToString(),
+                    updated_at = major.UpdatedAt.ToString(),
                     department = new CommonObject
                     {
                         id = department!.DepartmentId,
                         code = department.DepartmentId.ToString(),
                         name = department.DepartmentName
                     }
-                };
-            }
-            else
-            {
-                response.message = $"major with id = '{majorId}' could not be found";
-            }
-
-            return response;
+                }
+            };
         }
 
-        public async Task<BaseResponse<MajorResponse>> CreateMajorAsync(MajorResponse inputMajor)
+        public async Task<BaseResponseId> CreateMajorAsync(MajorResponse inputMajor)
         {
             try
             {
-                var response = new BaseResponse<MajorResponse>();
-
-                var existMajor =
-                    await _context.Majors.AnyAsync(m => m.MajorId == inputMajor.id || m.MajorName == inputMajor.name);
-
-                if (!existMajor)
+                if (string.IsNullOrEmpty(inputMajor.name) || inputMajor.name == "string")
                 {
-                    var newMajor = new Major
+                    return new BaseResponseId
                     {
-                        MajorName = inputMajor.name,
-                        DepartmentId = inputMajor.department.id
+                        status = 400,
+                        message = "Tên chuyên ngành không hợp lệ",
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                field = "name",
+                                message = "Tên chuyên ngành không hợp lệ"
+                            }
+                        }
                     };
-
-                    await _context.Majors.AddAsync(newMajor);
-                    await _context.SaveChangesAsync();
-
-                    response.data = inputMajor;
-                    response.message = "major added successfully";
                 }
-                else
+
+                var existMajor = await _context.Majors.AnyAsync(m => m.MajorName == inputMajor.name);
+
+                if (existMajor)
                 {
-                    response.message = $"major already exists";
+                    return new BaseResponseId
+                    {
+                        status = 409,
+                        message = "Tên chuyên ngành bị trùng",
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                field = "name",
+                                message = "Tên chuyên ngành bị trùng"
+                            }
+                        }
+                    };
                 }
 
-                return response;
+                var newMajor = new Major
+                {
+                    MajorName = inputMajor.name,
+                    CreatedAt = DateTime.Now,
+                    DepartmentId = inputMajor.department.id
+                };
+
+                await _context.Majors.AddAsync(newMajor);
+                await _context.SaveChangesAsync();
+
+                return new BaseResponseId
+                {
+                    status = 200,
+                    message = "Thêm chuyên ngành thành công",
+                    data = new DetailResponse
+                    {
+                        id = newMajor.MajorId
+                    }
+                };
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                return new BaseResponse<MajorResponse>
+                return new BaseResponseId
                 {
-                    message = "an error occurred: " + ex.Message
+                    status = 500,
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
                 };
             }
         }
 
-        public async Task<BaseResponse<MajorResponse>> UpdateMajorAsync(MajorResponse updateMajor)
+        public async Task<BaseResponseId> UpdateMajorAsync(MajorResponse updateMajor)
         {
             try
             {
-                var response = new BaseResponse<MajorResponse>();
+                if (string.IsNullOrEmpty(updateMajor.name) || updateMajor.name == "string")
+                {
+                    return new BaseResponseId
+                    {
+                        status = 400,
+                        message = "Tên chuyên ngành không hợp lệ",
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                field = "name",
+                                message = "Tên chuyên ngành không hợp lệ"
+                            }
+                        }
+                    };
+                }
+
                 var existMajor = await _context.Majors.FirstOrDefaultAsync(m => m.MajorId == updateMajor.id);
 
-                if (existMajor != null)
+                if (existMajor == null)
+                {
+                    return new BaseResponseId
+                    {
+                        status = 404,
+                        message = "Không tìm thấy chuyêng ngành",
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                field = "id",
+                                message = "Không tìm thấy chuyêng ngành"
+                            }
+                        }
+                    };
+                }
+
+                if (updateMajor.name != existMajor.MajorName)
                 {
                     var checkConflictMajor = await _context.Majors.AnyAsync(m => m.MajorName == updateMajor.name);
 
-                    if (!checkConflictMajor)
+                    if (checkConflictMajor)
                     {
-                        existMajor.MajorName = updateMajor.name;
-                        existMajor.DepartmentId = updateMajor.department.id > 0
-                            ? updateMajor.department.id
-                            : existMajor.DepartmentId;
-
-                        await _context.SaveChangesAsync();
-
-                        response.message = "update successfully";
-                        response.data = updateMajor;
-                    }
-                    else
-                    {
-                        response.message = $"major name = '{updateMajor.name}' already exists";
+                        return new BaseResponseId
+                        {
+                            status = 409,
+                            message = "Tên chuyên ngành bị trùng",
+                            errors = new List<ErrorDetail>
+                            {
+                                new()
+                                {
+                                    field = "name",
+                                    message = "Tên chuyên ngành bị trùng"
+                                }
+                            }
+                        };
                     }
                 }
-                else
+
+                existMajor.MajorName = updateMajor.name;
+                existMajor.DepartmentId =
+                    updateMajor.department.id > 0 ? updateMajor.department.id : existMajor.DepartmentId;
+                existMajor.UpdatedAt = DateTime.Now;
+
+                await _context.SaveChangesAsync();
+
+                return new BaseResponseId
                 {
-                    response.message = $"no major found with id = '{updateMajor.id}'";
-                }
-
-                return response;
+                    status = 200,
+                    message = "Cập nhật chuyên ngành thành công",
+                    data = new DetailResponse
+                    {
+                        id = existMajor.MajorId
+                    }
+                };
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                return new BaseResponse<MajorResponse>
+                return new BaseResponseId
                 {
-                    message = "an error occurred: " + ex.Message
+                    status = 500,
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
                 };
             }
         }
 
-        public async Task<BaseResponse<MajorResponse>> DeleteMajorAsync(int majorId)
+        public async Task<BaseResponseId> DeleteMajorAsync(int majorId)
         {
             try
             {
-                var response = new BaseResponse<MajorResponse>();
                 var existMajor = await _context.Majors.FirstOrDefaultAsync(m => m.MajorId == majorId);
 
-                if (existMajor != null)
-                {
-                    _context.Majors.Remove(existMajor);
-                    await _context.SaveChangesAsync();
-
-                    response.message = "delete successfully";
-                    response.data = new MajorResponse
+                if (existMajor == null)
+                    return new BaseResponseId
                     {
-                        id = existMajor.MajorId,
-                        name = existMajor.MajorName,
-                        department = new CommonObject { id = (int)existMajor.DepartmentId! }
+                        status = 404,
+                        message = "Không tìm thấy chuyên ngành",
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                field = "id",
+                                message = "Không tìm thấy chuyên ngành"
+                            }
+                        }
                     };
-                }
-                else
-                {
-                    response.message = $"no major found with ID = '{majorId}'";
-                }
 
-                return response;
-            }
-            catch (Exception ex)
-            {
-                return new BaseResponse<MajorResponse>
+                _context.Majors.Remove(existMajor);
+                await _context.SaveChangesAsync();
+
+                return new BaseResponseId
                 {
-                    message = "an error occurred: " + ex.Message
+                    status = 200,
+                    message = "Xóa chuyên ngành thành công",
+                    data = new DetailResponse
+                    {
+                        id = existMajor.MajorId
+                    }
+                };
+            }
+            catch (Exception exception)
+            {
+                return new BaseResponseId
+                {
+                    status = 500,
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
                 };
             }
         }
