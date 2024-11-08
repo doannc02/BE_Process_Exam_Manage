@@ -26,96 +26,64 @@ namespace ExamProcessManage.Controllers
         {
             var listDepart = await _repository.GetListDepartmentAsync(queryObject);
 
-
-            var response = _createCommon.CreateResponse("success", HttpContext, listDepart);
+            var response = _createCommon.CreateResponse("Thành công", HttpContext, listDepart);
             return Ok(response);
-
         }
 
         // GET api/<DepartmentController>/5
         [HttpGet("detail")]
-        public async Task<IActionResult> GetDetailDepartmentAsync([FromQuery][Required] int id)
+        public async Task<IActionResult> GetDetailDepartmentAsync([FromQuery] [Required] int id)
         {
             var detailDepartment = await _repository.GetDetailDepartmentAsync(id);
 
-            if (detailDepartment.data != null)
-            {
-                var response = _createCommon.CreateResponse(detailDepartment.message, HttpContext, detailDepartment.data);
-                return Ok(response);
-            }
-            else
-            {
-                return new CustomJsonResult(404, HttpContext, detailDepartment.message);
-            }
+            if (detailDepartment.status != 200)
+                return new CustomJsonResult(detailDepartment.status, HttpContext, detailDepartment.message,
+                    detailDepartment.errors);
+
+            var response = _createCommon.CreateResponse(detailDepartment.message, HttpContext, detailDepartment.data);
+            return Ok(response);
         }
 
         // POST api/<DepartmentController>
         [HttpPost]
         public async Task<IActionResult> PostDepartmentAsync([FromBody] DepartmentResponse department)
         {
-            if (department.id != 0 && department.name != "string")
-            {
-                var newDepartment = await _repository.CreateDepartmentAsync(department);
+            var newDepartment = await _repository.CreateDepartmentAsync(department);
 
-                if (newDepartment.data != null)
-                {
-                    var response = _createCommon.CreateResponse(newDepartment.message, HttpContext, newDepartment.data);
-                    return Ok(response);
-                }
-                else
-                {
-                    return new CustomJsonResult(409, HttpContext, newDepartment.message);
-                }
-            }
-            else
-            {
-                return new CustomJsonResult(400, HttpContext, "invalid input");
-            }
+            if (newDepartment.status != 200)
+                return new CustomJsonResult(newDepartment.status, HttpContext, newDepartment.message,
+                    newDepartment.errors);
+
+            var response = _createCommon.CreateResponse(newDepartment.message, HttpContext, newDepartment.data);
+            return Ok(response);
         }
 
         // PUT api/<DepartmentController>/5
         [HttpPut]
         public async Task<IActionResult> PutDepartmentAsync([FromBody] DepartmentResponse department)
         {
-            if (department.id != 0 && department.name != "string")
-            {
-                var updated = await _repository.UpdateDepartmentAsync(department);
+            var updateDepartment = await _repository.UpdateDepartmentAsync(department);
 
-                if (updated.data != null)
-                {
-                    var response = _createCommon.CreateResponse(updated.message, HttpContext, updated.data);
-                    return Ok(response);
-                }
-                else if (updated.message.Contains("no changes"))
-                {
-                    return new CustomJsonResult(418, HttpContext, updated.message);
-                }
-                else
-                {
-                    return new CustomJsonResult(404, HttpContext, updated.message);
-                }
-            }
-            else
-            {
-                return new CustomJsonResult(400, HttpContext, "invalid input");
-            }
+            if (updateDepartment.status != 200)
+                return new CustomJsonResult(updateDepartment.status, HttpContext, updateDepartment.message,
+                    updateDepartment.errors);
+
+            var response = _createCommon.CreateResponse(updateDepartment.message, HttpContext, updateDepartment.data);
+            return Ok(response);
         }
 
         // DELETE api/<DepartmentController>/5
         [HttpDelete]
         public async Task<IActionResult> DeleteDepartmentAsync([Required] int id)
         {
-            var deleted = await _repository.DeleteDepartmentAsync(id);
+            var deleteDepartment = await _repository.DeleteDepartmentAsync(id);
 
-            if (deleted.data != null)
-            {
-                var response = _createCommon.CreateResponse(deleted.message, HttpContext, deleted.data);
-                return Ok(response);
-            }
-            else
-            {
-                return new CustomJsonResult(404, HttpContext, deleted.message);
-            }
+            if (deleteDepartment.status != 200)
+                return new CustomJsonResult(deleteDepartment.status, HttpContext, deleteDepartment.message,
+                    deleteDepartment.errors);
+
+            var response = _createCommon.CreateResponse(deleteDepartment.message, HttpContext, deleteDepartment.data);
+            return Ok(response);
         }
     }
 }

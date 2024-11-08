@@ -31,11 +31,13 @@ namespace ExamProcessManage.Repository
 
             var response = new List<DepartmentResponse>();
             var queryDepartments = _context.Departments.AsQueryable();
+
             // Apply search filter
             if (!string.IsNullOrEmpty(queryObject.search))
             {
                 queryDepartments = queryDepartments.Where(m => m.DepartmentName!.Contains(queryObject.search));
             }
+
             // Apply sorting if specified (you can adjust the sort logic as needed)
             if (!string.IsNullOrEmpty(queryObject.sort))
             {
@@ -43,7 +45,7 @@ namespace ExamProcessManage.Repository
                 {
                     "name" => queryDepartments.OrderBy(d => d.DepartmentName),
                     "name_desc" => queryDepartments.OrderByDescending(d => d.DepartmentName),
-                    _ => queryDepartments.OrderBy(d => d.DepartmentId), // Default sorting
+                    _ => queryDepartments.OrderByDescending(d => d.DepartmentId), // Default sorting
                 };
             }
 
@@ -70,14 +72,8 @@ namespace ExamProcessManage.Repository
                 .Take(queryObject.size)
                 .ToListAsync();
 
-            foreach (var item in listDepartments)
-            {
-                response.Add(new DepartmentResponse
-                {
-                    id = item.DepartmentId,
-                    name = item.DepartmentName ?? string.Empty
-                });
-            }
+            response.AddRange(listDepartments.Select(item => new DepartmentResponse
+                { id = item.DepartmentId, name = item.DepartmentName ?? string.Empty }));
 
             return new PageResponse<DepartmentResponse>
             {
@@ -91,128 +87,263 @@ namespace ExamProcessManage.Repository
             };
         }
 
-
         public async Task<BaseResponse<DepartmentResponse>> GetDetailDepartmentAsync(int id)
         {
-            var response = new BaseResponse<DepartmentResponse>();
             var department = await _context.Departments.FindAsync(id);
 
             if (department != null)
             {
-                response.message = "success";
-                response.data = new DepartmentResponse
+                return new BaseResponse<DepartmentResponse>
                 {
-                    id = department.DepartmentId,
-                    name = department.DepartmentName ?? string.Empty
+                    status = 200,
+                    message = "Thành công",
+                    data = new DepartmentResponse
+                    {
+                        id = department.DepartmentId,
+                        name = department.DepartmentName
+                    }
                 };
             }
-            else
-            {
-                response.message = $"no department found with ID = '{id}'";
-            }
 
-            return response;
+            return new BaseResponse<DepartmentResponse>
+            {
+                status = 404,
+                message = "Không tìm thấy khoa",
+                errors = new List<ErrorDetail>
+                {
+                    new()
+                    {
+                        message = "Không tìm thấy khoa"
+                    }
+                }
+            };
         }
 
-        public async Task<BaseResponse<DepartmentResponse>> CreateDepartmentAsync(DepartmentResponse department)
+        public async Task<BaseResponseId> CreateDepartmentAsync(DepartmentResponse department)
         {
-            var response = new BaseResponse<DepartmentResponse>();
-
             try
             {
-                var existed = await _context.Departments.AnyAsync(d => d.DepartmentId == department.id ||
-                d.DepartmentName!.Contains(department.name));
-
-                if (!existed)
+                if (string.IsNullOrEmpty(department.name))
                 {
-                    var newDepartment = new Department
+                    return new BaseResponseId
                     {
-                        DepartmentId = department.id,
-                        DepartmentName = department.name
+                        status = 400,
+                        message = "Yêu cầu nhập tên khoa",
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                field = "name",
+                                message = "Yêu cầu nhập tên khoa",
+                            }
+                        }
                     };
-
-                    await _context.Departments.AddAsync(newDepartment);
-                    await _context.SaveChangesAsync();
-
-                    response.message = "add department successfully";
-                    response.data = department;
                 }
-                else
+
+                var existingDepartment = await _context.Departments.AnyAsync(d => d.DepartmentName == department.name);
+
+                if (existingDepartment)
                 {
-                    response.message = $"conflict data at ID = '{department.id}' or Name = '{department.name}'";
-                }
-            }
-            catch (Exception ex)
-            {
-                response.message = $"an error occurred: {ex.Message}";
-            }
-
-            return response;
-        }
-
-        public async Task<BaseResponse<DepartmentResponse>> UpdateDepartmentAsync(DepartmentResponse department)
-        {
-            var response = new BaseResponse<DepartmentResponse>();
-
-            try
-            {
-                var existed = await _context.Departments.FirstOrDefaultAsync(d => d.DepartmentId == department.id);
-
-                if (existed != null)
-                {
-                    var existedName = await _context.Departments.AnyAsync(d => d.DepartmentId == department.id && d.DepartmentName == department.name);
-
-                    if (!existedName)
+                    return new BaseResponseId
                     {
-                        existed.DepartmentName = department.name;
-
-                        await _context.SaveChangesAsync();
-
-                        response.message = "update successfully";
-                        response.data = department;
-                    }
-                    else
-                    {
-                        response.message = $"no changes detected";
-                    }
+                        status = 409,
+                        message = "Tên đã tồn tại",
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                field = "name",
+                                message = "Tên đã tồn tại"
+                            }
+                        }
+                    };
                 }
-                else
+
+                var newDepartment = new Department
                 {
-                    response.message = $"no department found with ID = '{department.id}'";
-                }
-            }
-            catch (Exception ex)
-            {
-                response.message = $"an error occurred: {ex.Message}";
-            }
+                    DepartmentName = department.name,
+                };
 
-            return response;
-        }
-
-        public async Task<BaseResponse<DepartmentResponse>> DeleteDepartmentAsync(int id)
-        {
-            var response = new BaseResponse<DepartmentResponse>();
-
-            var existed = await _context.Departments.FirstOrDefaultAsync(d => d.DepartmentId == id);
-
-            if (existed != null)
-            {
-                _context.Departments.Remove(existed);
+                await _context.Departments.AddAsync(newDepartment);
                 await _context.SaveChangesAsync();
 
-                response.message = "delete successfully";
-                response.data = new DepartmentResponse
+                var response =
+                    await _context.Departments.FirstOrDefaultAsync(
+                        d => d.DepartmentName == newDepartment.DepartmentName);
+
+                return new BaseResponseId
                 {
-                    id = existed.DepartmentId,
-                    name = existed.DepartmentName ?? string.Empty
+                    status = 200,
+                    message = "Thêm khoa thành công",
+                    data = new DetailResponse
+                    {
+                        id = response!.DepartmentId
+                    }
                 };
             }
-            else
+            catch (Exception exception)
             {
-                response.message = $"no department found with ID = '{id}'";
+                return new BaseResponseId
+                {
+                    status = 500,
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
+                };
             }
+        }
 
-            return response;
+        public async Task<BaseResponseId> UpdateDepartmentAsync(DepartmentResponse department)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(department.name) || department.name == "string")
+                {
+                    return new BaseResponseId
+                    {
+                        status = 400,
+                        message = "Khoa không hợp lệ",
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                field = "name",
+                                message = "Tên khoa không hợp lệ"
+                            }
+                        }
+                    };
+                }
+
+                var departmentToUpdate =
+                    await _context.Departments.FirstOrDefaultAsync(d => d.DepartmentId == department.id);
+
+                if (departmentToUpdate == null)
+                {
+                    return new BaseResponseId
+                    {
+                        status = 404,
+                        message = "Không tìm thấy khoa",
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                field = "id",
+                                message = "Không tìm thấy khoa"
+                            }
+                        }
+                    };
+                }
+
+                if (departmentToUpdate.DepartmentName != department.name)
+                {
+                    var existingDepartment =
+                        await _context.Departments.FirstOrDefaultAsync(d => d.DepartmentName == department.name);
+
+                    if (existingDepartment != null)
+                    {
+                        return new BaseResponseId
+                        {
+                            status = 409,
+                            message = "Tên khoa bị trùng",
+                            errors = new List<ErrorDetail>
+                            {
+                                new()
+                                {
+                                    field = "name",
+                                    message = "Tên khoa bị trùng"
+                                }
+                            }
+                        };
+                    }
+                }
+
+                departmentToUpdate.DepartmentName = department.name;
+
+                await _context.SaveChangesAsync();
+
+                return new BaseResponseId
+                {
+                    status = 200,
+                    message = "Cập nhật thành công",
+                    data = new DetailResponse
+                    {
+                        id = departmentToUpdate.DepartmentId
+                    }
+                };
+            }
+            catch (Exception exception)
+            {
+                return new BaseResponseId
+                {
+                    status = 500,
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
+                };
+            }
+        }
+
+        public async Task<BaseResponseId> DeleteDepartmentAsync(int id)
+        {
+            try
+            {
+                var existingDepartment = await _context.Departments.FirstOrDefaultAsync(d => d.DepartmentId == id);
+
+                if (existingDepartment == null)
+                {
+                    return new BaseResponseId
+                    {
+                        status = 404,
+                        message = "Không tìm thấy khoa",
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                field = "id",
+                                message = "Không tìm thấy khoa"
+                            }
+                        }
+                    };
+                }
+
+                _context.Departments.Remove(existingDepartment);
+                await _context.SaveChangesAsync();
+
+                return new BaseResponseId
+                {
+                    status = 200,
+                    message = "Xóa khoa thành công",
+                    data = new DetailResponse
+                    {
+                        id = existingDepartment.DepartmentId
+                    }
+                };
+            }
+            catch (Exception exception)
+            {
+                return new BaseResponseId
+                {
+                    status = 500,
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
+                };
+            }
         }
     }
 }

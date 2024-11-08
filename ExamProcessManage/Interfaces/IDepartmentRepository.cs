@@ -7,8 +7,8 @@ namespace ExamProcessManage.Interfaces
     {
         Task<PageResponse<DepartmentResponse>> GetListDepartmentAsync(QueryObject queryObject);
         Task<BaseResponse<DepartmentResponse>> GetDetailDepartmentAsync(int id);
-        Task<BaseResponse<DepartmentResponse>> CreateDepartmentAsync(DepartmentResponse academicYear);
-        Task<BaseResponse<DepartmentResponse>> UpdateDepartmentAsync(DepartmentResponse academicYear);
-        Task<BaseResponse<DepartmentResponse>> DeleteDepartmentAsync(int yearId);
+        Task<BaseResponseId> CreateDepartmentAsync(DepartmentResponse department);
+        Task<BaseResponseId> UpdateDepartmentAsync(DepartmentResponse department);
+        Task<BaseResponseId> DeleteDepartmentAsync(int yearId);
     }
 }
