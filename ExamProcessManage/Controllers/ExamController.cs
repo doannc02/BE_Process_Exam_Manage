@@ -142,7 +142,7 @@ namespace ExamProcessManage.Controllers
                     else
                     {
                         return new CustomJsonResult((int)updateExam.status, HttpContext, updateExam.message,
-                            updateExam.errors);
+                            updateExam.errors); 
                     }
                 }
 
@@ -161,10 +161,10 @@ namespace ExamProcessManage.Controllers
             try
             {
                 var userId = User.Claims.FirstOrDefault(c => c.Type == "userId");
-                if (userId == null) return new CustomJsonResult(405, HttpContext, "User not authenticated");
+                if (userId == null) return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Chỉ người tạo mới được phép xóa" } });
 
                 var deleteExam = await _examRepository.DeleteExamAsync(int.Parse(userId.Value), id);
-                if (deleteExam == null) return new CustomJsonResult(500, HttpContext, "An error occurred!");
+                if (deleteExam == null) return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Xóa thất bại" } });
 
                 if (deleteExam.data != null)
                     return Ok(_createCommon.CreateResponse(deleteExam.message, HttpContext, deleteExam.data));
@@ -174,8 +174,8 @@ namespace ExamProcessManage.Controllers
             }
             catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext,
-                    $"Internal Server Error: {ex.Message} {ex.InnerException}");
+                return new CustomJsonResult(500, HttpContext, $"Server error: {ex.Message}", new() {
+                    new() { message = ex.InnerException?.ToString() ?? ex.Message } });
             }
         }
     }

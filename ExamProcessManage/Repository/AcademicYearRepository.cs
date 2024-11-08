@@ -175,10 +175,7 @@ namespace ExamProcessManage.Repository
                             response.message = $"an academic_year with the name '{year.name}' already exists";
                         }
                     }
-                    else
-                    {
-                        response.message = "no changes detected";
-                    }
+                  
                 }
                 else
                 {

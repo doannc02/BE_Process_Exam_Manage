@@ -40,7 +40,7 @@ namespace ExamProcessManage.Services
                 {
                     accessToken = null,
                     tokenType = "Bearer",
-                    expiresIn = "3600", // Thời gian hết hạn tùy vào cấu hình
+                    expiresIn = "4600", // Thời gian hết hạn tùy vào cấu hình
                     scopes = "read write",
                     userId = user.Id,
                     jti = Guid.NewGuid().ToString()

@@ -165,6 +165,7 @@ namespace ExamProcessManage.Repository
 
         public async Task<BaseResponse<List<CourseReponse>>> CreateCourseAsync(List<CourseReponse> inputCourses)
         {
+            var errors = new List<ErrorDetail>();
             try
             {
                 var response = new BaseResponse<List<CourseReponse>>
@@ -174,12 +175,14 @@ namespace ExamProcessManage.Repository
 
                 var newCourses = new List<Course>();
 
-                foreach (var inputCourse in inputCourses)
+                for (int i = 0; i < inputCourses.Count; i++)
                 {
-                    var existCourse = await _context.Courses.AnyAsync(c => c.CourseId == inputCourse.id ||
-                        c.CourseCode == inputCourse.code || c.CourseName == inputCourse.name);
-
-                    if (!existCourse)
+                    var inputCourse = inputCourses[i];
+                    var existCourseName = await _context.Courses.AnyAsync(c => c.CourseCode == inputCourse.name );
+                    errors.Add(new ErrorDetail { field = $"course.${i}.name", message = "Tên học phần đã tồn tại!" });
+                    var existCourseCode = await _context.Courses.AnyAsync(c => c.CourseCode == inputCourse.code );
+                    errors.Add(new ErrorDetail { field = $"course.${i}.code", message = "Mã học phần đã tồn tại!" });
+                    if (!existCourseName || !existCourseCode )
                     {
                         var newCourse = new Course
                         {
@@ -194,8 +197,13 @@ namespace ExamProcessManage.Repository
                     }
                     else
                     {
-                        response.message = $"Some courses already exist. Course Code: {inputCourse.code}";
-                        break;
+                       
+                        return new BaseResponse<List<CourseReponse>>()
+                        {
+                            message = "Thất bại",
+                            data = null,
+                            errors = errors
+                        };
                     }
                 }
 
@@ -227,21 +235,13 @@ namespace ExamProcessManage.Repository
 
                 if (existCourse != null)
                 {
-                   
-                        await _context.Courses.AnyAsync(c => c.CourseName == updateCourse.name);
-
-                      
+                            await _context.Courses.AnyAsync(c => c.CourseName == updateCourse.name);
                             existCourse.CourseName = updateCourse.name;
                             existCourse.CourseCredit = updateCourse.credit;
                             existCourse.MajorId = updateCourse.major.id > 0 ? updateCourse.major.id : existCourse.MajorId;
-
                             await _context.SaveChangesAsync();
-
                             response.message = "update successfully";
                             response.data = updateCourse;
-                      
-                    
-                   
                 }
                 else
                 {
