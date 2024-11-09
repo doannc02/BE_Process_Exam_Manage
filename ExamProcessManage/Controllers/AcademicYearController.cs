@@ -5,8 +5,6 @@ using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
-using System.Net;
-using System.Text.RegularExpressions;
 
 namespace ExamProcessManage.Controllers
 {
@@ -16,8 +14,6 @@ namespace ExamProcessManage.Controllers
     {
         private readonly IAcademicYearRepository _repository;
         private readonly CreateCommonResponse _createCommon;
-
-        private const string Success = "Success";
 
         public AcademicYearController(IAcademicYearRepository repository)
         {
@@ -29,78 +25,37 @@ namespace ExamProcessManage.Controllers
         [HttpGet("list")]
         public async Task<IActionResult> GetListAcademicYearAsync([FromQuery] QueryObject queryObject)
         {
-            try
-            {
-                var academics = await _repository.GetListAcademicYearAsync(queryObject);
+            var academics = await _repository.GetListAcademicYearAsync(queryObject);
 
-                if (academics is { content: null })
-                {
-                    return new CustomJsonResult(500, HttpContext, "An internal server error occured");
-                }
-
-                var commonResponse = _createCommon.CreateResponse(Success, HttpContext, academics);
-                return Ok(commonResponse);
-            }
-            catch (Exception e)
-            {
-                return new CustomJsonResult(500, HttpContext, "Internal Server Error", new List<ErrorDetail>
-                {
-                    new()
-                    {
-                        message = $"{e.Message}: {e.InnerException?.Message}"
-                    }
-                });
-            }
+            var yearResponse = _createCommon.CreateResponse("Thành công", HttpContext, academics);
+            return Ok(yearResponse);
         }
 
         // GET detail of an academic_year
         [HttpGet("detail")]
         public async Task<IActionResult> GetDetailAcademicYearAsync([FromQuery] [Required] int id)
         {
-            try
-            {
-                var academic = await _repository.GetDetailAcademicYearAsync(id);
-                
-                if (academic is { data: null })
-                {
-                    return new CustomJsonResult(500, HttpContext, $"Server error", new() {
-                        new() { message ="Không tìm thấy năm học trong hệ thống!!!" } });
-                }
+            var academic = await _repository.GetDetailAcademicYearAsync(id);
 
-                var yearResponse =
-                    _createCommon.CreateResponse(academic.message ?? Success, HttpContext, academic.data);
-                return Ok(yearResponse);
-            }
-            catch (Exception e)
-            {
-                return new CustomJsonResult(500, HttpContext, "Internal Server Error", new List<ErrorDetail>
-                {
-                    new()
-                    {
-                        message = $"{e.Message}: {e.InnerException?.Message}"
-                    }
-                });
-            }
+            if (academic.status != 200)
+                return new CustomJsonResult(academic.status, HttpContext, academic.message, academic.errors);
+
+            var yearResponse = _createCommon.CreateResponse(academic.message, HttpContext, academic.data);
+            return Ok(yearResponse);
         }
 
         // POST an academic_year
         [HttpPost]
         [Authorize(Roles = "Admin, Writer")]
-        public async Task<IActionResult> PostAcdemicYearAsync([FromBody] AcademicYearResponse year)
+        public async Task<IActionResult> PostAcademicYearAsync([FromBody] AcademicYearResponse year)
         {
-    
-                var yearAdd = await _repository.CreateAcademicYearAsync(year);
+            var yearAdd = await _repository.CreateAcademicYearAsync(year);
 
-                if (yearAdd.data != null)
-                {
-                    var response =
-                        _createCommon.CreateResponse(yearAdd.message ?? "success", HttpContext, yearAdd.data);
-                    return Ok(response);
-                }
-                else
-                {
-                    return new CustomJsonResult(409, HttpContext, yearAdd.message ?? "error");
-                }
+            if (yearAdd.status != 200)
+                return new CustomJsonResult(yearAdd.status, HttpContext, yearAdd.message, yearAdd.errors);
+
+            var response = _createCommon.CreateResponse(yearAdd.message, HttpContext, yearAdd.data);
+            return Ok(response);
         }
 
         // PUT api/<AcademicYearController>/5
@@ -108,32 +63,13 @@ namespace ExamProcessManage.Controllers
         [Authorize(Roles = "Admin, Writer")]
         public async Task<IActionResult> PutAcademicYearAsync([FromBody] AcademicYearResponse year)
         {
-            // Matches years between 2000 and 2099
-            string yearPattern = @"^20\d{2}$";
+            var yearUpdate = await _repository.UpdateAcademicYearAsync(year);
 
-            if (year.id > 0 && year.start_year > 0 && year.end_year > 0 &&
-                year.start_year < year.end_year &&
-                Regex.IsMatch(year.start_year.ToString(), yearPattern) &&
-                Regex.IsMatch(year.end_year.ToString(), yearPattern))
-            {
-                var yearUpdate = await _repository.UpdateAcademicYearAsync(year);
+            if (yearUpdate.status != 200)
+                return new CustomJsonResult(yearUpdate.status, HttpContext, yearUpdate.message, yearUpdate.errors);
 
-                if (yearUpdate.data != null)
-                {
-                    var response =
-                        _createCommon.CreateResponse(yearUpdate.message ?? "success", HttpContext, yearUpdate.data);
-                    return Ok(response);
-                }
-                else
-                {
-                    return new CustomJsonResult(500, HttpContext, $"Server error", new() {
-                        new() { message ="Cập nhật thông tin thất bại!!!" } });
-                }
-            }
-            else
-            {
-                return new CustomJsonResult(400, HttpContext, "invalid input");
-            }
+            var response = _createCommon.CreateResponse(yearUpdate.message, HttpContext, yearUpdate.data);
+            return Ok(response);
         }
 
         // DELETE api/<AcademicYearController>/5
@@ -143,15 +79,11 @@ namespace ExamProcessManage.Controllers
         {
             var yearDel = await _repository.DeleteAcademicYearAsync(id);
 
-            if (yearDel.data != null)
-            {
-                var response = _createCommon.CreateResponse(yearDel.message ?? "success", HttpContext, yearDel.data);
-                return Ok(response);
-            }
-            else
-            {
-                return new CustomJsonResult(404, HttpContext, yearDel.message ?? "error");
-            }
+            if (yearDel.status != 200)
+                return new CustomJsonResult(yearDel.status, HttpContext, yearDel.message, yearDel.errors);
+
+            var response = _createCommon.CreateResponse(yearDel.message, HttpContext, yearDel.data);
+            return Ok(response);
         }
     }
 }
