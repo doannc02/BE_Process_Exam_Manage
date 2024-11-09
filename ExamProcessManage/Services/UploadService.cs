@@ -45,7 +45,7 @@ namespace ExamProcessManage.Services
             Console.WriteLine($"uploadPath: {uploadPath}");
 
             // Construct the file URL
-            var fileUrl = $":880/pdf-files/{uniqueFileName}";
+            var fileUrl = $"/pdf-files/{uniqueFileName}";
 
             return fileUrl;
         }
