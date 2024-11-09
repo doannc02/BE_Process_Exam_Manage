@@ -7,8 +7,8 @@ namespace ExamProcessManage.Interfaces
     {
         Task<PageResponse<AcademicYearResponse>> GetListAcademicYearAsync(QueryObject queryObject);
         Task<BaseResponse<AcademicYearResponse>> GetDetailAcademicYearAsync(int id);
-        Task<BaseResponse<AcademicYearResponse>> CreateAcademicYearAsync(AcademicYearResponse academicYear);
-        Task<BaseResponse<AcademicYearResponse>> UpdateAcademicYearAsync(AcademicYearResponse academicYear);
-        Task<BaseResponse<AcademicYearResponse>> DeleteAcademicYearAsync(int yearId);
+        Task<BaseResponseId> CreateAcademicYearAsync(AcademicYearResponse academicYear);
+        Task<BaseResponseId> UpdateAcademicYearAsync(AcademicYearResponse academicYear);
+        Task<BaseResponseId> DeleteAcademicYearAsync(int yearId);
     }
 }
