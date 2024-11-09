@@ -46,14 +46,16 @@ namespace ExamProcessManage.Data
                 entity.ToTable("academic_years");
 
                 entity.Property(e => e.AcademicYearId).HasColumnName("academic_year_id");
-
-                entity.Property(e => e.EndYear).HasColumnName("end_year");
+                
+                entity.Property(e => e.YearName).HasMaxLength(255).HasColumnName("year_name");
 
                 entity.Property(e => e.StartYear).HasColumnName("start_year");
+                
+                entity.Property(e => e.EndYear).HasColumnName("end_year");
+                
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("date").IsRequired(false);
 
-                entity.Property(e => e.YearName)
-                    .HasMaxLength(255)
-                    .HasColumnName("year_name");
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("date").IsRequired(false);
             });
 
             modelBuilder.Entity<Course>(entity =>
