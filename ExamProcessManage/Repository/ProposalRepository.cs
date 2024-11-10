@@ -396,7 +396,7 @@ namespace ExamProcessManage.Repository
                             {
                                 errorList.Add(new ErrorDetail
                                 {
-                                    field = $"exam_set.exams.{examSet.id}",
+                                   // field = $"exam_set.exams.{examSet.id}",
                                     message = $"Bài thi bị trùng lặp {examSet.id}"
                                 });
                             }
@@ -405,19 +405,18 @@ namespace ExamProcessManage.Repository
                                 bool all = true;
                                 foreach (var e in existingExamSets)
                                 {
-                                    if (e.ExamSetId == examSet.id)
+                                    if (e.ExamSetId != examSet.id)
                                     {
                                         all = false;
                                         break;
                                     }
                                 }
 
-                                if (all)
+                                if (!all)
                                 {
                                     errorList.Add(new ErrorDetail
                                     {
-                                        field = $"exam_set.exams.{examSet.id}",
-                                        message = $"Không tồn tại bài thi {examSet.id}"
+                                        message = $"Không tồn tại bài thi {examSet.name}"
                                     });
                                 }
                                 else
@@ -429,17 +428,28 @@ namespace ExamProcessManage.Repository
                                     foreach (var examDto in examSet.exams!)
                                     {
                                         var existingExam = await _context.Exams.FirstOrDefaultAsync(e => e.ExamId == examDto.id);
-                                        if (existingExam != null && existingExam.Status != $"approved")
+                                        if (existingExam != null)
                                         {
-                                            existingExam.Comment = examDto.comment;
-                                            existingExam.Status = proposalDto.status; 
+                                            if (!string.IsNullOrEmpty(examDto.comment)&& existingExam.Status == $"rejected")
+                                            {
+                                                errorList.Add(new ErrorDetail
+                                                {
+                                                    message = $"Vui lòng nhập nhận xét cho bài thi {examDto.name}"
+                                                });
+                                                break;
+                                            }
+                                            if (existingExam.Status != $"approved")
+                                            {
+                                                existingExam.Comment = examDto.comment;
+                                                existingExam.Status = proposalDto.status; 
+                                            }
+                                           
                                         }
                                         else
                                         {
                                             errorList.Add(new ErrorDetail
                                             {
-                                                field = $"exam_set.exams.{examDto.id}",
-                                                message = $"Không tồn tại bài thi {examDto.id}"
+                                                message = $"Không tồn tại bài thi {examDto.name}"
                                             });
                                         }
                                     }

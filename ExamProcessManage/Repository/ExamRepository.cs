@@ -533,10 +533,11 @@ namespace ExamProcessManage.Repository
                         {
                             case "in_progress" when examDto.status == "pending_approval":
                                 existExam.Status = examDto.status;
-                                existExam.Comment = string.Empty;
+                                existExam.Comment = examDto.comment;
                                 break;
                             case "pending_approval" when examDto.status == "in_progress":
                                 existExam.Status = examDto.status;
+                                existExam.Comment = examDto.comment;
                                 break;
                             case "rejected" when
                                 examDto.status is "in_progress" or "pending_approval":
@@ -550,12 +551,12 @@ namespace ExamProcessManage.Repository
                                     {
                                         status = 400,
                                         message = "Bad request",
-                                        errors = new List<ErrorDetail> { new() { message = "No change detected." } }
+                                        errors = new List<ErrorDetail> { new() { message = "Bạn cần phải chỉnh sửa thông tin đề để chuyển trạng thái!" } }
                                     };
                                 }
 
                                 existExam.Status = examDto.status;
-                                existExam.Comment = string.Empty;
+                                existExam.Comment = examDto.comment;
                                 break;
                             }
                             default:
@@ -564,7 +565,7 @@ namespace ExamProcessManage.Repository
                                     status = 400,
                                     message = "Bad request",
                                     errors = new List<ErrorDetail>
-                                        { new() { field = "status", message = "Invalid status." } }
+                                        { new() { field = "status", message = "Không thể thay đổi trạng thái.." } }
                                 };
                         }
 
