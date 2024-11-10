@@ -51,14 +51,14 @@ namespace ExamProcessManage.Repository
                     totalElements = totalCount,
                     totalPages = 0, // Không có trang nào
                     size = queryObject.size,
-                    page = queryObject.page!.Value,
+                    page = queryObject.page,
                     numberOfElements = yearResponses.Count
                 };
             }
 
             // Lấy danh sách bản ghi theo phân trang
             var listAcademicYears = await baseQuery
-                .Skip((queryObject.page!.Value - 1) * queryObject.size)
+                .Skip((queryObject.page - 1) * queryObject.size)
                 .Take(queryObject.size)
                 .ToListAsync();
 
@@ -74,7 +74,7 @@ namespace ExamProcessManage.Repository
                 totalElements = totalCount,
                 totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
                 size = queryObject.size,
-                page = queryObject.page.Value,
+                page = queryObject.page,
                 numberOfElements = yearResponses.Count
             };
         }

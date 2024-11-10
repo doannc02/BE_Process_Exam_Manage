@@ -21,7 +21,7 @@ namespace ExamProcessManage.Repository
         {
             try
             {
-                var startRow = (queryObject.page!.Value - 1) * queryObject.size;
+                var startRow = (queryObject.page - 1) * queryObject.size;
                 var baseQuery = _context.Proposals.AsNoTracking().AsQueryable();
 
                 // Search by PlanCode
@@ -128,7 +128,7 @@ namespace ExamProcessManage.Repository
                     totalElements = totalCount,
                     totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
                     size = queryObject.size,
-                    page = queryObject.page.Value,
+                    page = queryObject.page,
                     content = proposals.ToArray()
                 };
 
@@ -141,7 +141,7 @@ namespace ExamProcessManage.Repository
                     totalElements = 0,
                     totalPages = 0,
                     size = queryObject.size,
-                    page = queryObject.page!.Value,
+                    page = queryObject.page,
                     content = Array.Empty<ProposalDTO>()
                 };
             }

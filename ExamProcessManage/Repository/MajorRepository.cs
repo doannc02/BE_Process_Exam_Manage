@@ -67,14 +67,14 @@ namespace ExamProcessManage.Repository
                     totalElements = totalCount,
                     totalPages = 0, // No pages available
                     size = queryObject.size,
-                    page = queryObject.page!.Value,
+                    page = queryObject.page,
                     numberOfElements = listMajors.Count
                 };
             }
 
             // Get the list of majors with pagination
             var majorList = await baseQuery
-                .Skip((queryObject.page!.Value - 1) * queryObject.size)
+                .Skip((queryObject.page - 1) * queryObject.size)
                 .Take(queryObject.size)
                 .ToListAsync();
 
@@ -106,7 +106,7 @@ namespace ExamProcessManage.Repository
                 totalElements = totalCount,
                 totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
                 size = queryObject.size,
-                page = queryObject.page.Value,
+                page = queryObject.page,
                 numberOfElements = listMajors.Count
             };
         }

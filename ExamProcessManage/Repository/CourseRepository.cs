@@ -78,14 +78,14 @@ namespace ExamProcessManage.Repository
                     totalElements = totalCount,
                     totalPages = 0, // No pages available
                     size = queryObject.size,
-                    page = queryObject.page!.Value,
+                    page = queryObject.page,
                     numberOfElements = responses.Count
                 };
             }
 
             // Retrieve the paginated list of courses
             var courseList = await courseQueryable
-                .Skip((queryObject.page!.Value - 1) * queryObject.size)
+                .Skip((queryObject.page - 1) * queryObject.size)
                 .Take(queryObject.size)
                 .ToListAsync();
 
@@ -125,7 +125,7 @@ namespace ExamProcessManage.Repository
                 totalElements = totalCount,
                 totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
                 size = queryObject.size,
-                page = queryObject.page.Value,
+                page = queryObject.page,
                 numberOfElements = responses.Count
             };
         }

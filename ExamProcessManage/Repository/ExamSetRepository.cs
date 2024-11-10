@@ -22,7 +22,7 @@ namespace ExamProcessManage.Repository
         {
             try
             {
-                var startRow = (queryObject.page.Value - 1) * queryObject.size;
+                var startRow = (queryObject.page - 1) * queryObject.size;
 
                 // Build base query for ExamSets
                 var examSetQuery = _context.ExamSets.AsNoTracking().AsQueryable();
@@ -147,7 +147,7 @@ namespace ExamProcessManage.Repository
                     totalElements = totalCount,
                     totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
                     size = queryObject.size,
-                    page = queryObject.page.Value,
+                    page = queryObject.page,
                     content = examSetDTOs.ToArray()
                 };
 

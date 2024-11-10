@@ -41,7 +41,7 @@ namespace ExamProcessManage.Repository
 
         public async Task<PageResponse<UserDTO>> GetListUsersAsync(QueryObject queryObject)
         {
-            var startRow = (queryObject.page!.Value - 1) * queryObject.size;
+            var startRow = (queryObject.page - 1) * queryObject.size;
             var userDtOs = new List<UserDTO>();
             var teachers = _context.Teachers.AsNoTracking().ToList();
             var queryAcademicYears = _context.Users.AsNoTracking().AsQueryable();
@@ -81,7 +81,7 @@ namespace ExamProcessManage.Repository
                 totalElements = totalCount,
                 totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
                 size = queryObject.size,
-                page = queryObject.page.Value,
+                page = queryObject.page,
                 numberOfElements = userDtOs.Count
             };
         }

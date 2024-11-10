@@ -11,7 +11,9 @@ namespace ExamProcessManage.Repository
     public class ExamRepository : IExamRepository
     {
         private readonly ApplicationDbContext _context;
-        private readonly List<string> _validStatus = new() { "in_progress", "rejected", "approved", "pending_approval" };
+
+        private readonly List<string> _validStatus = new()
+            { "in_progress", "rejected", "approved", "pending_approval" };
 
         public ExamRepository(ApplicationDbContext context)
         {
@@ -20,7 +22,7 @@ namespace ExamProcessManage.Repository
 
         public async Task<PageResponse<ExamDTO>> GetListExamsAsync(ExamRequestParams query, int? userId)
         {
-            var startRow = (query.page.Value - 1) * query.size;
+            var startRow = (query.page - 1) * query.size;
             var baseQuery = _context.Exams.AsNoTracking().AsQueryable();
             var users = await _context.Users.AsNoTracking().ToDictionaryAsync(u => u.Id);
             var teachers = await _context.Teachers.AsNoTracking().ToDictionaryAsync(t => t.Id);
@@ -142,7 +144,7 @@ namespace ExamProcessManage.Repository
                 totalElements = totalCount,
                 totalPages = (int)Math.Ceiling((double)totalCount / query.size),
                 size = query.size,
-                page = query.page.Value,
+                page = query.page,
                 content = exams,
             };
         }
