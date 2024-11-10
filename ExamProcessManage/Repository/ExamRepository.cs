@@ -11,7 +11,7 @@ namespace ExamProcessManage.Repository
     public class ExamRepository : IExamRepository
     {
         private readonly ApplicationDbContext _context;
-        private readonly List<string> validStatus = new() { "in_progress", "rejected", "approved", "pending_approval" };
+        private readonly List<string> _validStatus = new() { "in_progress", "rejected", "approved", "pending_approval" };
 
         public ExamRepository(ApplicationDbContext context)
         {
@@ -329,7 +329,7 @@ namespace ExamProcessManage.Repository
 
                     // Validate status
                     if (string.IsNullOrEmpty(examDTO.status) || examDTO.status == "string" ||
-                        !validStatus.Contains(examDTO.status))
+                        !_validStatus.Contains(examDTO.status))
                     {
                         errors.Add(new()
                         {
@@ -340,7 +340,7 @@ namespace ExamProcessManage.Repository
 
                     // Validate exam set
                     if (examDTO.exam_set != null && examDTO.exam_set.id > 0 &&
-                        !examSetIds.Contains(examDTO.exam_set.id))
+                        !examSetIds.Contains((int)examDTO.exam_set.id))
                     {
                         errors.Add(new()
                         {
@@ -413,6 +413,8 @@ namespace ExamProcessManage.Repository
         {
             try
             {
+                #region Validate
+
                 var existExam =
                     await _context.Exams.FirstOrDefaultAsync(e => e.ExamId == examDto.id || e.ExamCode == examDto.code);
 
@@ -449,7 +451,7 @@ namespace ExamProcessManage.Repository
                     };
                 }
 
-                if (!validStatus.Contains(examDto.status))
+                if (!_validStatus.Contains(examDto.status))
                 {
                     return new BaseResponseId
                     {
@@ -458,6 +460,8 @@ namespace ExamProcessManage.Repository
                         errors = new List<ErrorDetail> { new() { field = "status", message = "Invalid status." } }
                     };
                 }
+
+                #endregion
 
                 // Nếu là admin
                 if (isAdmin)
@@ -485,7 +489,8 @@ namespace ExamProcessManage.Repository
                         {
                             status = 400,
                             message = "Bad request",
-                            errors = new List<ErrorDetail> { new() { field = "status", message = "Invalid status." } }
+                            errors = new List<ErrorDetail>
+                                { new() { field = "status", message = "Admin không được chuyển trạng thái này" } }
                         };
                     }
                 }
@@ -551,7 +556,13 @@ namespace ExamProcessManage.Repository
                                     {
                                         status = 400,
                                         message = "Bad request",
-                                        errors = new List<ErrorDetail> { new() { message = "Bạn cần phải chỉnh sửa thông tin đề để chuyển trạng thái!" } }
+                                        errors = new List<ErrorDetail>
+                                        {
+                                            new()
+                                            {
+                                                message = "Bạn cần phải chỉnh sửa thông tin đề để chuyển trạng thái"
+                                            }
+                                        }
                                     };
                                 }
 
@@ -587,6 +598,7 @@ namespace ExamProcessManage.Repository
                     existExam.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
                 }
 
+                #region Update Exam Set status
 
                 // Lấy Exam Set cùng với Exam
                 var examSetById = await _context.ExamSets.Include(ex => ex.Exams)
@@ -596,47 +608,51 @@ namespace ExamProcessManage.Repository
                 {
                     // Lấy danh sách tất cả các Exam trong ExamSet
                     var examsByExamSet = examSetById.Exams;
-                    var isEnough = examSetById.ExamQuantity == examSetById.Exams.Count;
+                    var isEnough = examSetById.ExamQuantity == examsByExamSet.Count;
 
-                    // Kiểm tra nếu tất cả các exam có cùng trạng thái
-                    var allExamsInProgress = examsByExamSet.All(exam => exam.Status == "in_progress");
-                    var allExamsPendingApproval = examsByExamSet.All(exam => exam.Status == "pending_approval");
-                    var allExamsApproved = examsByExamSet.All(exam => exam.Status == "approved");
-                    var allExamsRejected = examsByExamSet.All(exam => exam.Status == "rejected");
-
-                    if (examsByExamSet.Any())
+                    if (isEnough)
                     {
-                        // Nếu tất cả các exam có cùng trạng thái, chuyển trạng thái của exam_set theo
+                        // Bỏ qua các exams đã "approved" và kiểm tra các trạng thái còn lại
+                        var examsToCheck = examsByExamSet.Where(exam => exam.Status != "approved").ToList();
+
+                        // Kiểm tra nếu tất cả các exam trong examsToCheck có cùng trạng thái
+                        var allExamsInProgress = examsToCheck.All(exam => exam.Status == "in_progress");
+                        var allExamsPendingApproval = examsToCheck.All(exam => exam.Status == "pending_approval");
+                        var allExamsRejected = examsToCheck.All(exam => exam.Status == "rejected");
+
                         if (allExamsInProgress)
+                        {
                             examSetById.Status = "in_progress";
+                        }
+                        else if (allExamsPendingApproval)
+                        {
+                            examSetById.Status = "pending_approval";
+                        }
+                        else if (allExamsRejected && examsToCheck.Count == examSetById.ExamQuantity)
+                        {
+                            examSetById.Status = "rejected";
+                        }
+                        else if (examsByExamSet.All(exam => exam.Status == "approved"))
+                        {
+                            examSetById.Status = "approved";
+                        }
                         else
-                            switch (isEnough)
-                            {
-                                case true when allExamsPendingApproval:
-                                    examSetById.Status = "pending_approval";
-                                    break;
-                                case true when allExamsApproved:
-                                    examSetById.Status = "approved";
-                                    break;
-                                case true when allExamsRejected:
-                                    examSetById.Status = "rejected";
-                                    break;
-                                default:
-                                {
-                                    // Kiểm tra các trường hợp trạng thái bị pha trộn
-                                    var anyExamInProgress = examsByExamSet.Any(exam => exam.Status == "in_progress");
-                                    var anyExamRejected = examsByExamSet.Any(exam => exam.Status == "rejected");
-
-                                    // Nếu có bất kỳ exam nào đang ở "in_progress" hoặc bị "rejected", es chuyển về "in_progress"
-                                    if (anyExamInProgress || anyExamRejected)
-                                        examSetById.Status = "in_progress";
-                                    break;
-                                }
-                            }
-
-                        _context.ExamSets.Update(examSetById);
+                        {
+                            // Nếu trạng thái bị pha trộn hoặc không đủ số lượng, chuyển exam_set về "in_progress"
+                            examSetById.Status = "in_progress";
+                        }
                     }
+                    else
+                    {
+                        // Nếu chưa đủ số lượng, mặc định chuyển trạng thái exam_set về "in_progress"
+                        examSetById.Status = "in_progress";
+                    }
+
+                    // Cập nhật exam_set
+                    _context.ExamSets.Update(examSetById);
                 }
+
+                #endregion
 
 
                 // Lưu thay đổi vào DB
