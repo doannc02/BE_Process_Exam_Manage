@@ -5,10 +5,10 @@ namespace ExamProcessManage.Interfaces
 {
     public interface ICourseRepository
     {
-        Task<PageResponse<CourseReponse>> GetListCourseAsync(int majorId, QueryObject queryObject);
-        Task<BaseResponse<CourseReponse>> GetDetailCourseAsync(int courseId);
-        Task<BaseResponse<List<CourseReponse>>> CreateCourseAsync(List<CourseReponse> inputCourses);
-        Task<BaseResponse<CourseReponse>> UpdateCourseAsync(CourseReponse updateCourse);
-        Task<BaseResponse<CourseReponse>> DeleteCourseAsync(int courseId);
+        Task<PageResponse<CourseResponse>> GetListCourseAsync(int majorId, QueryObject queryObject);
+        Task<BaseResponse<CourseResponse>> GetDetailCourseAsync(int courseId);
+        Task<BaseResponse<List<DetailResponse>>> CreateCourseAsync(List<CourseResponse> inputCourses);
+        Task<BaseResponseId> UpdateCourseAsync(CourseResponse updateCourse);
+        Task<BaseResponseId> DeleteCourseAsync(int courseId);
     }
 }

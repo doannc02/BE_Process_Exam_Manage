@@ -26,7 +26,7 @@ namespace ExamProcessManage.Repository
             // Apply search filter
             if (!string.IsNullOrEmpty(queryObject.search))
             {
-                baseQuery = baseQuery.Where(a => a.YearName!.Contains(queryObject.search));
+                baseQuery = baseQuery.Where(a => a.YearName.Contains(queryObject.search));
             }
 
             if (!string.IsNullOrEmpty(queryObject.sort))
@@ -45,7 +45,7 @@ namespace ExamProcessManage.Repository
             // Nếu không có bản ghi nào, trả về PageResponse với content là mảng rỗng
             if (totalCount == 0)
             {
-                return new PageResponse<AcademicYearResponse>()
+                return new PageResponse<AcademicYearResponse>
                 {
                     content = yearResponses, // Mảng rỗng
                     totalElements = totalCount,

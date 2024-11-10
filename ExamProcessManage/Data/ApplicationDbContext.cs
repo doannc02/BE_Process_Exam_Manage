@@ -32,7 +32,8 @@ namespace ExamProcessManage.Data
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseMySql("name=ConnectionStrings:DefaultConnection", ServerVersion.Parse("8.0.36-mysql"));
+                optionsBuilder.UseMySql("name=ConnectionStrings:DefaultConnection",
+                    ServerVersion.Parse("8.0.36-mysql"));
             }
         }
 
@@ -46,13 +47,13 @@ namespace ExamProcessManage.Data
                 entity.ToTable("academic_years");
 
                 entity.Property(e => e.AcademicYearId).HasColumnName("academic_year_id");
-                
+
                 entity.Property(e => e.YearName).HasMaxLength(255).HasColumnName("year_name");
 
                 entity.Property(e => e.StartYear).HasColumnName("start_year");
-                
+
                 entity.Property(e => e.EndYear).HasColumnName("end_year");
-                
+
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("date").IsRequired(false);
 
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("date").IsRequired(false);
@@ -77,6 +78,10 @@ namespace ExamProcessManage.Data
                     .HasColumnName("course_name");
 
                 entity.Property(e => e.MajorId).HasColumnName("major_id");
+
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("date").IsRequired(false);
+
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("date").IsRequired(false);
 
                 entity.HasOne(d => d.Major)
                     .WithMany(p => p.Courses)
@@ -230,7 +235,7 @@ namespace ExamProcessManage.Data
                 entity.Property(e => e.MajorId).HasColumnName("major_id");
 
                 entity.Property(e => e.DepartmentId).HasColumnName("department_id");
-                
+
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("date").IsRequired(false);
 
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("date").IsRequired(false);
@@ -308,7 +313,8 @@ namespace ExamProcessManage.Data
 
                 entity.Property(e => e.UpdateAt).HasColumnName("updated_at").HasColumnType("date").IsRequired(false);
 
-                entity.Property(e => e.IsCreatedByAdmin).HasColumnName("is_created_by_admin").HasColumnType("bit").IsRequired(false);
+                entity.Property(e => e.IsCreatedByAdmin).HasColumnName("is_created_by_admin").HasColumnType("bit")
+                    .IsRequired(false);
             });
 
             modelBuilder.Entity<Role>(entity =>

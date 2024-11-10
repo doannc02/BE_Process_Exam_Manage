@@ -15,6 +15,8 @@ namespace ExamProcessManage.Models
         public string? CourseName { get; set; }
         public int? CourseCredit { get; set; }
         public int? MajorId { get; set; }
+        public DateTime? CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
 
         public virtual Major? Major { get; set; }
         public virtual ICollection<ExamSet> ExamSets { get; set; }

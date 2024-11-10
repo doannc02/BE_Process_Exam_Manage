@@ -16,37 +16,22 @@ namespace ExamProcessManage.Repository
             _context = context;
         }
 
-        public async Task<PageResponse<CourseReponse>> GetListCourseAsync(int majorId, QueryObject queryObject)
+        public async Task<PageResponse<CourseResponse>> GetListCourseAsync(int majorId, QueryObject queryObject)
         {
-            // Validate QueryObject
-            if (queryObject.page <= 0)
-            {
-                throw new ArgumentException("Page number must be greater than zero.");
-            }
-
-            if (queryObject.size <= 0)
-            {
-                throw new ArgumentException("Page size must be greater than zero.");
-            }
-
-            var responses = new List<CourseReponse>();
+            var responses = new List<CourseResponse>();
 
             // Base query
             var courseQueryable = _context.Courses.AsQueryable();
 
             // MajorId filter
             if (majorId > 0)
-            {
                 courseQueryable = courseQueryable.Where(c => c.MajorId == majorId);
-            }
 
             // Apply search filter
             if (!string.IsNullOrEmpty(queryObject.search))
-            {
                 courseQueryable = courseQueryable.Where(c =>
                     c.CourseName!.Contains(queryObject.search) ||
                     c.CourseCode!.Contains(queryObject.search));
-            }
 
             // Apply sorting
             if (!string.IsNullOrEmpty(queryObject.sort))
@@ -59,7 +44,7 @@ namespace ExamProcessManage.Repository
                     "code_desc" => courseQueryable.OrderByDescending(c => c.CourseCode),
                     "credit" => courseQueryable.OrderBy(c => c.CourseCredit),
                     "credit_desc" => courseQueryable.OrderByDescending(c => c.CourseCredit),
-                    _ => courseQueryable.OrderBy(c => c.CourseId),
+                    _ => courseQueryable.OrderByDescending(c => c.CourseId),
                 };
             }
 
@@ -72,7 +57,7 @@ namespace ExamProcessManage.Repository
             // If no records found, return empty content
             if (totalCount == 0)
             {
-                return new PageResponse<CourseReponse>
+                return new PageResponse<CourseResponse>
                 {
                     content = responses, // Empty array
                     totalElements = totalCount,
@@ -90,36 +75,26 @@ namespace ExamProcessManage.Repository
                 .ToListAsync();
 
             // Create response objects for each course in the current page
-            foreach (var item in courseList)
-            {
-                Major? majorCourse = null;
-                foreach (var m in majorList)
-                {
-                    if (m.MajorId == item.MajorId)
-                    {
-                        majorCourse = m;
-                        break;
-                    }
-                }
-
-                var course = new CourseReponse
+            responses.AddRange(from item in courseList
+                let major = majorList.FirstOrDefault(m => m.MajorId == item.MajorId)
+                select new CourseResponse
                 {
                     id = item.CourseId,
                     code = item.CourseCode ?? string.Empty,
                     name = item.CourseName ?? string.Empty,
                     credit = item.CourseCredit ?? 0,
-                    major = new CommonObject
-                    {
-                        id = majorCourse?.MajorId ?? 0,  // Handle potential null value
-                        code = majorCourse?.MajorId.ToString() ?? string.Empty,
-                        name = majorCourse?.MajorName ?? string.Empty
-                    }
-                };
-                responses.Add(course);
-            }
+                    major = major != null
+                        ? new CommonObject
+                        {
+                            id = major.MajorId,
+                            code = major.MajorId.ToString(),
+                            name = major.MajorName
+                        }
+                        : null
+                });
 
             // Return paginated response
-            return new PageResponse<CourseReponse>
+            return new PageResponse<CourseResponse>
             {
                 content = responses,
                 totalElements = totalCount,
@@ -130,169 +105,287 @@ namespace ExamProcessManage.Repository
             };
         }
 
-
-        public async Task<BaseResponse<CourseReponse>> GetDetailCourseAsync(int courseId)
+        public async Task<BaseResponse<CourseResponse>> GetDetailCourseAsync(int courseId)
         {
-            var response = new BaseResponse<CourseReponse>();
             var course = await _context.Courses.FirstOrDefaultAsync(c => c.CourseId == courseId);
 
-            if (course != null)
+            if (course == null)
             {
-                var major = await _context.Majors.FirstOrDefaultAsync(m => m.MajorId == course.MajorId);
+                return new BaseResponse<CourseResponse>
+                {
+                    status = 404,
+                    message = "Không tìm thấy học phần",
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            field = "course_id",
+                            message = "Không tìm thấy học phần"
+                        }
+                    }
+                };
+            }
 
-                response.message = "success";
-                response.data = new CourseReponse
+            var major = await _context.Majors.FirstOrDefaultAsync(m => m.MajorId == course.MajorId);
+
+            return new BaseResponse<CourseResponse>
+            {
+                status = 200,
+                message = "Thành công",
+                data = new CourseResponse
                 {
                     id = course.CourseId,
-                    code = course.CourseCode ?? string.Empty,
-                    name = course.CourseName ?? string.Empty,
+                    code = course.CourseCode,
+                    name = course.CourseName,
                     credit = course.CourseCredit ?? 0,
-                    major = new CommonObject
-                    {
-                        id = major?.MajorId ?? 0,
-                        code = major?.MajorId.ToString(),
-                        name = major?.MajorName ?? string.Empty,
-                    }
-                };
-            }
-            else
-            {
-                response.message = $"course with id = '{courseId}' could not be found";
-            }
-
-            return response;
+                    major = major != null
+                        ? new CommonObject
+                        {
+                            id = major.MajorId,
+                            code = major.MajorId.ToString(),
+                            name = major.MajorName
+                        }
+                        : null
+                }
+            };
         }
 
-        public async Task<BaseResponse<List<CourseReponse>>> CreateCourseAsync(List<CourseReponse> inputCourses)
+        public async Task<BaseResponse<List<DetailResponse>>> CreateCourseAsync(List<CourseResponse> inputCourses)
         {
-            var errors = new List<ErrorDetail>();
             try
             {
-                var response = new BaseResponse<List<CourseReponse>>
-                {
-                    data = new List<CourseReponse>()
-                };
-
+                var errors = new List<ErrorDetail>();
                 var newCourses = new List<Course>();
 
-                for (int i = 0; i < inputCourses.Count; i++)
+                // Kiểm tra trùng lặp trong inputCourses
+                var duplicateNames = inputCourses.GroupBy(c => c.name)
+                    .Where(g => g.Count() > 1)
+                    .Select(g => g.Key)
+                    .ToList();
+
+                var duplicateCodes = inputCourses.GroupBy(c => c.code)
+                    .Where(g => g.Count() > 1)
+                    .Select(g => g.Key)
+                    .ToList();
+
+                for (var i = 0; i < inputCourses.Count; i++)
                 {
                     var inputCourse = inputCourses[i];
-                    var existCourseName = await _context.Courses.AnyAsync(c => c.CourseCode == inputCourse.name );
-                    errors.Add(new ErrorDetail { field = $"course.${i}.name", message = "Tên học phần đã tồn tại!" });
-                    var existCourseCode = await _context.Courses.AnyAsync(c => c.CourseCode == inputCourse.code );
-                    errors.Add(new ErrorDetail { field = $"course.${i}.code", message = "Mã học phần đã tồn tại!" });
-                    if (!existCourseName || !existCourseCode )
-                    {
-                        var newCourse = new Course
-                        {
-                            CourseCode = inputCourse.code,
-                            CourseName = inputCourse.name,
-                            CourseCredit = inputCourse.credit,
-                            MajorId = inputCourse.major.id 
-                        };
 
-                        newCourses.Add(newCourse);
-                        response.data.Add(inputCourse);
+                    // Kiểm tra xem course name và code có trùng trong inputCourses không
+                    if (duplicateNames.Contains(inputCourse.name))
+                        errors.Add(new ErrorDetail
+                            { field = $"courses.{i}.name", message = "Tên học phần bị trùng lặp trong danh sách" });
+
+                    if (duplicateCodes.Contains(inputCourse.code))
+                        errors.Add(new ErrorDetail
+                            { field = $"courses.{i}.code", message = "Mã học phần bị trùng lặp trong danh sách" });
+
+                    var isExistName = await _context.Courses.AnyAsync(c => c.CourseName == inputCourse.name);
+                    var isExistCode = await _context.Courses.AnyAsync(c => c.CourseCode == inputCourse.code);
+                    var isValidCredit = inputCourse.credit > 0;
+
+                    if (inputCourse.major != null)
+                    {
+                        var isExistMajor = await _context.Majors.AnyAsync(m => m.MajorId == inputCourse.major.id);
+                        if (!isExistMajor)
+                            errors.Add(new ErrorDetail { field = $"courses.{i}.major.id" });
                     }
-                    else
+
+                    if (isExistName)
+                        errors.Add(new ErrorDetail
+                            { field = $"courses.{i}.name", message = "Tên học phần đã tồn tại" });
+
+                    if (isExistCode)
+                        errors.Add(new ErrorDetail { field = $"courses.{i}.code", message = "Mã học phần đã tồn tại" });
+
+                    if (!isValidCredit)
+                        errors.Add(new ErrorDetail
+                            { field = $"courses.{i}.credit", message = "Số tín chỉ không hợp lệ" });
+
+                    newCourses.Add(new Course
                     {
-                       
-                        return new BaseResponse<List<CourseReponse>>()
-                        {
-                            message = "Thất bại",
-                            data = null,
-                            errors = errors
-                        };
-                    }
+                        CourseCode = inputCourse.code,
+                        CourseName = inputCourse.name,
+                        CourseCredit = inputCourse.credit,
+                        MajorId = inputCourse.major?.id,
+                        CreatedAt = DateTime.Now
+                    });
                 }
 
-                if (newCourses.Any())
+                if (errors.Any())
                 {
-                    await _context.Courses.AddRangeAsync(newCourses);
-                    await _context.SaveChangesAsync();
-
-                    response.message = "Courses added successfully";
-                }
-
-                return response;
-            }
-            catch (Exception ex)
-            {
-                return new BaseResponse<List<CourseReponse>>
-                {
-                    message = "An error occurred: " + ex.Message
-                };
-            }
-        }
-
-        public async Task<BaseResponse<CourseReponse>> UpdateCourseAsync(CourseReponse updateCourse)
-        {
-            try
-            {
-                var response = new BaseResponse<CourseReponse>();
-                var existCourse = await _context.Courses.FirstOrDefaultAsync(c => c.CourseId == updateCourse.id);
-
-                if (existCourse != null)
-                {
-                            await _context.Courses.AnyAsync(c => c.CourseName == updateCourse.name);
-                            existCourse.CourseName = updateCourse.name;
-                            existCourse.CourseCredit = updateCourse.credit;
-                            existCourse.MajorId = updateCourse.major.id > 0 ? updateCourse.major.id : existCourse.MajorId;
-                            await _context.SaveChangesAsync();
-                            response.message = "update successfully";
-                            response.data = updateCourse;
-                }
-                else
-                {
-                    response.message = $"no course found with id = '{updateCourse.id}'";
-                }
-
-                return response;
-            }
-            catch (Exception ex)
-            {
-                return new BaseResponse<CourseReponse>
-                {
-                    message = "an error occurred: " + ex.Message
-                };
-            }
-        }
-
-        public async Task<BaseResponse<CourseReponse>> DeleteCourseAsync(int courseId)
-        {
-            try
-            {
-                var response = new BaseResponse<CourseReponse>();
-                var existCourse = await _context.Courses.FirstOrDefaultAsync(y => y.CourseId == courseId);
-
-                if (existCourse != null)
-                {
-                    _context.Courses.Remove(existCourse);
-                    await _context.SaveChangesAsync();
-
-                    response.message = "delete successfully";
-                    response.data = new CourseReponse
+                    return new BaseResponse<List<DetailResponse>>
                     {
-                        id = existCourse.CourseId,
-                        code = existCourse.CourseCode,
-                        name = existCourse.CourseName,
-                        credit = (int)existCourse.CourseCredit!,
-                        major = new CommonObject { id = (int)existCourse.MajorId! }
+                        status = 400,
+                        message = "Có lỗi xảy ra",
+                        errors = errors
                     };
                 }
-                else
+
+                await _context.Courses.AddRangeAsync(newCourses);
+                await _context.SaveChangesAsync();
+
+                return new BaseResponse<List<DetailResponse>>
                 {
-                    response.message = $"no course found with ID = '{courseId}'";
+                    status = 200,
+                    message = "Thêm mới học phần thành công",
+                    data = newCourses.Select(c => new DetailResponse { id = c.CourseId }).ToList()
+                };
+            }
+            catch (Exception exception)
+            {
+                return new BaseResponse<List<DetailResponse>>
+                {
+                    status = 500,
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
+                };
+            }
+        }
+
+        public async Task<BaseResponseId> UpdateCourseAsync(CourseResponse updateCourse)
+        {
+            try
+            {
+                var errors = new List<ErrorDetail>();
+                var existCourse = await _context.Courses.FirstOrDefaultAsync(c => c.CourseId == updateCourse.id);
+
+                if (existCourse == null)
+                {
+                    return new BaseResponseId
+                    {
+                        status = 404,
+                        message = "Không tìm thấy học phần",
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                field = "course_id",
+                                message = "Không tìm thấy học phần"
+                            }
+                        }
+                    };
                 }
 
-                return response;
-            }
-            catch (Exception ex)
-            {
-                return new BaseResponse<CourseReponse>
+                if (updateCourse.code != existCourse.CourseCode)
                 {
-                    message = "an error occurred: " + ex.Message
+                    var isExistCode = await _context.Courses.AnyAsync(c => c.CourseCode == updateCourse.code);
+
+                    if (isExistCode)
+                        errors.Add(new ErrorDetail { field = "courses.0.code", message = "Mã học phần đã tồn tại" });
+
+                    existCourse.CourseCode = updateCourse.code;
+                }
+
+                if (updateCourse.name != existCourse.CourseName)
+                {
+                    var isExistName = await _context.Courses.AnyAsync(c => c.CourseName == updateCourse.name);
+
+                    if (isExistName)
+                        errors.Add(new ErrorDetail { field = "courses.0.name", message = "Tên học phần đã tồn tại" });
+
+                    existCourse.CourseName = updateCourse.name;
+                }
+
+                if (updateCourse.credit <= 0)
+                    errors.Add(new ErrorDetail { field = "courses.0.credit", message = "Số tín chỉ không hợp lệ" });
+
+                if (updateCourse.major == null)
+                    existCourse.MajorId = null;
+
+                if (updateCourse.credit != existCourse.CourseCredit)
+                    existCourse.CourseCredit = updateCourse.credit;
+
+                if (updateCourse.major != null && updateCourse.major.id != existCourse.MajorId)
+                    existCourse.MajorId = updateCourse.major.id;
+
+                if (errors.Any())
+                    return new BaseResponseId
+                    {
+                        status = 400,
+                        message = "Có lỗi xảy ra",
+                        errors = errors
+                    };
+
+                existCourse.UpdatedAt = DateTime.Now;
+
+                await _context.SaveChangesAsync();
+
+                return new BaseResponseId
+                {
+                    status = 200,
+                    message = "Cập nhật học phần thành công",
+                    data = new DetailResponse { id = existCourse.CourseId }
+                };
+            }
+            catch (Exception exception)
+            {
+                return new BaseResponseId
+                {
+                    status = 500,
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
+                };
+            }
+        }
+
+        public async Task<BaseResponseId> DeleteCourseAsync(int courseId)
+        {
+            try
+            {
+                var existCourse = await _context.Courses.FirstOrDefaultAsync(y => y.CourseId == courseId);
+
+                if (existCourse == null)
+                    return new BaseResponseId
+                    {
+                        status = 404,
+                        message = "Không tìm thấy học phần",
+                        errors = new List<ErrorDetail>
+                        {
+                            new ErrorDetail
+                            {
+                                field = "course_id",
+                                message = "Không tìm thấy học phần"
+                            }
+                        }
+                    };
+
+                _context.Courses.Remove(existCourse);
+                await _context.SaveChangesAsync();
+
+                return new BaseResponseId
+                {
+                    status = 200,
+                    message = "Xóa học phần thành công",
+                    data = new DetailResponse { id = existCourse.CourseId }
+                };
+            }
+            catch (Exception exception)
+            {
+                return new BaseResponseId
+                {
+                    status = 500,
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
                 };
             }
         }
