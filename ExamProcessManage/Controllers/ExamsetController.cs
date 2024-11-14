@@ -25,52 +25,21 @@ namespace ExamProcessManage.Controllers
 
         [HttpGet]
         [Route("list")]
-        public async Task<IActionResult> GetList([FromQuery] RequestParamsExamSets req)
+        public async Task<IActionResult> GetList([FromQuery] RequestParamsExamSets paramsExamSets)
         {
-            try
-            {
-                var roleClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
-                var userId = User.Claims.FirstOrDefault(c => c.Type == "userId");
+            var roleClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
+            var userId = User.Claims.FirstOrDefault(c => c.Type == "userId");
 
-                if (roleClaim == null || userId == null)
-                {
-                    return Forbid();
-                }
-                else
-                {
-                    if (roleClaim.Value == "Admin")
-                    {
-                        var t = await _repository.GetListExamSetAsync(null, req);
-                        if (t != null)
-                        {
-                            var res = _createResponse.CreateResponse("Thành công", HttpContext, t);
-                            return Ok(res);
-                        }
-                        return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
-                    }
-                    else
-                    {
+            if (roleClaim == null || userId == null)
+                return Forbid();
 
-                        var examSets = await _repository.GetListExamSetAsync(int.Parse(userId.Value), req);
+            var isAdmin = User.IsInRole("Admin");
 
-                        if (examSets != null)
-                        {
-                            var commonResponse = _createResponse.CreateResponse("success", HttpContext, examSets);
-                            return Ok(commonResponse);
-                        }
-                        else
-                        {
-                            return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
-                        }
-                    }
-                }
-
-
-            }
-            catch
-            {
-                return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
-            }
+            var pageResponse =
+                await _repository.GetListExamSetAsync(!isAdmin ? int.Parse(userId.Value) : null, paramsExamSets);
+            
+            var response = _createResponse.CreateResponse("Thành công", HttpContext, pageResponse);
+            return Ok(response);
         }
 
         [HttpGet]
@@ -95,13 +64,15 @@ namespace ExamProcessManage.Controllers
                         {
                             return Forbid();
                         }
+
                         if (t.data != null)
                         {
                             var res = _createResponse.CreateResponse("Thành công", HttpContext, t);
                             return Ok(res);
                         }
-                        return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
 
+                        return new CustomJsonResult(500, HttpContext, $"error server ",
+                            new() { new() { message = $"Lỗi hệ thống!!!" } });
                     }
                     else
                     {
@@ -114,18 +85,17 @@ namespace ExamProcessManage.Controllers
                         }
                         else
                         {
-                            return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
+                            return new CustomJsonResult(500, HttpContext, $"error server ",
+                                new() { new() { message = $"Lỗi hệ thống!!!" } });
                         }
                     }
                 }
-
-
             }
             catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
+                return new CustomJsonResult(500, HttpContext, $"error server ",
+                    new() { new() { message = $"Lỗi hệ thống!!!" } });
             }
-
         }
 
         [HttpPost]
@@ -140,12 +110,18 @@ namespace ExamProcessManage.Controllers
                 {
                     return Forbid();
                 }
+
                 if (userId != null)
                 {
                     var res = await _repository.CreateExamSetAsync(int.Parse(userId.Value), examSetDTO);
 
-                    if (res != null) { return Ok(res); }
-                    return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
+                    if (res != null)
+                    {
+                        return Ok(res);
+                    }
+
+                    return new CustomJsonResult(500, HttpContext, $"error server ",
+                        new() { new() { message = $"Lỗi hệ thống!!!" } });
                 }
                 else
                 {
@@ -154,7 +130,8 @@ namespace ExamProcessManage.Controllers
             }
             catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Lỗi hệ thống!!!" } });
+                return new CustomJsonResult(500, HttpContext, $"error server ",
+                    new() { new() { message = $"Lỗi hệ thống!!!" } });
             }
         }
 
@@ -168,15 +145,18 @@ namespace ExamProcessManage.Controllers
 
                 if (roleClaim != null && uID != null)
                 {
-                    var updatedExamSet = await _repository.UpdateExamSetAsync(int.Parse(uID.Value), examSet, roleClaim.Value == "Admin");
+                    var updatedExamSet =
+                        await _repository.UpdateExamSetAsync(int.Parse(uID.Value), examSet, roleClaim.Value == "Admin");
                     if (updatedExamSet.data != null)
                     {
-                        var response = _createResponse.CreateResponse(updatedExamSet.message, HttpContext, updatedExamSet.data);
+                        var response = _createResponse.CreateResponse(updatedExamSet.message, HttpContext,
+                            updatedExamSet.data);
                         return Ok(response);
                     }
                     else
                     {
-                        return new CustomJsonResult((int)updatedExamSet.status, HttpContext, updatedExamSet.message, updatedExamSet.errors);
+                        return new CustomJsonResult((int)updatedExamSet.status, HttpContext, updatedExamSet.message,
+                            updatedExamSet.errors);
                     }
                 }
                 else
@@ -186,13 +166,15 @@ namespace ExamProcessManage.Controllers
             }
             catch (Exception ex)
             {
-                return new CustomJsonResult(500, HttpContext, $"Server error: {ex.Message}", new() {
-                    new() { message = ex.InnerException?.ToString() ?? ex.Message } });
+                return new CustomJsonResult(500, HttpContext, $"Server error: {ex.Message}", new()
+                {
+                    new() { message = ex.InnerException?.ToString() ?? ex.Message }
+                });
             }
         }
 
         [HttpDelete]
-        public async Task<IActionResult> DeleteExamSetAsync([FromQuery][Required] int id, bool withExam = false)
+        public async Task<IActionResult> DeleteExamSetAsync([FromQuery] [Required] int id, bool withExam = false)
         {
             try
             {
@@ -205,14 +187,20 @@ namespace ExamProcessManage.Controllers
                         var response = _createResponse.CreateResponse(delExamSet.message, HttpContext, delExamSet.data);
                         return Ok(response);
                     }
-                    else return new CustomJsonResult((int)delExamSet.status, HttpContext, delExamSet.message, delExamSet.errors);
+                    else
+                        return new CustomJsonResult((int)delExamSet.status, HttpContext, delExamSet.message,
+                            delExamSet.errors);
                 }
-                else return new CustomJsonResult(500, HttpContext, $"error server ", new() { new() { message = $"Chỉ người tạo bộ đề này mới được xóa!!" } });
+                else
+                    return new CustomJsonResult(500, HttpContext, $"error server ",
+                        new() { new() { message = $"Chỉ người tạo bộ đề này mới được xóa!!" } });
             }
-            catch(AggregateException ex)
+            catch (AggregateException ex)
             {
-                return new CustomJsonResult(500, HttpContext, $"Server error: {ex.Message}", new() {
-                    new() { message = ex.InnerException?.ToString() ?? ex.Message } });
+                return new CustomJsonResult(500, HttpContext, $"Server error: {ex.Message}", new()
+                {
+                    new() { message = ex.InnerException?.ToString() ?? ex.Message }
+                });
             }
         }
     }
