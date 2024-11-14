@@ -159,13 +159,13 @@ namespace ExamProcessManage.Controllers
                 if (findProp.data?.user.id != userId && !isAdmin)
                     return Forbid();
 
-                var upProposal = await _repository.UpdateProposalAsync(proposal);
+                var upProposal = await _repository.UpdateProposalAsync(int.Parse(userIdClaim.Value), proposal);
 
                 // Trả về kết quả phù hợp
                 if (upProposal.data != null)
                     return Ok(_createCommonResponse.CreateResponse("Success", HttpContext, upProposal.data));
-                else
-                    return new CustomJsonResult(500, HttpContext, upProposal.message, upProposal.errors);
+                
+                return new CustomJsonResult(500, HttpContext, upProposal.message, upProposal.errors);
             }
             catch (ArgumentException ex)
             {
