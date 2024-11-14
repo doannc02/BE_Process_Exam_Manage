@@ -27,6 +27,9 @@ namespace ExamProcessManage.Data
         public virtual DbSet<Teacher> Teachers { get; set; } = null!;
         public virtual DbSet<TeacherProposal> TeacherProposals { get; set; } = null!;
         public virtual DbSet<User> Users { get; set; } = null!;
+        
+        public virtual DbSet<Notification> Notifications { get; set; } = null!;
+
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -517,6 +520,18 @@ namespace ExamProcessManage.Data
                     .WithMany(p => p.Users)
                     .HasForeignKey(d => d.TeacherId)
                     .HasConstraintName("users_teacher_id_foreign");
+            });
+
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.ToTable("notifications");
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.UserId).HasColumnName("user_id");
+                entity.Property(e => e.Title).HasColumnName("title").HasMaxLength(255);
+                entity.Property(e => e.Message).HasColumnName("message");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.IsRead).HasColumnName("is_read").HasDefaultValue(false);
             });
 
             OnModelCreatingPartial(modelBuilder);
