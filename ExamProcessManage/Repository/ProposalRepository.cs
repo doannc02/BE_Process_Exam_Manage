@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using ExamProcessManage.Data;
+﻿using ExamProcessManage.Data;
 using ExamProcessManage.Dtos;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
@@ -7,7 +6,6 @@ using ExamProcessManage.Models;
 using ExamProcessManage.Services;
 using ExamProcessManage.Utils;
 using Microsoft.EntityFrameworkCore;
-using ZstdSharp.Unsafe;
 
 namespace ExamProcessManage.Repository
 {
@@ -16,7 +14,7 @@ namespace ExamProcessManage.Repository
         private readonly ApplicationDbContext _context;
 
         private readonly List<string> _validStatus = new()
-            { $"in_progress", $"rejected", $"approved", $"pending_approval" };
+            { "in_progress", "rejected", "approved", "pending_approval" };
 
         public ProposalRepository(ApplicationDbContext context)
         {
@@ -28,41 +26,75 @@ namespace ExamProcessManage.Repository
             try
             {
                 var startRow = (queryObject.page - 1) * queryObject.size;
-                var baseQuery = _context.Proposals.AsNoTracking().AsQueryable();
+                var proposalQueryable = _context.Proposals.AsNoTracking().AsQueryable();
 
                 // Search by PlanCode
                 if (!string.IsNullOrEmpty(queryObject.search))
-                    baseQuery = baseQuery.Where(p => p.PlanCode.Contains(queryObject.search));
+                    proposalQueryable = proposalQueryable.Where(p => p.PlanCode.Contains(queryObject.search));
 
                 // Filter by status
                 if (!string.IsNullOrEmpty(queryObject.status))
-                    baseQuery = baseQuery.Where(p => p.Status == queryObject.status);
+                    proposalQueryable = proposalQueryable.Where(p => p.Status == queryObject.status);
 
                 // Filter by semester
-                if (queryObject.semester.HasValue && queryObject.semester > 0)
-                    baseQuery = baseQuery.Where(p => p.Semester == queryObject.semester.ToString());
+                if (queryObject.semester is > 0)
+                    proposalQueryable = proposalQueryable.Where(p => p.Semester == queryObject.semester.ToString());
 
                 // Filter by creation month (StartDate)
                 if (queryObject.create_month is > 0)
-                    baseQuery = baseQuery.Where(p =>
+                    proposalQueryable = proposalQueryable.Where(p =>
                         p.CreateAt.HasValue && p.CreateAt.Value.Month == queryObject.create_month);
 
                 // Filter by end month (EndDate)
-                if (queryObject.month_end.HasValue && queryObject.month_end > 0)
-                    baseQuery = baseQuery.Where(p =>
+                if (queryObject.month_end is > 0)
+                    proposalQueryable = proposalQueryable.Where(p =>
                         p.EndDate.HasValue && p.EndDate.Value.Month == queryObject.month_end);
 
-                if (queryObject.day_expire.HasValue && queryObject.day_expire > 0)
+                // sap xep moi nhat dau tien
+                if (queryObject.sort is not (null or "" or "string"))
+                {
+                    proposalQueryable = queryObject.sort.ToLower() switch
+                    {
+                        "plan_code" => proposalQueryable.OrderBy(p => p.PlanCode), // Sắp xếp theo mã kế hoạch
+                        "plan_code_desc" => proposalQueryable.OrderByDescending(p =>
+                            p.PlanCode), // Sắp xếp giảm dần theo mã kế hoạch
+                        "academic_year" => proposalQueryable.OrderBy(p => p.AcademicYear), // Sắp xếp theo năm học
+                        "academic_year_desc" => proposalQueryable.OrderByDescending(p =>
+                            p.AcademicYear), // Sắp xếp giảm dần theo năm học
+                        "semester" => proposalQueryable.OrderBy(p => p.Semester), // Sắp xếp theo học kỳ
+                        "semester_desc" => proposalQueryable.OrderByDescending(p =>
+                            p.Semester), // Sắp xếp giảm dần theo học kỳ
+                        "start_date" => proposalQueryable.OrderBy(p => p.StartDate), // Sắp xếp theo ngày bắt đầu
+                        "start_date_desc" => proposalQueryable.OrderByDescending(p =>
+                            p.StartDate), // Sắp xếp giảm dần theo ngày bắt đầu
+                        "end_date" => proposalQueryable.OrderBy(p => p.EndDate), // Sắp xếp theo ngày kết thúc
+                        "end_date_desc" => proposalQueryable.OrderByDescending(p =>
+                            p.EndDate), // Sắp xếp giảm dần theo ngày kết thúc
+                        "status" => proposalQueryable.OrderBy(p => p.Status), // Sắp xếp theo trạng thái
+                        "status_desc" => proposalQueryable.OrderByDescending(p =>
+                            p.Status), // Sắp xếp giảm dần theo trạng thái
+                        "create_at" => proposalQueryable.OrderBy(p => p.CreateAt), // Sắp xếp theo ngày tạo
+                        "create_at_desc" => proposalQueryable.OrderByDescending(p =>
+                            p.CreateAt), // Sắp xếp giảm dần theo ngày tạo
+                        "update_at" => proposalQueryable.OrderBy(p => p.UpdateAt), // Sắp xếp theo ngày cập nhật
+                        "update_at_desc" => proposalQueryable.OrderByDescending(p =>
+                            p.UpdateAt), // Sắp xếp giảm dần theo ngày cập nhật
+                        _ => proposalQueryable.OrderByDescending(p => p.CreateAt), // Sắp xếp mặc định theo ngày tạo
+                    };
+                }
+
+
+                if (queryObject.day_expire is > 0)
                 {
                     var today = DateOnly.FromDateTime(DateTime.Today);
                     var oneWeekLater = DateOnly.FromDateTime(DateTime.Today.AddDays((double)queryObject.day_expire));
 
                     // Filter proposals expiring within the specified days and exclude completed ones
-                    baseQuery = baseQuery.Where(p =>
+                    proposalQueryable = proposalQueryable.Where(p =>
                         p.EndDate.HasValue &&
                         p.EndDate.Value >= today &&
                         p.EndDate.Value <= oneWeekLater &&
-                        p.Status != $"approved"); // Assuming "approved" is the status for finished proposals
+                        p.Status != "approved"); // Assuming "approved" is the status for finished proposals
                 }
 
                 // Filter by userId (related to TeacherProposals)
@@ -73,7 +105,7 @@ namespace ExamProcessManage.Repository
                                  .Select(tp => tp.ProposalId))
                         proposalIds.Add(i);
 
-                    baseQuery = baseQuery.Where(p => proposalIds.Contains(p.ProposalId));
+                    proposalQueryable = proposalQueryable.Where(p => proposalIds.Contains(p.ProposalId));
                 }
 
                 // Filter by queryObject.userId if not filtering by userId
@@ -87,18 +119,18 @@ namespace ExamProcessManage.Repository
 
                     if (proposalIds.Any())
                     {
-                        baseQuery = baseQuery.Where(p => proposalIds.Contains(p.ProposalId));
+                        proposalQueryable = proposalQueryable.Where(p => proposalIds.Contains(p.ProposalId));
                     }
                 }
 
                 // Get total count before paging
-                var totalCount = await baseQuery.CountAsync();
+                var totalCount = await proposalQueryable.CountAsync();
 
                 // Academic Years for the DTO (optional)
                 var academicYears = await _context.AcademicYears.AsNoTracking().ToListAsync();
 
                 // Fetch paginated proposals
-                var proposals = await baseQuery
+                var proposals = await proposalQueryable
                     .OrderBy(p => p.ProposalId)
                     .Skip(startRow)
                     .Take(queryObject.size)
@@ -171,7 +203,18 @@ namespace ExamProcessManage.Repository
                 .FirstOrDefaultAsync(p => p.ProposalId == id);
 
             if (proposal == null)
-                return new BaseResponse<ProposalDTO> { message = $"Proposal with id = {id} could not be found" };
+                return new BaseResponse<ProposalDTO>
+                {
+                    status = 404,
+                    message = "Proposal not found",
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = $"Proposal with id = {id} could not be found"
+                        }
+                    }
+                };
 
             var examSetDtOs = proposal.ExamSets.Select(es => new ExamSetDTO
             {
@@ -229,6 +272,8 @@ namespace ExamProcessManage.Repository
 
             return new BaseResponse<ProposalDTO>
             {
+                status = 200,
+                message = "Thành công",
                 data = new ProposalDTO
                 {
                     id = proposal.ProposalId,
@@ -252,38 +297,71 @@ namespace ExamProcessManage.Repository
             };
         }
 
-        public async Task<BaseResponseId> CreateProposalAsync(int userId, ProposalDTO proposalDto, string? role = null)
+        public async Task<BaseResponseId> CreateProposalAsync(int userId, ProposalDTO proposalDto, string role)
         {
             try
             {
                 var examSets = new List<ExamSet>();
                 var errors = new List<ErrorDetail>();
 
+                #region Validate input
+
                 var existProposal = await _context.Proposals.FirstOrDefaultAsync(p => p.PlanCode == proposalDto.code);
                 if (existProposal != null)
-                    errors.Add(new()
-                        { field = "code", message = $"A similar record already exists: {proposalDto.code}" });
+                    errors.Add(new ErrorDetail
+                    {
+                        field = "code",
+                        message = $"Đề xuất đã tồn tại: {proposalDto.code}"
+                    });
 
                 if (string.IsNullOrEmpty(proposalDto.code) || proposalDto.code == "string")
-                    errors.Add(new() { field = "code", message = "Invalid plan code" });
+                    errors.Add(new ErrorDetail
+                    {
+                        field = "code",
+                        message = $"Mã đề xuất không hợp lệ '{proposalDto.code}'"
+                    });
 
                 if (string.IsNullOrEmpty(proposalDto.semester) || proposalDto.semester == "string")
-                    errors.Add(new() { field = "semester", message = "Invalid semester" });
+                    errors.Add(new ErrorDetail
+                    {
+                        field = "semester",
+                        message = $"Học kỳ không hợp lệ '{proposalDto.semester}'"
+                    });
 
                 if (!_validStatus.Contains(proposalDto.status))
-                    errors.Add(new() { field = "status", message = "Invalid status" });
+                    errors.Add(new ErrorDetail
+                    {
+                        field = "status",
+                        message = $"Trạng thái không hợp lệ '{proposalDto.status}'"
+                    });
 
                 var isAcademicYear =
                     await _context.AcademicYears.AnyAsync(a => a.YearName == proposalDto.academic_year.name);
+
                 if (!isAcademicYear)
-                    errors.Add(new() { field = "academic_year", message = "Invalid academic year" });
+                    errors.Add(new ErrorDetail
+                    {
+                        field = "academic_year",
+                        message = $"Năm học không hợp lệ '{proposalDto.academic_year.name}'"
+                    });
 
                 if (!DateOnly.TryParse(proposalDto.start_date, out var parseStart))
-                    errors.Add(new() { field = "start_date", message = "Invalid start date format" });
+                    errors.Add(new ErrorDetail
+                    {
+                        field = "start_date",
+                        message = $"Ngày bắt đầu không hợp lệ '{proposalDto.start_date}'"
+                    });
 
                 if (!DateOnly.TryParse(proposalDto.end_date, out var parseEnd))
-                    errors.Add(new() { field = "end_date", message = "Invalid end date format" });
+                    errors.Add(new ErrorDetail
+                    {
+                        field = "end_date",
+                        message = $"Ngày kết thúc không hợp lệ '{proposalDto.end_date}'"
+                    });
 
+                #endregion
+
+                // khong bao gio xay ra
                 if (proposalDto.exam_sets != null && proposalDto.exam_sets.Any())
                 {
                     var examSetIds = proposalDto.exam_sets.Select(e => e.id).ToList();
@@ -294,19 +372,27 @@ namespace ExamProcessManage.Repository
                     foreach (var item in examSetIds)
                     {
                         if (!examSetIdSets.Add((int)item!))
-                            errors.Add(new() { field = $"exam_sets.{item}", message = $"Duplicate exam set: {item}" });
+                            errors.Add(new ErrorDetail
+                            {
+                                field = $"exam_sets.{item}",
+                                message = $"Duplicate exam set: {item}"
+                            });
                         else if (!existExamSets.ContainsKey((int)item))
-                            errors.Add(new() { field = $"exam_sets.{item}", message = $"Exam set not found: {item}" });
+                            errors.Add(new ErrorDetail
+                            {
+                                field = $"exam_sets.{item}",
+                                message = $"Exam set not found: {item}"
+                            });
                         else
                         {
                             var examSet = existExamSets[(int)item];
                             if (examSet.ProposalId == null)
                                 examSets.Add(examSet);
                             else
-                                errors.Add(new()
+                                errors.Add(new ErrorDetail
                                 {
                                     field = $"exam_sets.{item}",
-                                    message = $"The exam set has been assigned to another proposal"
+                                    message = "The exam set has been assigned to another proposal"
                                 });
                         }
                     }
@@ -314,13 +400,17 @@ namespace ExamProcessManage.Repository
 
                 var isExistUser = await _context.Users.AnyAsync(u => u.Id == (ulong)userId);
                 if (!isExistUser)
-                    errors.Add(new() { field = "user", message = $"User does not exist: {proposalDto.user.id}" });
+                    errors.Add(new ErrorDetail
+                    {
+                        field = "user",
+                        message = $"Không tìm thấy giảng viên: {proposalDto.user.id}"
+                    });
 
                 if (errors.Any())
                     return new BaseResponseId
                     {
                         status = 400,
-                        message = "Validation failed",
+                        message = "Thêm mới đề xuất thất bại",
                         errors = errors
                     };
 
@@ -337,7 +427,7 @@ namespace ExamProcessManage.Repository
                     AcademicYear = proposalDto.academic_year.name ?? string.Empty,
                     CreateAt = DateOnly.FromDateTime(DateTime.Now),
                     ExamSets = examSets,
-                    IsCreatedByAdmin = role == "Admin" ? true : false,
+                    IsCreatedByAdmin = role == "Admin",
                 };
 
                 await _context.Proposals.AddAsync(newProposal);
@@ -345,6 +435,7 @@ namespace ExamProcessManage.Repository
 
                 var justProposal =
                     await _context.Proposals.FirstOrDefaultAsync(p => p.PlanCode == newProposal.PlanCode);
+
                 if (justProposal != null)
                 {
                     var newTeacherProposal = new TeacherProposal
@@ -353,18 +444,133 @@ namespace ExamProcessManage.Repository
                     await _context.SaveChangesAsync();
                 }
 
+
+                // Gửi email thông báo
+                if (role == "Admin")
+                {
+                    var toUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == (ulong)userId);
+
+                    if (toUser != null)
+                    {
+                        var body = $@"
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                          <style>
+                              body {{
+                                  font-family: Arial, sans-serif;
+                                  line-height: 1.6;
+                                  color: #333;
+                              }}
+                              .container {{
+                                  max-width: 600px;
+                                  margin: 0 auto;
+                                  padding: 20px;
+                                  border: 1px solid #ddd;
+                                  border-radius: 8px;
+                                  background-color: #f9f9f9;
+                              }}
+                              h2 {{
+                                  color: #4CAF50;
+                              }}
+                              a {{
+                                  text-decoration: none;
+                                  color: #ffffff;
+                                  background-color: #16A34A;
+                                  padding: 10px 20px;
+                                  border-radius: 5px;
+                                  display: inline-block;
+                              }}
+                              a:hover {{
+                                  background-color: #45a049;
+                              }}
+                              p {{
+                                  margin-bottom: 20px;
+                              }}
+                          </style>
+                        </head>
+                        <body>
+                        <div class='container'>
+                          <div
+                            style=""background-color: #16A34A; color: white; padding: 10px 0; text-align: center; border-radius: 8px 8px 0 0; display: flex; align-items: center; justify-content: center;"">
+                            <img style=""width: 80px; border-radius: 50%; margin: 8px""
+                                 src=""http://itf.viu.edu.vn/build/assets/logodhcn1-16af8a30.jpg"" alt=""viu-itf-logo"">
+                            <h1 style=""margin: 0;"">VIU - Exam Process Manage</h1>
+                          </div>
+
+                          <p>Xin chào {toUser.Name},</p>
+                          <p>Một đề xuất mới <strong>{newProposal.PlanCode}</strong> đã được tạo bởi admin dành cho bạn vào lúc <strong>{newProposal.CreateAt}</strong>. Vui lòng nhấp vào liên kết dưới đây để kiểm tra và xử lý:</p>
+                          <p><a href=""https://itf.viu.edu.vn:880/qldethi/login"" target='_blank'>Xem chi tiết</a></p>
+                          <p>Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ với đội hỗ trợ của chúng tôi.</p>
+                          <p>Trân trọng,</p>
+
+                          <div style=""background-color: #f4f4f4; color: #555555; text-align: center; padding: 10px 0; font-size: 12px;"">
+                            <p>© 2024 Khoa Công nghệ Thông tin. Trường Đại học Công nghiệp Việt - Hung. Tất cả quyền được bảo lưu.</p>
+                          </div>
+                        </div>
+                        </body>
+                        </html>
+                    ";
+
+                        _ = Task.Run(() =>
+                        {
+                            EmailService.SendEmail(
+                                "VIU - EPM: Đề xuất đã được tạo bởi admin", body, toUser.Email);
+
+                            _ = Task.Run(() =>
+                                EmailService.SendEmail(
+                                    "VIU - EPM:", "Thông báo đề xuất mới cho: " + toUser.Email + body,
+                                    "chieuvanbui22@gmail.com"));
+                        });
+
+                        CreateNotification(new Notification
+                        {
+                            Title = "Thông báo đề xuất mới",
+                            Message = "Một đề xuất mới đã được tạo bởi admin dành cho bạn.",
+                            UserId = (int)toUser.Id,
+                            CreatedAt = DateTime.Now,
+                            IsRead = false
+                        });
+                    }
+                }
+
+
                 return new BaseResponseId
-                    { status = 200, message = "Success", data = new DetailResponse { id = newProposal.ProposalId } };
+                {
+                    status = 200,
+                    message = "Thành công",
+                    data = new DetailResponse
+                    {
+                        id = newProposal.ProposalId
+                    }
+                };
             }
-            catch (DbUpdateException dbEx)
+            catch (Exception exception)
             {
                 return new BaseResponseId
-                    { status = 500, message = $"Database error: {dbEx.Message} \n {dbEx.InnerException}" };
+                {
+                    status = 500,
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
+                };
             }
-            catch (Exception ex)
+        }
+
+        private async void CreateNotification(Notification notification)
+        {
+            try
             {
-                return new BaseResponseId
-                    { status = 500, message = $"An error occurred: {ex.Message} \n {ex.InnerException}" };
+                await _context.Notifications.AddAsync(notification);
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception);
             }
         }
 
@@ -431,7 +637,7 @@ namespace ExamProcessManage.Repository
                             else
                             {
                                 var existingExamSet = existingExamSets.First(e => e.ExamSetId == examSet.id);
-                                if (existingExamSet.Status != $"approved")
+                                if (existingExamSet.Status != "approved")
                                     existingExamSet.Status = proposalDto.status; // Cập nhật trạng thái của examSet
 
                                 foreach (var examDto in examSet.exams!)
@@ -441,7 +647,7 @@ namespace ExamProcessManage.Repository
                                     if (existingExam != null)
                                     {
                                         if (!string.IsNullOrEmpty(examDto.comment) &&
-                                            existingExam.Status == $"rejected")
+                                            existingExam.Status == "rejected")
                                         {
                                             errorList.Add(new ErrorDetail
                                             {
@@ -485,7 +691,7 @@ namespace ExamProcessManage.Repository
 
 
                     // Gửi email thông báo
-                    if (existingProposal.Status is "approved" or "rejected")
+                    if (proposalDto.status is "approved" or "rejected")
                     {
                         var fromAdmin = await _context.Users.FirstOrDefaultAsync(u => u.Id == (ulong)userId);
 
@@ -510,13 +716,33 @@ namespace ExamProcessManage.Repository
                             EmailService.SendEmail(
                                 "VIU - EPM:", "An email has been sent to: " + toUser.Email,
                                 "chieuvanbui22@gmail.com"));
+
+
+                        // luu thong bao vao db
+                        const string messageApproved =
+                            "Chúng tôi rất vui mừng thông báo rằng đề xuất của bạn đã được quản trị viên phê duyệt.";
+                        const string messageRejected =
+                            "Chúng tôi rất tiếc phải thông báo rằng đề xuất của bạn đã bị quản trị viên từ chối.";
+
+                        CreateNotification(new Notification
+                        {
+                            Title = isApproved ? "Thông Báo Phê Duyệt" : "Thông Báo Từ Chối",
+                            Message = isApproved ? messageApproved : messageRejected,
+                            UserId = (int)toUser.Id,
+                            CreatedAt = DateTime.Now,
+                            IsRead = false
+                        });
                     }
+
 
                     return new BaseResponseId
                     {
                         status = 200,
                         message = "Cập nhật thành công",
-                        data = new DetailResponse { id = existingProposal.ProposalId }
+                        data = new DetailResponse
+                        {
+                            id = existingProposal.ProposalId
+                        }
                     };
                 }
 
@@ -525,6 +751,7 @@ namespace ExamProcessManage.Repository
                     var detailResponse = new DetailResponse { id = null };
                     var baseResponseId = new BaseResponseId
                     {
+                        status = 403,
                         message = "Kế hoạch đã phê duyệt không được sửa",
                         data = detailResponse
                     };
@@ -535,21 +762,27 @@ namespace ExamProcessManage.Repository
                     var detailResponse = new DetailResponse { id = null };
                     var baseResponseId = new BaseResponseId
                     {
+                        status = 404,
                         message = "Không tìm thấy đề xuất",
                         data = detailResponse
                     };
                     return baseResponseId;
                 }
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                var detailResponse = new DetailResponse { id = null };
-                var baseResponseId = new BaseResponseId
+                return new BaseResponseId
                 {
-                    message = ex.Message,
-                    data = detailResponse
+                    status = 500,
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
                 };
-                return baseResponseId;
             }
         }
 
@@ -566,15 +799,27 @@ namespace ExamProcessManage.Repository
                     {
                         status = 404,
                         message = "Not found",
-                        errors = new() { new() { message = $"Proposal not found {proposalId}" } }
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                message = $"Proposal not found {proposalId}"
+                            }
+                        }
                     };
 
-                if (proposal.Status == $"approved")
+                if (proposal.Status == "approved")
                     return new BaseResponseId
                     {
-                        status = 405,
+                        status = 403,
                         message = "Forbidden",
-                        errors = new() { new() { message = "The proposal has been approved and cannot be deleted." } }
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                message = "The proposal has been approved and cannot be deleted."
+                            }
+                        }
                     };
 
                 var examSets = proposal.ExamSets;
@@ -582,13 +827,13 @@ namespace ExamProcessManage.Repository
                 {
                     if (!withExamSet)
                     {
-                        var approvedExamSets = examSets.Where(e => e.Status == $"approved").ToList();
+                        var approvedExamSets = examSets.Where(e => e.Status == "approved").ToList();
                         if (approvedExamSets.Any())
                             return new BaseResponseId
                             {
-                                status = 405,
-                                message = $"Forbidden",
-                                errors = new()
+                                status = 403,
+                                message = "Forbidden",
+                                errors = new List<ErrorDetail>
                                 {
                                     new()
                                     {
@@ -605,13 +850,13 @@ namespace ExamProcessManage.Repository
                     }
                     else
                     {
-                        var approvedExamSets = examSets.Where(e => e.Status == $"approved").ToList();
+                        var approvedExamSets = examSets.Where(e => e.Status == "approved").ToList();
                         if (approvedExamSets.Any())
                             return new BaseResponseId
                             {
-                                status = 405,
+                                status = 403,
                                 message = "Forbidden",
-                                errors = new()
+                                errors = new List<ErrorDetail>
                                 {
                                     new()
                                     {
@@ -631,9 +876,9 @@ namespace ExamProcessManage.Repository
                                 if (approvedExams.Any())
                                     return new BaseResponseId
                                     {
-                                        status = 405,
-                                        message = $"Forbidden",
-                                        errors = new()
+                                        status = 403,
+                                        message = "Forbidden",
+                                        errors = new List<ErrorDetail>
                                         {
                                             new()
                                             {
@@ -654,9 +899,9 @@ namespace ExamProcessManage.Repository
                                 if (approvedExams.Any())
                                     return new BaseResponseId
                                     {
-                                        status = 405,
-                                        message = $"Forbidden",
-                                        errors = new()
+                                        status = 403,
+                                        message = "Forbidden",
+                                        errors = new List<ErrorDetail>
                                         {
                                             new()
                                             {
@@ -679,16 +924,27 @@ namespace ExamProcessManage.Repository
 
                 return new BaseResponseId
                 {
-                    status = 200, message = "Delete proposal successfully", data = new() { id = proposal.ProposalId }
+                    status = 200,
+                    message = "Delete proposal successfully",
+                    data = new DetailResponse
+                    {
+                        id = proposal.ProposalId
+                    }
                 };
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
                 return new BaseResponseId
                 {
                     status = 500,
-                    message = $"An error occurred: {ex.Message}",
-                    errors = new() { new() { message = ex.InnerException!.ToString() } }
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
                 };
             }
         }
