@@ -163,8 +163,8 @@ namespace ExamProcessManage.Repository
                     return new BaseResponse<ExamDTO>
                     {
                         status = 404,
-                        message = "Not found",
-                        errors = new() { new() { message = $"Exam not found {examId}" } }
+                        message = "Không tìm thấy",
+                        errors = new List<ErrorDetail> { new() { message = $"Không tìm thấy đề thi {examId}" } }
                     };
                 }
 
@@ -214,17 +214,24 @@ namespace ExamProcessManage.Repository
 
                 return new BaseResponse<ExamDTO>
                 {
-                    message = "Success",
+                    status = 200,
+                    message = "Thành công",
                     data = examDto
                 };
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
                 return new BaseResponse<ExamDTO>
                 {
                     status = 500,
-                    message = "An error occured: " + ex.Message,
-                    errors = new() { new() { message = ex.InnerException.ToString() } }
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
                 };
             }
         }
@@ -233,13 +240,13 @@ namespace ExamProcessManage.Repository
         {
             try
             {
-                if (exams == null || !exams.Any())
+                if (!exams.Any())
                 {
-                    return new()
+                    return new BaseResponse<List<DetailResponse>>
                     {
                         status = 400,
                         message = "Invalid input",
-                        errors = new() { new() { message = "Null input" } }
+                        errors = new List<ErrorDetail> { new() { message = "Null input" } }
                     };
                 }
 
@@ -271,93 +278,93 @@ namespace ExamProcessManage.Repository
                     .Select(e => e.AcademicYearId)
                     .ToListAsync();
 
-                for (int i = 0; i < exams.Count; i++)
+                for (var i = 0; i < exams.Count; i++)
                 {
-                    var examDTO = exams[i];
+                    var examDto = exams[i];
 
                     // Validate code
-                    if (string.IsNullOrEmpty(examDTO.code) || examDTO.code == "string")
+                    if (string.IsNullOrEmpty(examDto.code) || examDto.code == "string")
                     {
-                        errors.Add(new()
+                        errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.code",
-                            message = $"Exam with code '{examDTO.code}' invalid."
+                            message = $"Exam with code '{examDto.code}' invalid."
                         });
                     }
-                    else if (existingCodes.Contains(examDTO.code))
+                    else if (existingCodes.Contains(examDto.code))
                     {
-                        errors.Add(new()
+                        errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.code",
-                            message = $"Exam with code '{examDTO.code}' already exists."
+                            message = $"Exam with code '{examDto.code}' already exists."
                         });
                     }
 
                     // Validate name
-                    if (string.IsNullOrEmpty(examDTO.name) || examDTO.name == "string")
+                    if (string.IsNullOrEmpty(examDto.name) || examDto.name == "string")
                     {
-                        errors.Add(new()
+                        errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.name",
-                            message = $"Exam with name '{examDTO.name}' invalid."
+                            message = $"Exam with name '{examDto.name}' invalid."
                         });
                     }
-                    else if (existingNames.Contains(examDTO.name))
+                    else if (existingNames.Contains(examDto.name))
                     {
-                        errors.Add(new()
+                        errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.name",
-                            message = $"Exam with name '{examDTO.name}' already exists."
+                            message = $"Exam with name '{examDto.name}' already exists."
                         });
                     }
 
                     // Validate attached file
-                    if (string.IsNullOrEmpty(examDTO.attached_file) || examDTO.attached_file == "string")
+                    if (string.IsNullOrEmpty(examDto.attached_file) || examDto.attached_file == "string")
                     {
-                        errors.Add(new()
+                        errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.attached_file",
-                            message = $"Exam with attached_file '{examDTO.attached_file}' invalid."
+                            message = $"Exam with attached_file '{examDto.attached_file}' invalid."
                         });
                     }
-                    else if (existingFiles.Contains(examDTO.attached_file))
+                    else if (existingFiles.Contains(examDto.attached_file))
                     {
-                        errors.Add(new()
+                        errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.attached_file",
-                            message = $"Exam with file '{examDTO.attached_file}' already exists."
+                            message = $"Exam with file '{examDto.attached_file}' already exists."
                         });
                     }
 
                     // Validate status
-                    if (string.IsNullOrEmpty(examDTO.status) || examDTO.status == "string" ||
-                        !_validStatus.Contains(examDTO.status))
+                    if (string.IsNullOrEmpty(examDto.status) || examDto.status == "string" ||
+                        !_validStatus.Contains(examDto.status))
                     {
-                        errors.Add(new()
+                        errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.status",
-                            message = $"Exam with status '{examDTO.status}' is invalid."
+                            message = $"Exam with status '{examDto.status}' is invalid."
                         });
                     }
 
                     // Validate exam set
-                    if (examDTO.exam_set != null && examDTO.exam_set.id > 0 &&
-                        !examSetIds.Contains((int)examDTO.exam_set.id))
+                    if (examDto.exam_set != null && examDto.exam_set.id > 0 &&
+                        !examSetIds.Contains((int)examDto.exam_set.id))
                     {
-                        errors.Add(new()
+                        errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.exam_set.id",
-                            message = $"ExamSet with id '{examDTO.exam_set.id}' does not exist."
+                            message = $"ExamSet with id '{examDto.exam_set.id}' does not exist."
                         });
                     }
 
                     // Validate academic year
-                    if (!academicYearIds.Contains(examDTO.academic_year.id))
+                    if (!academicYearIds.Contains(examDto.academic_year.id))
                     {
-                        errors.Add(new()
+                        errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.academic_year.id",
-                            message = $"AcademicYear with id '{examDTO.academic_year.id}' does not exist."
+                            message = $"AcademicYear with id '{examDto.academic_year.id}' does not exist."
                         });
                     }
 
@@ -366,14 +373,14 @@ namespace ExamProcessManage.Repository
                     {
                         listExam.Add(new Exam
                         {
-                            ExamCode = examDTO.code,
-                            ExamName = examDTO.name,
-                            ExamSetId = examDTO.exam_set?.id > 0 ? examDTO.exam_set?.id : null,
-                            AcademicYearId = examDTO.academic_year?.id,
-                            AttachedFile = examDTO.attached_file,
-                            Description = examDTO.description == "string" ? string.Empty : examDTO.description,
+                            ExamCode = examDto.code,
+                            ExamName = examDto.name,
+                            ExamSetId = examDto.exam_set?.id > 0 ? examDto.exam_set?.id : null,
+                            AcademicYearId = examDto.academic_year?.id,
+                            AttachedFile = examDto.attached_file,
+                            Description = examDto.description == "string" ? string.Empty : examDto.description,
                             CreateAt = DateOnly.FromDateTime(DateTime.Now),
-                            Status = examDTO.status,
+                            Status = examDto.status,
                             CreatorId = userId
                         });
                     }
@@ -396,17 +403,24 @@ namespace ExamProcessManage.Repository
 
                 return new BaseResponse<List<DetailResponse>>
                 {
+                    status = 200,
                     message = "Add exam successfully",
                     data = listExam.Select(e => new DetailResponse { id = e.ExamId }).ToList()
                 };
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
                 return new BaseResponse<List<DetailResponse>>
                 {
                     status = 500,
-                    message = "An error occurred: " + ex.Message,
-                    errors = new() { new() { message = ex.InnerException?.ToString() } }
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
                 };
             }
         }
@@ -425,9 +439,9 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         status = 404,
-                        message = "Not Found",
+                        message = "Không tìm thấy",
                         errors = new List<ErrorDetail>
-                            { new() { field = "id", message = $"Exam not found {examDto.id}" } }
+                            { new() { field = "id", message = $"Không tìm thấy đề thi {examDto.id}" } }
                     };
                 }
 
@@ -435,8 +449,8 @@ namespace ExamProcessManage.Repository
                 {
                     return new BaseResponseId
                     {
-                        status = 405,
-                        message = "Method Not Allowed",
+                        status = 403,
+                        message = "Không được phép",
                         errors = new List<ErrorDetail>
                             { new() { message = "You do not have permission to update this exam." } }
                     };
@@ -446,7 +460,7 @@ namespace ExamProcessManage.Repository
                 {
                     return new BaseResponseId
                     {
-                        status = 405,
+                        status = 403,
                         message = "Method Not Allowed",
                         errors = new List<ErrorDetail>
                             { new() { message = "Exam has been approved and cannot updated." } }
@@ -477,9 +491,15 @@ namespace ExamProcessManage.Repository
                             return new BaseResponseId
                             {
                                 status = 400,
-                                message = "Bad request",
+                                message = "Thất bại",
                                 errors = new List<ErrorDetail>
-                                    { new() { field = "comment", message = "Invalid comment." } }
+                                {
+                                    new()
+                                    {
+                                        field = "comment",
+                                        message = "Vui lòng nhập bình luận"
+                                    }
+                                }
                             };
 
                         existExam.Status = examDto.status;
@@ -668,13 +688,19 @@ namespace ExamProcessManage.Repository
                     data = new DetailResponse { id = existExam.ExamId }
                 };
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
                 return new BaseResponseId
                 {
                     status = 500,
-                    message = $"An error occurred: {ex.Message}",
-                    errors = new List<ErrorDetail> { new() { message = ex.InnerException?.ToString() } }
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
                 };
             }
         }
@@ -699,8 +725,8 @@ namespace ExamProcessManage.Repository
                 {
                     return new BaseResponseId
                     {
-                        status = 405,
-                        message = "Method Not Allowed",
+                        status = 403,
+                        message = "Không được phép",
                         errors = new List<ErrorDetail>
                             { new() { message = "You do not have the right to delete other instructors' exams." } }
                     };
@@ -710,7 +736,7 @@ namespace ExamProcessManage.Repository
                 {
                     return new BaseResponseId
                     {
-                        status = 405,
+                        status = 403,
                         message = "Method Not Allowed",
                         errors = new List<ErrorDetail>
                             { new() { message = "Exam has been approved and cannot be deleted." } }
@@ -724,15 +750,22 @@ namespace ExamProcessManage.Repository
                 {
                     status = 200,
                     message = "Delete successfully",
-                    data = new() { id = existExam.ExamId }
+                    data = new DetailResponse { id = existExam.ExamId }
                 };
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
                 return new BaseResponseId
                 {
                     status = 500,
-                    message = $"Internal Server Error: {ex.Message} {ex.InnerException}"
+                    message = exception.Message,
+                    errors = new List<ErrorDetail>
+                    {
+                        new()
+                        {
+                            message = exception.InnerException?.Message ?? exception.Message
+                        }
+                    }
                 };
             }
         }
