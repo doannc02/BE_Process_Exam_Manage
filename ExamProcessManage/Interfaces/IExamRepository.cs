@@ -6,7 +6,7 @@ namespace ExamProcessManage.Interfaces
 {
     public interface IExamRepository
     {
-        Task<PageResponse<ExamDTO>> GetListExamsAsync(ExamRequestParams examRequest, int? userId);
+        Task<PageResponse<ExamDTO>> GetListExamsAsync(ExamRequestParams queryObject, int? userId);
         Task<BaseResponse<ExamDTO>> GetDetailExamAsync(int examId);
         Task<BaseResponse<List<DetailResponse>>> CreateExamsAsync(List<ExamDTO> examDtOs, int userId);
         Task<BaseResponseId> UpdateExamAsync(int userId, bool isAdmin, ExamDTO examDto);
