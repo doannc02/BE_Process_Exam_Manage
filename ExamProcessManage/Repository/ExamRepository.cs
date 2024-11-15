@@ -35,10 +35,10 @@ namespace ExamProcessManage.Repository
             if (!string.IsNullOrEmpty(query.search))
             {
                 baseQuery = baseQuery.Where(e =>
-                    e.ExamCode.Contains(query.search) || e.ExamName.Contains(query.search));
+                    e.ExamName != null && (e.ExamCode.Contains(query.search) || e.ExamName.Contains(query.search)));
             }
 
-            if ((bool)query.isGetForAddExamSet)
+            if (query.isGetForAddExamSet != null && (bool)query.isGetForAddExamSet)
             {
                 baseQuery = baseQuery.Where(e => e.ExamSetId == null);
             }
@@ -61,7 +61,7 @@ namespace ExamProcessManage.Repository
 
             if (query.month_upload > 0)
             {
-                baseQuery = baseQuery.Where(e => e.CreateAt.Value.Month == query.month_upload);
+                baseQuery = baseQuery.Where(e => e.CreateAt != null && e.CreateAt.Value.Month == query.month_upload);
             }
 
             // Apply userId filter if provided
@@ -121,8 +121,9 @@ namespace ExamProcessManage.Repository
                         ? new
                         {
                             id = (int)users[(ulong)p.CreatorId.Value].Id,
-                            name = users[(ulong)p.CreatorId.Value].Email ?? "",
+                            name = users[(ulong)p.CreatorId.Value].Email,
                             fullname = users[(ulong)p.CreatorId.Value].TeacherId.HasValue &&
+                                       users[(ulong)p.CreatorId.Value].TeacherId != null &&
                                        teachers.ContainsKey(users[(ulong)p.CreatorId.Value].TeacherId.Value)
                                 ? teachers[users[(ulong)p.CreatorId.Value].TeacherId.Value].Name
                                 : ""
@@ -164,7 +165,13 @@ namespace ExamProcessManage.Repository
                     {
                         status = 404,
                         message = "Không tìm thấy",
-                        errors = new List<ErrorDetail> { new() { message = $"Không tìm thấy đề thi {examId}" } }
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                message = $"Không tìm thấy đề thi {examId}"
+                            }
+                        }
                     };
                 }
 
@@ -185,16 +192,16 @@ namespace ExamProcessManage.Repository
                         ? new CommonObject
                         {
                             id = (int)exam.ExamSetId,
-                            name = examSets.TryGetValue((int)exam.ExamSetId, out var exam_set)
-                                ? exam_set.ExamSetName
-                                : null,
+                            name = examSets.TryGetValue((int)exam.ExamSetId, value: out var examSet)
+                                ? examSet.ExamSetName
+                                : null
                         }
                         : null,
                     user = exam.CreatorId.HasValue && users.TryGetValue((ulong)exam.CreatorId.Value, out var user)
                         ? new
                         {
                             id = (int)user.Id,
-                            name = user.Email ?? "",
+                            name = user.Email,
                             fullname = user.TeacherId.HasValue &&
                                        teachers.TryGetValue(user.TeacherId.Value, out var teacher)
                                 ? teacher.Name
@@ -203,7 +210,8 @@ namespace ExamProcessManage.Repository
                         : null,
                     status = exam.Status,
                     create_at = exam.CreateAt.ToString(),
-                    academic_year = academicYears.TryGetValue((int)exam.AcademicYearId, out var yearName)
+                    academic_year = exam.AcademicYearId != null &&
+                                    academicYears.TryGetValue((int)exam.AcademicYearId, out var yearName)
                         ? new CommonObject
                         {
                             id = exam.AcademicYearId.Value,
@@ -245,8 +253,14 @@ namespace ExamProcessManage.Repository
                     return new BaseResponse<List<DetailResponse>>
                     {
                         status = 400,
-                        message = "Invalid input",
-                        errors = new List<ErrorDetail> { new() { message = "Null input" } }
+                        message = "Thất bại",
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                message = "Không có đề thi nào để thêm mới"
+                            }
+                        }
                     };
                 }
 
@@ -288,7 +302,7 @@ namespace ExamProcessManage.Repository
                         errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.code",
-                            message = $"Exam with code '{examDto.code}' invalid."
+                            message = $"Mã đề thi không hợp lệ '{examDto.code}'"
                         });
                     }
                     else if (existingCodes.Contains(examDto.code))
@@ -296,7 +310,7 @@ namespace ExamProcessManage.Repository
                         errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.code",
-                            message = $"Exam with code '{examDto.code}' already exists."
+                            message = $"Mã đề thi đã tồn tại '{examDto.code}'"
                         });
                     }
 
@@ -306,7 +320,7 @@ namespace ExamProcessManage.Repository
                         errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.name",
-                            message = $"Exam with name '{examDto.name}' invalid."
+                            message = $"Tên đề thi không hợp lệ '{examDto.name}'"
                         });
                     }
                     else if (existingNames.Contains(examDto.name))
@@ -314,7 +328,7 @@ namespace ExamProcessManage.Repository
                         errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.name",
-                            message = $"Exam with name '{examDto.name}' already exists."
+                            message = $"Tên đề thi đã tồn tại '{examDto.name}'"
                         });
                     }
 
@@ -324,7 +338,7 @@ namespace ExamProcessManage.Repository
                         errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.attached_file",
-                            message = $"Exam with attached_file '{examDto.attached_file}' invalid."
+                            message = $"File đề thi không hợp lệ '{examDto.attached_file}'"
                         });
                     }
                     else if (existingFiles.Contains(examDto.attached_file))
@@ -332,7 +346,7 @@ namespace ExamProcessManage.Repository
                         errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.attached_file",
-                            message = $"Exam with file '{examDto.attached_file}' already exists."
+                            message = $"File đề thi đã tồn tại '{examDto.attached_file}'"
                         });
                     }
 
@@ -343,28 +357,28 @@ namespace ExamProcessManage.Repository
                         errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.status",
-                            message = $"Exam with status '{examDto.status}' is invalid."
+                            message = $"Trạng thái không hợp lệ '{examDto.status}'"
                         });
                     }
 
                     // Validate exam set
-                    if (examDto.exam_set != null && examDto.exam_set.id > 0 &&
+                    if (examDto.exam_set is { id: > 0 } &&
                         !examSetIds.Contains((int)examDto.exam_set.id))
                     {
                         errors.Add(new ErrorDetail
                         {
-                            field = $"exams.{i}.exam_set.id",
-                            message = $"ExamSet with id '{examDto.exam_set.id}' does not exist."
+                            field = $"exams.{i}.exam_set",
+                            message = $"Không tìm thấy bộ đề '{examDto.exam_set.id}'"
                         });
                     }
 
                     // Validate academic year
-                    if (!academicYearIds.Contains(examDto.academic_year.id))
+                    if (examDto.academic_year != null && !academicYearIds.Contains(examDto.academic_year.id))
                     {
                         errors.Add(new ErrorDetail
                         {
                             field = $"exams.{i}.academic_year.id",
-                            message = $"AcademicYear with id '{examDto.academic_year.id}' does not exist."
+                            message = $"Không tìm thấy năm học '{examDto.academic_year.name}'"
                         });
                     }
 
@@ -387,12 +401,12 @@ namespace ExamProcessManage.Repository
                 }
 
                 // If no exams were successfully added, return the errors
-                if (listExam.Count == 0 && errors.Any())
+                if (errors.Any())
                 {
                     return new BaseResponse<List<DetailResponse>>
                     {
-                        status = 500,
-                        message = "Add exam failed",
+                        status = 400,
+                        message = "Thêm mới thất bại",
                         errors = errors
                     };
                 }
@@ -404,7 +418,7 @@ namespace ExamProcessManage.Repository
                 return new BaseResponse<List<DetailResponse>>
                 {
                     status = 200,
-                    message = "Add exam successfully",
+                    message = "Thêm mới thành công",
                     data = listExam.Select(e => new DetailResponse { id = e.ExamId }).ToList()
                 };
             }
@@ -441,7 +455,13 @@ namespace ExamProcessManage.Repository
                         status = 404,
                         message = "Không tìm thấy",
                         errors = new List<ErrorDetail>
-                            { new() { field = "id", message = $"Không tìm thấy đề thi {examDto.id}" } }
+                        {
+                            new()
+                            {
+                                field = "id",
+                                message = $"Không tìm thấy đề thi {examDto.id}"
+                            }
+                        }
                     };
                 }
 
@@ -452,7 +472,12 @@ namespace ExamProcessManage.Repository
                         status = 403,
                         message = "Không được phép",
                         errors = new List<ErrorDetail>
-                            { new() { message = "You do not have permission to update this exam." } }
+                        {
+                            new()
+                            {
+                                message = "Bạn không được sửa đề thi của giảng viên khác"
+                            }
+                        }
                     };
                 }
 
@@ -461,9 +486,14 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         status = 403,
-                        message = "Method Not Allowed",
+                        message = "Không được phép",
                         errors = new List<ErrorDetail>
-                            { new() { message = "Exam has been approved and cannot updated." } }
+                        {
+                            new()
+                            {
+                                message = "Đề thi đã được phê duyệt, không được sửa"
+                            }
+                        }
                     };
                 }
 
@@ -472,8 +502,15 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         status = 400,
-                        message = "Bad request",
-                        errors = new List<ErrorDetail> { new() { field = "status", message = "Invalid status." } }
+                        message = "Không hợp lệ",
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                field = "status",
+                                message = "Trạng thái không hợp lệ"
+                            }
+                        }
                     };
                 }
 
@@ -510,9 +547,15 @@ namespace ExamProcessManage.Repository
                         return new BaseResponseId
                         {
                             status = 400,
-                            message = "Bad request",
+                            message = "Không hợp lệ",
                             errors = new List<ErrorDetail>
-                                { new() { field = "status", message = "Admin không được chuyển trạng thái này" } }
+                            {
+                                new()
+                                {
+                                    field = "status",
+                                    message = "Admin không được chuyển trạng thái này"
+                                }
+                            }
                         };
                     }
                 }
@@ -526,9 +569,15 @@ namespace ExamProcessManage.Repository
                         return new BaseResponseId
                         {
                             status = 400,
-                            message = "Bad request",
+                            message = "Không hợp lệ",
                             errors = new List<ErrorDetail>
-                                { new() { field = "academic_year", message = "Invalid academic year." } }
+                            {
+                                new()
+                                {
+                                    field = "academic_year",
+                                    message = $"Năm học không hợp lệ '{examDto.academic_year!.name}'"
+                                }
+                            }
                         };
                     }
 
@@ -538,18 +587,30 @@ namespace ExamProcessManage.Repository
                             return new BaseResponseId
                             {
                                 status = 400,
-                                message = "Bad request",
+                                message = "Không hợp lệ",
                                 errors = new List<ErrorDetail>
-                                    { new() { field = "exam_set", message = "Invalid exam set." } }
+                                {
+                                    new()
+                                    {
+                                        field = "exam_set",
+                                        message = $"Bộ đề không hợp lệ '{examDto.exam_set.id}'"
+                                    }
+                                }
                             };
                         case { id: > 0 } when
                             !await _context.ExamSets.AnyAsync(e => e.ExamSetId == examDto.exam_set.id):
                             return new BaseResponseId
                             {
                                 status = 404,
-                                message = "Not found",
+                                message = "Không tìm thấy",
                                 errors = new List<ErrorDetail>
-                                    { new() { field = "exam_set", message = "Exam set not found." } }
+                                {
+                                    new()
+                                    {
+                                        field = "exam_set",
+                                        message = $"Không tìm thấy bộ đề '{examDto.exam_set.id}'"
+                                    }
+                                }
                             };
                     }
 
@@ -559,12 +620,10 @@ namespace ExamProcessManage.Repository
                         switch (existExam.Status)
                         {
                             case "in_progress" when examDto.status == "pending_approval":
-                                existExam.Status = examDto.status;
-                                existExam.Comment = examDto.comment;
-                                break;
                             case "pending_approval" when examDto.status == "in_progress":
                                 existExam.Status = examDto.status;
                                 existExam.Comment = examDto.comment;
+
                                 break;
                             case "rejected" when
                                 examDto.status is "in_progress" or "pending_approval":
@@ -577,7 +636,7 @@ namespace ExamProcessManage.Repository
                                     return new BaseResponseId
                                     {
                                         status = 400,
-                                        message = "Bad request",
+                                        message = "Không hợp lệ",
                                         errors = new List<ErrorDetail>
                                         {
                                             new()
@@ -596,9 +655,15 @@ namespace ExamProcessManage.Repository
                                 return new BaseResponseId
                                 {
                                     status = 400,
-                                    message = "Bad request",
+                                    message = "Không hợp lệ",
                                     errors = new List<ErrorDetail>
-                                        { new() { field = "status", message = "Không thể thay đổi trạng thái.." } }
+                                    {
+                                        new()
+                                        {
+                                            field = "status",
+                                            message = "Không thể thay đổi trạng thái"
+                                        }
+                                    }
                                 };
                         }
 
@@ -684,7 +749,7 @@ namespace ExamProcessManage.Repository
                 return new BaseResponseId
                 {
                     status = 200,
-                    message = "Update successfully.",
+                    message = "Cập nhật thành công",
                     data = new DetailResponse { id = existExam.ExamId }
                 };
             }
@@ -715,9 +780,15 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         status = 404,
-                        message = "Not found",
+                        message = "Không tìm thấy",
                         errors = new List<ErrorDetail>
-                            { new() { field = "examId", message = $"Exam not found {examId}" } }
+                        {
+                            new()
+                            {
+                                field = "examId",
+                                message = $"Không tìm thấy đề thi {examId}"
+                            }
+                        }
                     };
                 }
 
@@ -728,7 +799,12 @@ namespace ExamProcessManage.Repository
                         status = 403,
                         message = "Không được phép",
                         errors = new List<ErrorDetail>
-                            { new() { message = "You do not have the right to delete other instructors' exams." } }
+                        {
+                            new()
+                            {
+                                message = "Bạn không được xóa đề thi của giảng viên khác"
+                            }
+                        }
                     };
                 }
 
@@ -737,9 +813,14 @@ namespace ExamProcessManage.Repository
                     return new BaseResponseId
                     {
                         status = 403,
-                        message = "Method Not Allowed",
+                        message = "Không được phép",
                         errors = new List<ErrorDetail>
-                            { new() { message = "Exam has been approved and cannot be deleted." } }
+                        {
+                            new()
+                            {
+                                message = "Đề thi đã được phê duyệt, không thể xóa"
+                            }
+                        }
                     };
                 }
 
@@ -749,7 +830,7 @@ namespace ExamProcessManage.Repository
                 return new BaseResponseId
                 {
                     status = 200,
-                    message = "Delete successfully",
+                    message = "Xóa thành công",
                     data = new DetailResponse { id = existExam.ExamId }
                 };
             }
