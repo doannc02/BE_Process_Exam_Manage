@@ -7,8 +7,6 @@
         public int page { get; set; } = 1;
         public int size { get; set; } = 20;
         public string search { get; set; } = "";
-        public int? exceptId { get; set; }
-        public int? roleId { get; set; }
     }
 
     public class QueryObjectProposal : QueryObject

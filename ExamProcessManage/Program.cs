@@ -15,7 +15,7 @@ using System.Text.Json.Serialization;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-.AddEnvironmentVariables();
+    .AddEnvironmentVariables();
 
 // Đăng ký DatabaseConnection như một Singleton
 builder.Services.AddSingleton<DatabaseConnection>();
@@ -24,7 +24,8 @@ builder.Services.AddSingleton<DatabaseConnection>();
 builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
 {
     var databaseConnection = serviceProvider.GetRequiredService<DatabaseConnection>();
-    options.UseMySql(databaseConnection.GetConnectionString(), ServerVersion.AutoDetect(databaseConnection.GetConnectionString()));
+    options.UseMySql(databaseConnection.GetConnectionString(),
+        ServerVersion.AutoDetect(databaseConnection.GetConnectionString()));
 });
 
 //Add JWT Authentication Middleware - This code will intercept HTTP request and validate the JWT.
@@ -35,12 +36,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8
-            .GetBytes(builder.Configuration.GetSection("AppSettings:Token").Value)),
+                .GetBytes(builder.Configuration.GetSection("AppSettings:Token").Value)),
             ValidateIssuer = false,
             ValidateAudience = false
         };
     }
-  );
+);
 
 // Add services to the container.
 builder.Services.AddScoped<IUserService, AccountService>();
@@ -55,6 +56,7 @@ builder.Services.AddScoped<IMajorRepository, MajorRepository>();
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddScoped<IUploadFileService, UploadService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddMemoryCache();
 
 builder.Services.AddHttpContextAccessor();
@@ -62,20 +64,23 @@ builder.Services.AddHttpContextAccessor();
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddControllers(options =>
-{
-    // Cấu hình policy xác thực toàn cục
-    var policy = new AuthorizationPolicyBuilder()
-                     .RequireAuthenticatedUser()
-                     .Build();
-    options.Filters.Add(new AuthorizeFilter(policy));
-})
-.AddJsonOptions(options =>
-{
-    // Cấu hình các tùy chọn JSON
-    options.JsonSerializerOptions.PropertyNamingPolicy = null; // Giữ nguyên tên thuộc tính (không chuyển sang camelCase)
-    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull; // Bỏ qua các giá trị null
-    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles; // Bỏ qua các vòng lặp tham chiếu
-});
+    {
+        // Cấu hình policy xác thực toàn cục
+        var policy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+        options.Filters.Add(new AuthorizeFilter(policy));
+    })
+    .AddJsonOptions(options =>
+    {
+        // Cấu hình các tùy chọn JSON
+        options.JsonSerializerOptions.PropertyNamingPolicy =
+            null; // Giữ nguyên tên thuộc tính (không chuyển sang camelCase)
+        options.JsonSerializerOptions.DefaultIgnoreCondition =
+            JsonIgnoreCondition.WhenWritingNull; // Bỏ qua các giá trị null
+        options.JsonSerializerOptions.ReferenceHandler =
+            ReferenceHandler.IgnoreCycles; // Bỏ qua các vòng lặp tham chiếu
+    });
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -99,11 +104,11 @@ builder.Services.AddSwaggerGen(option =>
             {
                 Reference = new OpenApiReference
                 {
-                    Type=ReferenceType.SecurityScheme,
-                    Id="Bearer"
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
                 }
             },
-            new string[]{}
+            new string[] { }
         }
     });
 });
@@ -115,14 +120,10 @@ if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
     app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
-    });
+    app.UseSwaggerUI(c => { c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1"); });
 }
 
-app.UseCors(x => x.
-    WithOrigins("*").AllowAnyMethod().AllowAnyHeader());
+app.UseCors(x => x.WithOrigins("*").AllowAnyMethod().AllowAnyHeader());
 
 //https://referbruv.com/blog/building-custom-responses-for-unauthorized-requests-in-aspnet-core/
 app.Use(async (context, next) =>
