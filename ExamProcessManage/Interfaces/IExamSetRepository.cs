@@ -7,7 +7,7 @@ namespace ExamProcessManage.Interfaces
     public interface IExamSetRepository
     {
         Task<PageResponse<ExamSetDTO>> GetListExamSetAsync(int? userId, RequestParamsExamSets queryObject);
-        Task<BaseResponse<ExamSetDTO>> GetDetailExamSetAsync(int? userId, int id);
+        Task<BaseResponse<ExamSetDTO>> GetDetailExamSetAsync(int examSetId);
         Task<BaseResponseId> CreateExamSetAsync(int userId, ExamSetDTO examSetDto);
         Task<BaseResponseId> UpdateExamSetAsync(int userId, ExamSetDTO examSetDto, bool isAdmin);
         Task<BaseResponseId> DeleteExamSetAsync(int userId, int examSetId, bool examSetOnly);
