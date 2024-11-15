@@ -43,7 +43,7 @@ public class ExamSetController : ControllerBase
 
     [HttpGet]
     [Route("detail")]
-    public async Task<IActionResult> GetDetailExamSetAsync(int examSetId)
+    public async Task<IActionResult> GetDetailExamSetAsync(int req)
     {
         var roleClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
         var userId = User.Claims.FirstOrDefault(c => c.Type == "userId");
@@ -52,7 +52,7 @@ public class ExamSetController : ControllerBase
             return Forbid();
 
         var detailExamSet =
-            await _repository.GetDetailExamSetAsync(examSetId);
+            await _repository.GetDetailExamSetAsync(req);
 
         if (detailExamSet.status != 200)
             return new CustomJsonResult(detailExamSet.status, HttpContext, detailExamSet.message,

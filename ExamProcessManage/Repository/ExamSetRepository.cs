@@ -27,24 +27,61 @@ namespace ExamProcessManage.Repository
                 var startRow = (queryObject.page - 1) * queryObject.size;
 
                 // Build base query for ExamSets
-                var examSetQuery = _context.ExamSets.AsNoTracking().AsQueryable();
-                var examQuery = _context.Exams.AsNoTracking().AsQueryable();
+                var examSetQueryable = _context.ExamSets.AsNoTracking().AsQueryable();
+                var examQueryable = _context.Exams.AsNoTracking().AsQueryable();
 
                 if (queryObject.exceptValues != null && queryObject.exceptValues.Any())
-                    examSetQuery = examSetQuery.Where(p => !queryObject.exceptValues.Contains(p.ExamSetId));
+                    examSetQueryable = examSetQueryable.Where(p => !queryObject.exceptValues.Contains(p.ExamSetId));
 
                 if (!string.IsNullOrEmpty(queryObject.search))
-                    examSetQuery = examSetQuery.Where(p =>
+                    examSetQueryable = examSetQueryable.Where(p =>
                         p.ExamSetName != null && p.ExamSetName.Contains(queryObject.search));
 
                 if (!string.IsNullOrEmpty(queryObject.stateExamSet))
-                    examSetQuery = examSetQuery.Where(e => e.Status == queryObject.stateExamSet);
+                    examSetQueryable = examSetQueryable.Where(e => e.Status == queryObject.stateExamSet);
 
                 if (queryObject.courseId > 0)
-                    examSetQuery = examSetQuery.Where(e => e.CourseId == queryObject.courseId);
+                    examSetQueryable = examSetQueryable.Where(e => e.CourseId == queryObject.courseId);
 
                 if (userId.HasValue)
-                    examSetQuery = examSetQuery.Where(q => q.CreatorId == userId);
+                    examSetQueryable = examSetQueryable.Where(q => q.CreatorId == userId);
+
+                // sap xep moi nhat dau tien
+                if (queryObject.sort is not (null or "" or "string"))
+                {
+                    examSetQueryable = queryObject.sort.ToLower() switch
+                    {
+                        "exam_set_name" => examSetQueryable.OrderBy(es => es.ExamSetName), // Sắp xếp theo tên bộ đề thi
+                        "exam_set_name_desc" => examSetQueryable.OrderByDescending(es =>
+                            es.ExamSetName), // Sắp xếp giảm dần theo tên bộ đề thi
+                        "status" => examSetQueryable.OrderBy(es => es.Status), // Sắp xếp theo trạng thái
+                        "status_desc" => examSetQueryable.OrderByDescending(es =>
+                            es.Status), // Sắp xếp giảm dần theo trạng thái
+                        "exam_quantity" => examSetQueryable.OrderBy(es =>
+                            es.ExamQuantity), // Sắp xếp theo số lượng đề thi
+                        "exam_quantity_desc" => examSetQueryable.OrderByDescending(es =>
+                            es.ExamQuantity), // Sắp xếp giảm dần theo số lượng đề thi
+                        "create_at" => examSetQueryable.OrderBy(es => es.CreateAt), // Sắp xếp theo ngày tạo
+                        "create_at_desc" => examSetQueryable.OrderByDescending(es =>
+                            es.CreateAt), // Sắp xếp giảm dần theo ngày tạo
+                        "update_at" => examSetQueryable.OrderBy(es => es.UpdateAt), // Sắp xếp theo ngày cập nhật
+                        "update_at_desc" => examSetQueryable.OrderByDescending(es =>
+                            es.UpdateAt), // Sắp xếp giảm dần theo ngày cập nhật
+                        "department_id" => examSetQueryable.OrderBy(es => es.DepartmentId), // Sắp xếp theo ID phòng ban
+                        "department_id_desc" => examSetQueryable.OrderByDescending(es =>
+                            es.DepartmentId), // Sắp xếp giảm dần theo ID phòng ban
+                        "major_id" => examSetQueryable.OrderBy(es => es.MajorId), // Sắp xếp theo ID ngành
+                        "major_id_desc" => examSetQueryable.OrderByDescending(es =>
+                            es.MajorId), // Sắp xếp giảm dần theo ID ngành
+                        "course_id" => examSetQueryable.OrderBy(es => es.CourseId), // Sắp xếp theo ID khóa học
+                        "course_id_desc" => examSetQueryable.OrderByDescending(es =>
+                            es.CourseId), // Sắp xếp giảm dần theo ID khóa học
+                        "proposal_id" => examSetQueryable.OrderBy(es => es.ProposalId), // Sắp xếp theo ID đề xuất
+                        "proposal_id_desc" => examSetQueryable.OrderByDescending(es =>
+                            es.ProposalId), // Sắp xếp giảm dần theo ID đề xuất
+                        _ => examSetQueryable.OrderByDescending(es => es.CreateAt), // Sắp xếp mặc định theo ngày tạo
+                    };
+                }
 
                 if (queryObject.userId.HasValue && !userId.HasValue)
                 {
@@ -54,28 +91,29 @@ namespace ExamProcessManage.Repository
                         .ToListAsync();
 
                     if (proposalIds.Any())
-                        examSetQuery = examSetQuery.Where(p =>
+                        examSetQueryable = examSetQueryable.Where(p =>
                             p.ProposalId.HasValue && proposalIds.Contains(p.ProposalId.Value));
                 }
 
                 if (queryObject.isParamAddProposal ?? false)
                 {
-                    examSetQuery = examSetQuery.Where(e => e.ProposalId == null);
+                    examSetQueryable = examSetQueryable.Where(e => e.ProposalId == null);
 
                     // Filter exams by ExamSetId
-                    var examSetIds = await examSetQuery.Select(e => e.ExamSetId).ToListAsync();
+                    var examSetIds = await examSetQueryable.Select(e => e.ExamSetId).ToListAsync();
 
-                    examQuery = examQuery.Where(p => p.ExamSetId.HasValue && examSetIds.Contains(p.ExamSetId.Value));
+                    examQueryable =
+                        examQueryable.Where(p => p.ExamSetId.HasValue && examSetIds.Contains(p.ExamSetId.Value));
                 }
 
                 if (queryObject.proposalId.HasValue)
-                    examSetQuery = examSetQuery.Where(p => p.ProposalId == queryObject.proposalId);
+                    examSetQueryable = examSetQueryable.Where(p => p.ProposalId == queryObject.proposalId);
 
                 // Count total elements before pagination
-                var totalCount = await examSetQuery.CountAsync();
+                var totalCount = await examSetQueryable.CountAsync();
 
                 // Fetch paginated data
-                var examSets = await examSetQuery
+                var examSets = await examSetQueryable
                     .OrderBy(p => p.ExamSetId)
                     .Skip(startRow)
                     .Take(queryObject.size)
@@ -135,7 +173,7 @@ namespace ExamProcessManage.Repository
                         }
                         : null,
                     exams = queryObject.isParamAddProposal ?? false
-                        ? examQuery.Where(e => e.ExamSetId == p.ExamSetId).Select(e => new ExamDTO
+                        ? examQueryable.Where(e => e.ExamSetId == p.ExamSetId).Select(e => new ExamDTO
                         {
                             code = e.ExamCode,
                             comment = e.Comment,
