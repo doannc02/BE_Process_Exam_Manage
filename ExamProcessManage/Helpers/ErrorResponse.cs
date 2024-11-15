@@ -11,7 +11,7 @@ namespace ExamProcessManage.Helpers
 
     public class ErrorDetail
     {
-        public string field { get; set; }
+        public string? field { get; set; }
         public string message { get; set; }
     }
 }

@@ -748,7 +748,34 @@ namespace ExamProcessManage.Repository
                                     existExamSet.Status = examSetDto.status;
                                 if (existExams.Where(e => e.Status != "approved")
                                     .All(e => e.Status == "rejected"))
-                                    existExamSet.Status = "rejected";
+                                    existExamSet.Status = examSetDto.status;
+                                
+                                if (existExams.All(e => e.Status is "pending_approval" or "approved"))
+                                {
+                                    foreach (var existExam in existExams)
+                                    {
+                                        existExam.Status = existExam.Status == "approved"
+                                            ? existExam.Status
+                                            : examSetDto.status;
+                                    }
+
+                                    existExamSet.Status = examSetDto.status;
+                                }
+                                else
+                                {
+                                    var i = 0;
+                                    foreach (var existExam in existExams)
+                                    {
+                                        if (existExam.Status is "in_progress")
+                                            errorList.Add(new ErrorDetail
+                                            {
+                                                field = $"exams.{i}.status",
+                                                message =
+                                                    $"Trạng thái đề thi {existExam.ExamId} không hợp lệ"
+                                            });
+                                        i++;
+                                    }
+                                }
 
                                 break;
 
