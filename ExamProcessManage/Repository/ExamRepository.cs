@@ -290,10 +290,16 @@ public class ExamRepository : IExamRepository
                 .Select(e => e.ExamCode)
                 .ToListAsync();
 
+            var first = exams.FirstOrDefault();
+
             var existingNames = await _context.Exams.AsNoTracking()
-                .Where(e => exams.Select(x => x.name).Contains(e.ExamName))
+                .Where(e => exams.Select(x => x.name).Contains(e.ExamName) &&
+                            first != null &&
+                            (first.exam_set == null || e.ExamSetId == first.exam_set.id) &&
+                            e.CreatorId == userId)
                 .Select(e => e.ExamName)
                 .ToListAsync();
+
 
             var existingFiles = await _context.Exams.AsNoTracking()
                 .Where(e => exams.Select(x => x.attached_file).Contains(e.AttachedFile))
@@ -311,6 +317,8 @@ public class ExamRepository : IExamRepository
             for (var i = 0; i < exams.Count; i++)
             {
                 var examDto = exams[i];
+
+                #region Validation
 
                 // Validate code
                 if (string.IsNullOrEmpty(examDto.code) || examDto.code == "string")
@@ -397,6 +405,17 @@ public class ExamRepository : IExamRepository
                         message = $"Không tìm thấy năm học '{examDto.academic_year.name}'"
                     });
                 }
+
+                if (examDto is { status: "pending_approval", exam_set: null } || examDto.exam_set is { id: 0 })
+                {
+                    errors.Add(new ErrorDetail
+                    {
+                        field = $"exams.{i}.status",
+                        message = "Đề thi chưa được gán cho bộ đề nào, không được gửi yêu cầu phê duyệt"
+                    });
+                }
+
+                #endregion
 
                 // If no errors, add exam to the list
                 if (!errors.Any())
@@ -603,7 +622,8 @@ public class ExamRepository : IExamRepository
                 if (existExam.ExamName != examDto.name)
                 {
                     var isExistName = await _context.Exams.AnyAsync(exam =>
-                        exam.ExamName == examDto.name && exam.ExamSetId == existExam.ExamSetId);
+                        exam.ExamName == examDto.name && exam.ExamSetId == existExam.ExamSetId &&
+                        exam.CreatorId == userId);
 
                     if (isExistName)
                     {
@@ -637,6 +657,23 @@ public class ExamRepository : IExamRepository
                             {
                                 field = "academic_year",
                                 message = $"Năm học không hợp lệ '{examDto.academic_year!.name}'"
+                            }
+                        }
+                    };
+                }
+
+                if (examDto is { status: "pending_approval", exam_set: null } || examDto.exam_set is { id: 0 })
+                {
+                    return new BaseResponseId
+                    {
+                        status = 400,
+                        message = "Yêu cầu không hợp lệ",
+                        errors = new List<ErrorDetail>
+                        {
+                            new()
+                            {
+                                field = "exams.exam_set",
+                                message = "Đề thi chưa được gán cho bộ đề nào"
                             }
                         }
                     };
