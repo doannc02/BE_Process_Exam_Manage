@@ -40,10 +40,7 @@ namespace ExamProcessManage.Controllers
         public async Task<IActionResult> GetUserDetail()
         {
             var userId = User.Claims.FirstOrDefault(c => c.Type == "userId");
-            if(userId == null)
-            {
-                return Unauthorized();
-            }
+       
             var baseResUser = await _userRepository.GetDetailUserAsync(int.Parse(userId.Value));
             if (baseResUser != null)
             {
