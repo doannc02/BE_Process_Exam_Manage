@@ -50,7 +50,7 @@ namespace ExamProcessManage.Controllers
             if (proposal.status != 200)
                 return new CustomJsonResult(proposal.status, HttpContext, proposal.message, proposal.errors);
 
-            var commonResponse = _createCommonResponse.CreateResponse(proposal.message, HttpContext, proposal);
+            var commonResponse = _createCommonResponse.CreateResponse(proposal.message, HttpContext, proposal.data);
             return Ok(commonResponse);
         }
 
