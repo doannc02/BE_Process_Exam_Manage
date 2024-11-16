@@ -711,7 +711,7 @@ namespace ExamProcessManage.Repository
                                             ? existExam.Status
                                             : examSetDto.status;
                                     }
-                                    
+
                                     if (examDtos != null)
                                     {
                                         foreach (var examDto in examDtos)
@@ -998,7 +998,6 @@ namespace ExamProcessManage.Repository
                                 if (examStatusDict.TryGetValue(newExam.ExamId, out var newStatus))
                                 {
                                     if (newExam.Status != examDtos[i].status)
-
                                     {
                                         if (newStatus is "approved" or "rejected")
                                         {
@@ -1010,30 +1009,73 @@ namespace ExamProcessManage.Repository
                                         }
                                         else
                                         {
-                                            switch (newExam.Status)
+                                            switch (examDtos[i].status)
                                             {
-                                                case "in_progress" when
-                                                    examDtos[i].status == "pending_approval":
-                                                    newExam.Status = examDtos[i].status;
-                                                    newExam.Comment = string.Empty;
-                                                    break;
-                                                case "pending_approval" when
-                                                    examDtos[i].status == "in_progress":
-                                                case "rejected" when examDtos[i].status == "in_progress":
-                                                    newExam.Status = examDtos[i].status;
-                                                    break;
-                                                default:
-                                                    errorList.Add(new ErrorDetail
+                                               case "pending_approval":
+                                                    if (newExam.Status is not ("in_progress" or "rejected"
+                                                        or "pending_approval"))
                                                     {
-                                                        field = $"exams.{i}.status",
-                                                        message =
-                                                            $"Trạng thái không hợp lệ {newExam.ExamId}: '{newExam.Status}' -> '{examDtos[i].status}'"
-                                                    });
+                                                        errorList.Add(new ErrorDetail
+                                                        {
+                                                            field = $"exams.{i}.status",
+                                                            message =
+                                                                $"Không thể chuyển trạng thái: '{newExam.Status}' -> '{examDtos[i].status}'"
+                                                        });
+                                                    }
+                                                    else
+                                                    {
+                                                        newExam.Status = examDtos[i].status;
+                                                    }
+
+                                                    break;
+
+                                                case "in_progress":
+                                                    if (newExam.Status is not ("pending_approval" or "rejected"))
+                                                    {
+                                                        errorList.Add(new ErrorDetail
+                                                        {
+                                                            field = $"exams.{i}.status",
+                                                            message =
+                                                                $"Không thể chuyển trạng thái: '{newExam.Status}' -> '{examDtos[i].status}'"
+                                                        });
+                                                    }
+                                                    else
+                                                    {
+                                                        newExam.Status = examDtos[i].status;
+                                                    }
+
                                                     break;
                                             }
+
+                                            // switch (newExam.Status)
+                                            // {
+                                            //     case "in_progress" when
+                                            //         examDtos[i].status == "pending_approval":
+                                            //         newExam.Status = examDtos[i].status;
+                                            //         newExam.Comment = string.Empty;
+                                            //         break;
+                                            //     case "pending_approval" when
+                                            //         examDtos[i].status == "in_progress":
+                                            //         newExam.Status = examDtos[i].status;
+                                            //         break;
+                                            //
+                                            //     case "rejected" when examDtos[i].status == "in_progress":
+                                            //         newExam.Status = examDtos[i].status;
+                                            //         break;
+                                            //     default:
+                                            //         errorList.Add(new ErrorDetail
+                                            //         {
+                                            //             field = $"exams.{i}.status",
+                                            //             message =
+                                            //                 $"Trạng thái không hợp lệ {newExam.ExamId}: '{newExam.Status}' -> '{examDtos[i].status}'"
+                                            //         });
+                                            //         break;
+                                            // }
                                         }
                                     }
                                 }
+                                
+                                // existExams.Add();
                             }
                             else
                             {
@@ -1050,6 +1092,7 @@ namespace ExamProcessManage.Repository
 
                         // Thay thế kỳ thi cũ bằng kỳ thi mới trong examSet
                         existExamSet.Exams = newExams;
+                        existExams = newExams;
                     }
 
                     #endregion
@@ -1084,7 +1127,6 @@ namespace ExamProcessManage.Repository
                     }
 
                     #endregion
-                    
                 }
 
                 #endregion
