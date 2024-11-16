@@ -406,6 +406,7 @@ public class ExamRepository : IExamRepository
                     });
                 }
 
+                // yeu cau phai gan exam set de gui yeu cau phe duyet luon
                 if (examDto is { status: "pending_approval", exam_set: null } || examDto.exam_set is { id: 0 })
                 {
                     errors.Add(new ErrorDetail
