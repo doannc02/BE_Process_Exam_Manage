@@ -1,5 +1,4 @@
 ﻿using ExamProcessManage.Data;
-using ExamProcessManage.Dbconnection;
 using ExamProcessManage.Interfaces;
 using ExamProcessManage.Repository;
 using ExamProcessManage.Services;
@@ -11,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,28 +18,39 @@ builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnC
     .AddEnvironmentVariables();
 
 // Đăng ký DatabaseConnection như một Singleton
-builder.Services.AddSingleton<DatabaseConnection>();
+// builder.Services.AddSingleton<DatabaseConnection>();
 
 // Đăng ký DbContext sử dụng DatabaseConnection Singleton
-builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+// builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+// {
+//     var databaseConnection = serviceProvider.GetRequiredService<DatabaseConnection>();
+//     options.UseMySql(databaseConnection.GetConnectionString(),
+//         ServerVersion.AutoDetect(databaseConnection.GetConnectionString()));
+// });
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var databaseConnection = serviceProvider.GetRequiredService<DatabaseConnection>();
-    options.UseMySql(databaseConnection.GetConnectionString(),
-        ServerVersion.AutoDetect(databaseConnection.GetConnectionString()));
+    options.UseMySql(
+        builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty,
+        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
+    );
 });
+
 
 //Add JWT Authentication Middleware - This code will intercept HTTP request and validate the JWT.
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(
     opt =>
     {
-        opt.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8
-                .GetBytes(builder.Configuration.GetSection("AppSettings:Token").Value)),
-            ValidateIssuer = false,
-            ValidateAudience = false
-        };
+        var value = builder.Configuration.GetSection("AppSettings:Token").Value;
+        if (value != null)
+            opt.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8
+                    .GetBytes(value)),
+                ValidateIssuer = false,
+                ValidateAudience = false
+            };
     }
 );
 
@@ -108,7 +119,7 @@ builder.Services.AddSwaggerGen(option =>
                     Id = "Bearer"
                 }
             },
-            new string[] { }
+            Array.Empty<string>()
         }
     });
 });
@@ -116,6 +127,82 @@ builder.Services.AddSwaggerGen(option =>
 var app = builder.Build();
 // app.Urls.Add("http://0.0.0.0:5000");
 // Middleware pipeline
+
+
+//https://referbruv.com/blog/building-custom-responses-for-unauthorized-requests-in-aspnet-core/
+// app.Use(async (context, next) =>
+// {
+//     await next();
+//
+//     if (context.Response.StatusCode == (int)System.Net.HttpStatusCode.Unauthorized)
+//     {
+//         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+//         context.Response.ContentType = "application/json";
+//         await context.Response.WriteAsync("{\"error\": \"Unauthenticated\"}");
+//         return;
+//         //  context.Response.Redirect("/api/v1/account/unAuthenticated");
+//     }
+//
+//     if (context.Response.StatusCode == (int)System.Net.HttpStatusCode.Forbidden)
+//     {
+//         context.Response.StatusCode = StatusCodes.Status403Forbidden;
+//         context.Response.ContentType = "application/json";
+//         await context.Response.WriteAsync("{\"error\": \"Unauthorized\"}");
+//         return;
+//         // context.Response.Redirect("/api/v1/account/unAuthenticated");
+//     }
+// });
+
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        // Log lỗi để theo dõi
+        Console.WriteLine($"Unhandled exception: {ex.Message}");
+        throw; // Re-throw exception để không làm mất stack trace
+    }
+
+    if (context.Response.StatusCode is StatusCodes.Status401Unauthorized or StatusCodes.Status403Forbidden)
+    {
+        await WriteErrorResponseAsync(context);
+    }
+});
+
+app.UseExceptionHandler("/error");
+
+app.Map("/error", errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync("{\"error\": \"An unexpected error occurred.\"}");
+        Console.WriteLine($"Unhandled exception: {exception?.Message}");
+    });
+});
+
+async Task WriteErrorResponseAsync(HttpContext context)
+{
+    context.Response.ContentType = "application/json";
+    var errorMessage = context.Response.StatusCode switch
+    {
+        StatusCodes.Status401Unauthorized => "{\"error\": \"Unauthenticated\"}",
+        StatusCodes.Status403Forbidden => "{\"error\": \"Unauthorized\"}",
+        _ => "{\"error\": \"An unexpected error occurred.\"}"
+    };
+    await context.Response.WriteAsync(errorMessage);
+}
+
+
+//app.UseHttpsRedirection();
+
+
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -123,37 +210,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c => { c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1"); });
 }
 
+app.UseStaticFiles();
+
 app.UseCors(x => x.WithOrigins("*").AllowAnyMethod().AllowAnyHeader());
 
-//https://referbruv.com/blog/building-custom-responses-for-unauthorized-requests-in-aspnet-core/
-app.Use(async (context, next) =>
-{
-    await next();
-
-    if (context.Response.StatusCode == (int)System.Net.HttpStatusCode.Unauthorized)
-    {
-        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-        context.Response.ContentType = "application/json";
-        await context.Response.WriteAsync("{\"error\": \"Unauthenticated\"}");
-        return;
-        //  context.Response.Redirect("/api/v1/account/unAuthenticated");
-    }
-
-    if (context.Response.StatusCode == (int)System.Net.HttpStatusCode.Forbidden)
-    {
-        context.Response.StatusCode = StatusCodes.Status403Forbidden;
-        context.Response.ContentType = "application/json";
-        await context.Response.WriteAsync("{\"error\": \"Unauthorized\"}");
-        return;
-        // context.Response.Redirect("/api/v1/account/unAuthenticated");
-    }
-});
-
-//app.UseHttpsRedirection();
-
 app.UseAuthentication();
-
-app.UseStaticFiles();
 
 app.UseAuthorization();
 
