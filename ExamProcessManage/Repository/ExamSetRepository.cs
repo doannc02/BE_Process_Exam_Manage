@@ -714,6 +714,7 @@ namespace ExamProcessManage.Repository
 
                                     if (examDtos != null)
                                     {
+                                        var i = 0;
                                         foreach (var examDto in examDtos)
                                         {
                                             var existExam = existExams.FirstOrDefault(e => e.ExamId == examDto.id);
@@ -722,6 +723,16 @@ namespace ExamProcessManage.Repository
                                             {
                                                 existExam.Comment = examDto.comment;
                                             }
+                                            else
+                                            {
+                                                errorList.Add(new ErrorDetail
+                                                {
+                                                    field = $"exams.{i}.comment",
+                                                    message = "Vui lòng cho biết bình luận về đề thi"
+                                                });
+                                            }
+
+                                            i++;
                                         }
                                     }
 
@@ -733,12 +744,15 @@ namespace ExamProcessManage.Repository
                                     foreach (var existExam in existExams)
                                     {
                                         if (existExam.Status is "in_progress" or "rejected")
+                                        {
                                             errorList.Add(new ErrorDetail
                                             {
                                                 field = $"exams.{i}.status",
                                                 message =
                                                     $"Trạng thái đề thi {existExam.ExamId} không hợp lệ"
                                             });
+                                        }
+
                                         i++;
                                     }
                                 }
@@ -764,6 +778,7 @@ namespace ExamProcessManage.Repository
 
                                     if (examDtos != null)
                                     {
+                                        var i = 0;
                                         foreach (var examDto in examDtos)
                                         {
                                             var existExam = existExams.FirstOrDefault(e => e.ExamId == examDto.id);
@@ -772,6 +787,16 @@ namespace ExamProcessManage.Repository
                                             {
                                                 existExam.Comment = examDto.comment;
                                             }
+                                            else
+                                            {
+                                                errorList.Add(new ErrorDetail
+                                                {
+                                                    field = $"exams.{i}.comment",
+                                                    message = "Vui lòng cho biết lý do từ chối đề thi"
+                                                });
+                                            }
+
+                                            i -= -1;
                                         }
                                     }
 
