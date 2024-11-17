@@ -20,63 +20,78 @@ namespace ExamProcessManage.Repository
 
         public async Task<PageResponse<AcademicYearResponse>> GetListAcademicYearAsync(QueryObject queryObject)
         {
-            var yearResponses = new List<AcademicYearResponse>();
-            var baseQuery = _context.AcademicYears.AsQueryable();
-
-            // Apply search filter
-            if (!string.IsNullOrEmpty(queryObject.search))
+            try
             {
-                baseQuery = baseQuery.Where(a => a.YearName.Contains(queryObject.search));
-            }
+                var yearResponses = new List<AcademicYearResponse>();
+                var baseQuery = _context.AcademicYears.AsQueryable();
 
-            if (!string.IsNullOrEmpty(queryObject.sort))
-            {
-                baseQuery = queryObject.sort.ToLower() switch
+                // Apply search filter
+                if (!string.IsNullOrEmpty(queryObject.search))
                 {
-                    "name" => baseQuery.OrderBy(a => a.YearName),
-                    "name_desc" => baseQuery.OrderByDescending(a => a.YearName),
-                    _ => baseQuery.OrderByDescending(a => a.AcademicYearId), // Default sorting
-                };
-            }
+                    baseQuery = baseQuery.Where(a => a.YearName.Contains(queryObject.search));
+                }
 
-            // Đếm tổng số bản ghi
-            var totalCount = await baseQuery.CountAsync();
+                if (!string.IsNullOrEmpty(queryObject.sort))
+                {
+                    baseQuery = queryObject.sort.ToLower() switch
+                    {
+                        "name" => baseQuery.OrderBy(a => a.YearName),
+                        "name_desc" => baseQuery.OrderByDescending(a => a.YearName),
+                        _ => baseQuery.OrderByDescending(a => a.AcademicYearId), // Default sorting
+                    };
+                }
 
-            // Nếu không có bản ghi nào, trả về PageResponse với content là mảng rỗng
-            if (totalCount == 0)
-            {
+                // Đếm tổng số bản ghi
+                var totalCount = await baseQuery.CountAsync();
+
+                // Nếu không có bản ghi nào, trả về PageResponse với content là mảng rỗng
+                if (totalCount == 0)
+                {
+                    return new PageResponse<AcademicYearResponse>
+                    {
+                        content = yearResponses, // Mảng rỗng
+                        totalElements = totalCount,
+                        totalPages = 0, // Không có trang nào
+                        size = queryObject.size,
+                        page = queryObject.page,
+                        numberOfElements = yearResponses.Count
+                    };
+                }
+
+                // Lấy danh sách bản ghi theo phân trang
+                var listAcademicYears = await baseQuery
+                    .Skip((queryObject.page - 1) * queryObject.size)
+                    .Take(queryObject.size)
+                    .ToListAsync();
+
+                yearResponses.AddRange(listAcademicYears.Select(item => new AcademicYearResponse()
+                {
+                    id = item.AcademicYearId, name = item.YearName, start_year = (int)item.StartYear!,
+                    end_year = (int)item.EndYear!
+                }));
+
                 return new PageResponse<AcademicYearResponse>
                 {
-                    content = yearResponses, // Mảng rỗng
+                    content = yearResponses, // Mảng chứa kết quả
                     totalElements = totalCount,
-                    totalPages = 0, // Không có trang nào
+                    totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
                     size = queryObject.size,
                     page = queryObject.page,
                     numberOfElements = yearResponses.Count
                 };
             }
-
-            // Lấy danh sách bản ghi theo phân trang
-            var listAcademicYears = await baseQuery
-                .Skip((queryObject.page - 1) * queryObject.size)
-                .Take(queryObject.size)
-                .ToListAsync();
-
-            yearResponses.AddRange(listAcademicYears.Select(item => new AcademicYearResponse()
+            catch
             {
-                id = item.AcademicYearId, name = item.YearName, start_year = (int)item.StartYear!,
-                end_year = (int)item.EndYear!
-            }));
-
-            return new PageResponse<AcademicYearResponse>
-            {
-                content = yearResponses, // Mảng chứa kết quả
-                totalElements = totalCount,
-                totalPages = (int)Math.Ceiling((double)totalCount / queryObject.size),
-                size = queryObject.size,
-                page = queryObject.page,
-                numberOfElements = yearResponses.Count
-            };
+                return new PageResponse<AcademicYearResponse>
+                {
+                    content = new List<AcademicYearResponse>(),
+                    totalElements = 0,
+                    totalPages = 0,
+                    size = queryObject.size,
+                    page = queryObject.page,
+                    numberOfElements = 0
+                }; 
+            }
         }
 
         public async Task<BaseResponse<AcademicYearResponse>> GetDetailAcademicYearAsync(int id)
