@@ -2,7 +2,9 @@ using ExamProcessManage.Data;
 using ExamProcessManage.Dtos;
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
+using ExamProcessManage.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace ExamProcessManage.Repository;
 
@@ -102,10 +104,40 @@ public class NotificationRepository : INotificationRepository
         throw new NotImplementedException();
     }
 
-    public Task<PageResponse<NotificationDTO>> GetAllNotificationsByUserIdAsync(int userId)
+    public async Task<PageResponse<NotificationDTO>> GetAllNotificationsByUserIdAsync(int userId)
     {
-        throw new NotImplementedException();
+        var baseQuery = _context.Notifications.Where(n => n.UserId == userId);
+
+        var totalCount = await baseQuery.CountAsync();
+        var notifications = await baseQuery.ToListAsync();
+
+        //var userAvatars = new Dictionary<int, string>
+        //{
+        //    [userId] = (await _context.Users.Where(u => u.Id == userId).FirstOrDefaultAsync())?.AvatarPath
+        //};
+
+        var listNotification = notifications.Select(n => new NotificationDTO
+        {
+            id = n.Id,
+            title = n.Title,
+            message = n.Message,
+           // avatar = userAvatars[n.UserId],
+            user_id = n.UserId,
+            created_at = n.CreatedAt,
+            is_read = n.IsRead
+        }).ToList();
+
+        return new PageResponse<NotificationDTO>
+        {
+            content = listNotification,
+            totalElements = totalCount,
+            totalPages = 0,
+            size = 0,
+            page = 0,
+            numberOfElements = listNotification.Count
+        };
     }
+
 
     public Task<PageResponse<NotificationDTO>> GetAllNotificationsByDateAsync(DateTime date)
     {
@@ -122,9 +154,104 @@ public class NotificationRepository : INotificationRepository
         throw new NotImplementedException();
     }
 
-    public Task<PageResponse<NotificationDTO>> GetAllNotificationsByUserAndDateAsync(int userId, DateTime start,
-        DateTime endDate)
+    public async Task<PageResponse<NotificationDTO>> GetAllNotificationsByUserAndDateAsync(int userId, DateTime startDate, DateTime endDate)
     {
-        throw new NotImplementedException();
+        var baseQuery = _context.Notifications
+                                .Where(n => n.UserId == userId && n.CreatedAt >= startDate && n.CreatedAt <= endDate);
+
+        var totalCount = await baseQuery.CountAsync();
+        var notifications = await baseQuery.ToListAsync();
+
+        var listNotification = notifications.Select(n => new NotificationDTO
+        {
+            id = n.Id,
+            title = n.Title,
+            message = n.Message,
+            //avatar = (await _context.Users
+            //                        .Where(u => u.Id == n.UserId)
+            //                        .FirstOrDefaultAsync())?.AvatarPath,
+            user_id = n.UserId,
+            created_at = n.CreatedAt,
+            is_read = n.IsRead
+        }).ToList();
+
+        return new PageResponse<NotificationDTO>
+        {
+            content = listNotification,
+            totalElements = totalCount,
+            totalPages = 0,
+            size = 0,
+            page = 0,
+            numberOfElements = listNotification.Count
+        };
     }
+
+    public async Task<NotificationDTO> AddNotificationAsync(NotificationDTO notificationCreateDTO)
+    {
+        var notification = new Notification
+        {
+            Title = notificationCreateDTO.title,
+            Message = notificationCreateDTO.message,
+            UserId = notificationCreateDTO.user_id,
+            CreatedAt = DateTime.UtcNow,
+            IsRead = false
+        };
+
+        _context.Notifications.Add(notification);
+        await _context.SaveChangesAsync();
+
+        return new NotificationDTO
+        {
+            id = notification.Id,
+            title = notification.Title,
+            message = notification.Message,
+            user_id = notification.UserId,
+            created_at = notification.CreatedAt,
+            is_read = notification.IsRead
+        };
+    }
+
+
+    public async Task<int> UpdateNotificationAsync(List<int> notificationIds, bool isRead)
+    {
+        var notifications = await _context.Notifications
+            .Where(n => notificationIds.Contains((int)n.Id))
+            .ToListAsync();
+
+        if (notifications.Count == 0)
+        {
+            throw new KeyNotFoundException("No notifications found with the provided ids.");
+        }
+
+        foreach (var notification in notifications)
+        {
+            notification.IsRead = isRead;  // Cập nhật trạng thái isRead cho mỗi thông báo
+        }
+
+        _context.Notifications.UpdateRange(notifications);  // Cập nhật tất cả thông báo cùng lúc
+        await _context.SaveChangesAsync();
+
+        return notifications.Count;  // Trả về số lượng thông báo đã được cập nhật
+    }
+
+    // Xóa nhiều thông báo
+    public async Task<int> DeleteNotificationAsync(List<int> notificationIds)
+    {
+        var notifications = await _context.Notifications
+            .Where(n => notificationIds.Contains((int)n.Id))
+            .ToListAsync();
+
+        if (notifications.Count == 0)
+        {
+            throw new KeyNotFoundException("No notifications found with the provided ids.");
+        }
+
+        _context.Notifications.RemoveRange(notifications);  // Xóa tất cả thông báo cùng lúc
+        await _context.SaveChangesAsync();
+
+        return notifications.Count;  // Trả về số lượng thông báo đã được xóa
+    }
+
+
+
 }

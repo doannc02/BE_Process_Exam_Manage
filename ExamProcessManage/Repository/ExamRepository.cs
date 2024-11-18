@@ -568,7 +568,7 @@ public class ExamRepository : IExamRepository
                         {
                             new()
                             {
-                                field = "status",
+                                field = "exams.0.status",
                                 message = "Admin không được chuyển trạng thái này"
                             }
                         }
@@ -585,8 +585,8 @@ public class ExamRepository : IExamRepository
                         {
                             new()
                             {
-                                field = "comment",
-                                message = "Vui lòng nhập bình luận"
+                                field = "exams.0.comment",
+                                message = "Vui lòng nhập bình luận để phê duyệt!!"
                             }
                         }
                     };
@@ -636,7 +636,7 @@ public class ExamRepository : IExamRepository
                             {
                                 new()
                                 {
-                                    field = "name",
+                                    field = "exams.0.name",
                                     message = $"Tên đề thi bị trùng '{examDto.name}'"
                                 }
                             }
@@ -656,7 +656,7 @@ public class ExamRepository : IExamRepository
                         {
                             new()
                             {
-                                field = "academic_year",
+                                field = "exams.0.academic_year",
                                 message = $"Năm học không hợp lệ '{examDto.academic_year!.name}'"
                             }
                         }
@@ -728,6 +728,7 @@ public class ExamRepository : IExamRepository
                             {
                                 new()
                                 {
+                                     field = "exams.0.status",
                                     message = "Đề thi đã phê duyệt, không được sửa"
                                 }
                             }
@@ -744,6 +745,7 @@ public class ExamRepository : IExamRepository
                             {
                                 new()
                                 {
+                                     field = "exams.0.status",
                                     message = "Trạng thái cập nhật không dành cho giảng viên"
                                 }
                             }
@@ -764,6 +766,7 @@ public class ExamRepository : IExamRepository
                                     {
                                         new()
                                         {
+                                             field = "exams.0.status",
                                             message = "Trạng thái không phù hợp cho đề thi"
                                         }
                                     }
@@ -783,6 +786,7 @@ public class ExamRepository : IExamRepository
                                     {
                                         new()
                                         {
+                                             field = "exams.0.status",
                                             message = "Cần xem lại thông tin đề thi trước khi yêu cầu phê duyệt"
                                         }
                                     }
@@ -803,6 +807,7 @@ public class ExamRepository : IExamRepository
                                     {
                                         new()
                                         {
+                                             field = "exams.0.status",
                                             message = "Trạng thái không phù hợp cho đề thi"
                                         }
                                     }
@@ -822,6 +827,7 @@ public class ExamRepository : IExamRepository
                                     {
                                         new()
                                         {
+                                             field = "exams.0.status",
                                             message = "Trạng thái không phù hợp cho đề thi"
                                         }
                                     }
@@ -839,6 +845,7 @@ public class ExamRepository : IExamRepository
                                 {
                                     new()
                                     {
+                                         field = "exams.0.status",
                                         message = "Trạng thái không phù hợp cho đề thi"
                                     }
                                 }

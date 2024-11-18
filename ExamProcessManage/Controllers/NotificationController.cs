@@ -1,8 +1,10 @@
 using ExamProcessManage.Helpers;
 using ExamProcessManage.Interfaces;
+using ExamProcessManage.Repository;
 using ExamProcessManage.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using static ExamProcessManage.RequestModels.NotificationRequest;
 
 namespace ExamProcessManage.Controllers;
 
@@ -35,10 +37,14 @@ public class NotificationController : ControllerBase
         throw new NotImplementedException();
     }
 
-    [HttpGet("get-all-by-user/{userId:int}")]
-    public Task<IActionResult> GetAllNotificationsByUserIdAsync(int userId)
+    [HttpGet("get-by-user-id")]
+    public async Task<IActionResult> GetAllNotificationsByUserIdAsync()
     {
-        throw new NotImplementedException();
+        var userId = User.Claims.FirstOrDefault(c => c.Type == "userId");
+        var notifications = await _repository.GetAllNotificationsByUserIdAsync(int.Parse(userId.Value));
+
+        var response = _createResponse.CreateResponse("Thành công", HttpContext, notifications);
+        return Ok(response);
     }
 
     [HttpGet("get-all-by-date/{date:datetime}")]
@@ -64,5 +70,39 @@ public class NotificationController : ControllerBase
         DateTime endDate)
     {
         throw new NotImplementedException();
+    }
+    [HttpPut("update-state")]
+    public async Task<IActionResult> UpdateNotificationsAsync([FromBody] UpdateNotificationStatusRequest request)
+    {
+        if (request.NotificationIds == null || request.NotificationIds.Count == 0)
+        {
+            return BadRequest("Notification IDs cannot be empty.");
+        }
+
+        int updatedCount = await _repository.UpdateNotificationAsync(request.NotificationIds, request.IsRead);
+
+        return Ok(new
+        {
+            message = $"{updatedCount} notifications updated successfully."
+        });
+    }
+
+    /// <summary>
+    /// Xóa nhiều thông báo
+    /// </summary>
+    [HttpDelete("delete")]
+    public async Task<IActionResult> DeleteNotificationsAsync([FromBody] DeleteNotificationRequest request)
+    {
+        if (request.NotificationIds == null || request.NotificationIds.Count == 0)
+        {
+            return BadRequest("Notification IDs cannot be empty.");
+        }
+
+        int deletedCount = await _repository.DeleteNotificationAsync(request.NotificationIds);
+
+        return Ok(new
+        {
+            message = $"{deletedCount} notifications deleted successfully."
+        });
     }
 }

@@ -13,13 +13,15 @@ namespace ExamProcessManage.Repository;
 public class ProposalRepository : IProposalRepository
 {
     private readonly ApplicationDbContext _context;
+    private readonly INotificationRepository notificationRepository;
 
     private readonly List<string> _validStatus = new()
         { "in_progress", "rejected", "approved", "pending_approval" };
 
-    public ProposalRepository(ApplicationDbContext context)
+    public ProposalRepository(ApplicationDbContext context, INotificationRepository notificationRepository)
     {
         _context = context;
+        this.notificationRepository = notificationRepository;
     }
 
     public async Task<PageResponse<ProposalDTO>> GetListProposalsAsync(int? userId, QueryObjectProposal queryObject)
@@ -565,14 +567,18 @@ public class ProposalRepository : IProposalRepository
                         "chieuvanbui22@gmail.com"));
             });
 
-            CreateNotification(new Notification
+           
+
+            _ = await notificationRepository.AddNotificationAsync(new NotificationDTO
             {
-                Title = "Thông báo đề xuất mới",
-                Message = "Một đề xuất mới đã được tạo bởi admin dành cho bạn.",
-                UserId = (int)toUser.Id,
-                CreatedAt = DateTime.Now,
-                IsRead = false
+                title = "Thông báo đề xuất mới",
+                message = "Một đề xuất mới đã được tạo bởi admin dành cho bạn.",
+                user_id = (int)toUser.Id,
+                created_at = DateTime.Now,
+                is_read = false
             });
+
+          
 
 
             return new BaseResponseId
@@ -602,17 +608,7 @@ public class ProposalRepository : IProposalRepository
         }
     }
 
-    private async void CreateNotification(Notification notification)
-    {
-        try
-        {
-            await _context.Notifications.AddAsync(notification);
-        }
-        catch (Exception exception)
-        {
-            Console.WriteLine(exception);
-        }
-    }
+   
 
     public async Task<BaseResponseId> UpdateProposalAsync(int userId, ProposalDTO proposalDto)
     {
@@ -820,7 +816,7 @@ public class ProposalRepository : IProposalRepository
 
             var toUser =
                 await _context.Users.FirstOrDefaultAsync(u =>
-                    toTeacherProposal != null && u.TeacherId == toTeacherProposal.UserId);
+                    toTeacherProposal != null && u.Id == toTeacherProposal.UserId);
 
             var toTeacher =
                 await _context.Teachers.FirstOrDefaultAsync(t => toUser != null && t.Id == toUser.TeacherId);
@@ -828,8 +824,7 @@ public class ProposalRepository : IProposalRepository
             var isApproved = existProposal.Status == "approved";
             if (fromAdmin != null)
             {
-                var body = GenerateEmail.GenerateEmailBody(isApproved, existProposal.PlanCode,
-                    existProposal.Content!,
+                var body = GenerateEmail.GenerateEmailBody(isApproved, existProposal.PlanCode,existProposal.Content!, existProposal.ProposalId,
                     existProposal.CreateAt.ToString() ?? DateTime.Now.ToString(CultureInfo.CurrentCulture),
                     fromAdmin.Name, toTeacher!.Name);
 
@@ -838,38 +833,29 @@ public class ProposalRepository : IProposalRepository
                     if (toUser != null)
                     {
                         EmailService.SendEmail(
-                            "VIU - EPM: " + (isApproved ? "Thông Báo Phê Duyệt" : "Thông Báo Từ Chối"), body,
+                            "VIU - EPM: " + (isApproved ? "Thông báo từ hệ thống Quản lý đề thi: " + "Thông Báo Phê Duyệt" : "Thông Báo Từ Chối"), body,
                             toUser.Email);
                     }
                 });
             }
 
-            _ = Task.Run(() =>
-            {
-                if (toUser != null)
-                {
-                    EmailService.SendEmail(
-                        "VIU - EPM:", "An email has been sent to: " + toUser.Email,
-                        "chieuvanbui22@gmail.com");
-                }
-            });
 
 
             // luu thong bao vao db
-            const string messageApproved =
-                "Chúng tôi rất vui mừng thông báo rằng đề xuất của bạn đã được quản trị viên phê duyệt.";
-            const string messageRejected =
-                "Chúng tôi rất tiếc phải thông báo rằng đề xuất của bạn đã bị quản trị viên từ chối.";
+             string messageApproved =
+                $"Đề xuất {existProposal.PlanCode} của bạn đã được quản trị viên phê duyệt.";
+             string messageRejected =
+                $"Đề xuất {existProposal.PlanCode} của bạn đã bị quản trị viên từ chối.";
 
             if (toUser != null)
             {
-                CreateNotification(new Notification
+                _ = await notificationRepository.AddNotificationAsync(new NotificationDTO
                 {
-                    Title = isApproved ? "Thông Báo Phê Duyệt" : "Thông Báo Từ Chối",
-                    Message = isApproved ? messageApproved : messageRejected,
-                    UserId = (int)toUser.Id,
-                    CreatedAt = DateTime.Now,
-                    IsRead = false
+                    title = isApproved ? "Thông Báo Phê Duyệt" : "Thông Báo Từ Chối",
+                    message = isApproved ? messageApproved : messageRejected,
+                    user_id = (int)toUser.Id,
+                    created_at = DateTime.Now,
+                    is_read = false
                 });
             }
 

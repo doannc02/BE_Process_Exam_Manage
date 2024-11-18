@@ -12,4 +12,7 @@ public interface INotificationRepository
     Task<PageResponse<NotificationDTO>> GetAllNotificationsByDateAsync(DateTime startDate, DateTime endDate);
     Task<PageResponse<NotificationDTO>> GetAllNotificationsByUserAndDateAsync(int userId, DateTime date);
     Task<PageResponse<NotificationDTO>> GetAllNotificationsByUserAndDateAsync(int userId, DateTime start, DateTime endDate);
+    Task<NotificationDTO> AddNotificationAsync(NotificationDTO notificationCreateDTO);
+    Task<int> UpdateNotificationAsync(List<int> notificationIds, bool isRead = true);
+    Task<int> DeleteNotificationAsync(List<int> notificationIds);
 }
