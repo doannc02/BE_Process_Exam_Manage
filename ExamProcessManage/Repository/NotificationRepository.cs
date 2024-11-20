@@ -106,35 +106,42 @@ public class NotificationRepository : INotificationRepository
 
     public async Task<PageResponse<NotificationDTO>> GetAllNotificationsByUserIdAsync(int userId)
     {
-        var baseQuery = _context.Notifications.Where(n => n.UserId == userId);
+        var baseQuery = _context.Notifications
+                                .Where(n => n.UserId == userId)
+                                .Join(_context.Proposals, 
+                                    n => n.ProposalId,  
+                                    p => p.ProposalId,  
+                                    (n, p) => new { n, p }) 
+                                .Select(x => new NotificationDTO
+                                {
+                                    id = x.n.Id,
+                                    title = x.n.Title,
+                                    message = x.n.Message,
+                                    user_id = x.n.UserId,
+                                    created_at = x.n.CreatedAt,
+                                    is_read = x.n.IsRead,
+                                    proposal = new CommonObject
+                                    {
+                                        code = x.p.PlanCode,  
+                                        id = x.p.ProposalId   
+                                    }
+                                });
 
+        // Lấy tổng số bản ghi
         var totalCount = await baseQuery.CountAsync();
+
+        // Lấy danh sách thông báo
         var notifications = await baseQuery.ToListAsync();
 
-        //var userAvatars = new Dictionary<int, string>
-        //{
-        //    [userId] = (await _context.Users.Where(u => u.Id == userId).FirstOrDefaultAsync())?.AvatarPath
-        //};
-
-        var listNotification = notifications.Select(n => new NotificationDTO
-        {
-            id = n.Id,
-            title = n.Title,
-            message = n.Message,
-           // avatar = userAvatars[n.UserId],
-            user_id = n.UserId,
-            created_at = n.CreatedAt,
-            is_read = n.IsRead
-        }).ToList();
-
+        // Trả về kết quả dưới dạng PageResponse
         return new PageResponse<NotificationDTO>
         {
-            content = listNotification,
+            content = notifications,
             totalElements = totalCount,
-            totalPages = 0,
-            size = 0,
-            page = 0,
-            numberOfElements = listNotification.Count
+            totalPages = 0, // Cập nhật nếu có phân trang
+            size = 0, // Cập nhật nếu có phân trang
+            page = 0, // Cập nhật nếu có phân trang
+            numberOfElements = notifications.Count
         };
     }
 
@@ -194,7 +201,8 @@ public class NotificationRepository : INotificationRepository
             Message = notificationCreateDTO.message,
             UserId = notificationCreateDTO.user_id,
             CreatedAt = DateTime.UtcNow,
-            IsRead = false
+            IsRead = false,
+            ProposalId = notificationCreateDTO.proposal.id
         };
 
         _context.Notifications.Add(notification);

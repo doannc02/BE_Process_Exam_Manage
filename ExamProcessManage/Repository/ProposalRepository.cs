@@ -564,7 +564,7 @@ public class ProposalRepository : IProposalRepository
                 _ = Task.Run(() =>
                     EmailService.SendEmail(
                         "VIU - EPM:", "Thông báo đề xuất mới cho: " + toUser.Email + body,
-                        "chieuvanbui22@gmail.com"));
+                        "sillver47108@gmail.com"));
             });
 
            
@@ -575,7 +575,12 @@ public class ProposalRepository : IProposalRepository
                 message = "Một đề xuất mới đã được tạo bởi admin dành cho bạn.",
                 user_id = (int)toUser.Id,
                 created_at = DateTime.Now,
-                is_read = false
+                is_read = false,
+                proposal = new CommonObject
+                {
+                    code = newProposal.PlanCode,
+                    id = newProposal.ProposalId
+                }
             });
 
           
@@ -855,7 +860,12 @@ public class ProposalRepository : IProposalRepository
                     message = isApproved ? messageApproved : messageRejected,
                     user_id = (int)toUser.Id,
                     created_at = DateTime.Now,
-                    is_read = false
+                    is_read = false,
+                    proposal = new CommonObject
+                    {
+                        code = existProposal.PlanCode,
+                        id = existProposal.ProposalId
+                    }
                 });
             }
 

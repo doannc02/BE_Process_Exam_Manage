@@ -532,6 +532,8 @@ namespace ExamProcessManage.Data
                 entity.Property(e => e.Message).HasColumnName("message");
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(e => e.IsRead).HasColumnName("is_read").HasDefaultValue(false);
+                entity.Property(e => e.ProposalId).HasColumnName("proposal_id").IsRequired(false); 
+                entity.HasIndex(e => e.ProposalId).HasDatabaseName("idx_proposal_id");
             });
 
             OnModelCreatingPartial(modelBuilder);
