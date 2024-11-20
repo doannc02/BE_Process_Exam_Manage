@@ -18,5 +18,6 @@
         public int? create_month { get; set; }
         public int? month_end { get; set; }
         public int? day_expire { get; set; }
+        public bool is_request_tracking { get; set; } = false;
     }
 }

@@ -53,6 +53,12 @@ public class ProposalRepository : IProposalRepository
                 proposalQueryable = proposalQueryable.Where(p =>
                     p.EndDate.HasValue && p.EndDate.Value.Month == queryObject.month_end);
 
+            // Filter for admin tracking
+            if (queryObject.is_request_tracking)
+            {
+                proposalQueryable = proposalQueryable.Where(p => p.Status == "approved" || p.Status == "rejected");
+            }
+
             // sap xep moi nhat dau tien
             if (queryObject.sort is not (null or "" or "string"))
             {
@@ -567,7 +573,6 @@ public class ProposalRepository : IProposalRepository
                         "sillver47108@gmail.com"));
             });
 
-           
 
             _ = await notificationRepository.AddNotificationAsync(new NotificationDTO
             {
@@ -582,8 +587,6 @@ public class ProposalRepository : IProposalRepository
                     id = newProposal.ProposalId
                 }
             });
-
-          
 
 
             return new BaseResponseId
@@ -613,7 +616,6 @@ public class ProposalRepository : IProposalRepository
         }
     }
 
-   
 
     public async Task<BaseResponseId> UpdateProposalAsync(int userId, ProposalDTO proposalDto)
     {
@@ -829,7 +831,8 @@ public class ProposalRepository : IProposalRepository
             var isApproved = existProposal.Status == "approved";
             if (fromAdmin != null)
             {
-                var body = GenerateEmail.GenerateEmailBody(isApproved, existProposal.PlanCode,existProposal.Content!, existProposal.ProposalId,
+                var body = GenerateEmail.GenerateEmailBody(isApproved, existProposal.PlanCode, existProposal.Content!,
+                    existProposal.ProposalId,
                     existProposal.CreateAt.ToString() ?? DateTime.Now.ToString(CultureInfo.CurrentCulture),
                     fromAdmin.Name, toTeacher!.Name);
 
@@ -838,18 +841,19 @@ public class ProposalRepository : IProposalRepository
                     if (toUser != null)
                     {
                         EmailService.SendEmail(
-                            "VIU - EPM: " + (isApproved ? "Thông báo từ hệ thống Quản lý đề thi: " + "Thông Báo Phê Duyệt" : "Thông Báo Từ Chối"), body,
+                            "VIU - EPM: " + (isApproved
+                                ? "Thông báo từ hệ thống Quản lý đề thi: " + "Thông Báo Phê Duyệt"
+                                : "Thông Báo Từ Chối"), body,
                             toUser.Email);
                     }
                 });
             }
 
 
-
             // luu thong bao vao db
-             string messageApproved =
+            string messageApproved =
                 $"Đề xuất {existProposal.PlanCode} của bạn đã được quản trị viên phê duyệt.";
-             string messageRejected =
+            string messageRejected =
                 $"Đề xuất {existProposal.PlanCode} của bạn đã bị quản trị viên từ chối.";
 
             if (toUser != null)
