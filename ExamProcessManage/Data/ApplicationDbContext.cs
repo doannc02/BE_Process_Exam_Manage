@@ -32,6 +32,7 @@ namespace ExamProcessManage.Data
 
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        
         {
             if (!optionsBuilder.IsConfigured)
             {
@@ -306,6 +307,8 @@ namespace ExamProcessManage.Data
                     .HasColumnName("semester");
 
                 entity.Property(e => e.StartDate).HasColumnName("start_date");
+
+                entity.Property(p => p.Comment).HasColumnName("comment").HasColumnType("TEXT");
 
                 entity.Property(e => e.Status)
                     .HasColumnType("enum('in_progress','pending_approval','approved','rejected')")

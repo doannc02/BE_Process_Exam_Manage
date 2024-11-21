@@ -294,6 +294,7 @@ public class ProposalRepository : IProposalRepository
                         name = proposal.AcademicYear
                     },
                     content = proposal.Content,
+                    comment = proposal.Comment,
                     end_date = proposal.EndDate.ToString(),
                     start_date = proposal.StartDate.ToString(),
                     code = proposal.PlanCode,
@@ -451,6 +452,9 @@ public class ProposalRepository : IProposalRepository
                 Content = string.IsNullOrEmpty(proposalDto.content) || proposalDto.content == "string"
                     ? string.Empty
                     : proposalDto.content,
+                Comment = string.IsNullOrEmpty(proposalDto.comment) || proposalDto.comment == "string"
+                    ? string.Empty
+                    : proposalDto.comment,
                 Status = proposalDto.status,
                 AcademicYear = proposalDto.academic_year.name ?? string.Empty,
                 CreateAt = DateOnly.FromDateTime(DateTime.Now),
@@ -617,7 +621,7 @@ public class ProposalRepository : IProposalRepository
     }
 
 
-    public async Task<BaseResponseId> UpdateProposalAsync(int userId, ProposalDTO proposalDto)
+    public async Task<BaseResponseId> UpdateProposalAsync(int userId, ProposalDTO proposalDto, string role)
     {
         try
         {
@@ -676,7 +680,7 @@ public class ProposalRepository : IProposalRepository
             }
 
             #endregion
-
+           
             #region Update information
 
             if (existProposal.AcademicYear != proposalDto.academic_year.name)
@@ -697,8 +701,22 @@ public class ProposalRepository : IProposalRepository
             if (existProposal.Semester != proposalDto.semester)
                 existProposal.Semester = proposalDto.semester;
 
+            if (existProposal.Comment != proposalDto.comment)
+                existProposal.Comment = proposalDto.comment;
+
             if (existProposal.Status != proposalDto.status)
-                existProposal.Status = proposalDto.status;
+            {
+                if (role == "Admin" && existProposal.Status == "pending_approval")
+                {
+                   
+                    existProposal.Status = proposalDto.status;
+                    
+                }
+                if(role != "Admin")
+                {
+                    existProposal.Status = proposalDto.status;
+                }
+            }
 
             existProposal.UpdateAt = DateOnly.FromDateTime(DateTime.Now);
 

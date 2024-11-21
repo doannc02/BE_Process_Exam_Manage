@@ -18,7 +18,7 @@
         public string Status { get; set; } = null!;
         public DateOnly? CreateAt { get; set; }
         public DateOnly? UpdateAt { get; set; }
-
+        public string? Comment { get; set; }
         public bool? IsCreatedByAdmin { get; set; }
 
         public virtual ICollection<ExamSet> ExamSets { get; set; }

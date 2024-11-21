@@ -17,6 +17,7 @@ namespace ExamProcessManage.Dtos
         public string? start_date { get; set; }
         public string? end_date { get; set; }
         public string? content { get; set; }
+        public string? comment { get; set; }
         public string status { get; set; } = null!;
         public  CommonObject academic_year { get; set; } = null!;
         public CommonObject user { get; set; }

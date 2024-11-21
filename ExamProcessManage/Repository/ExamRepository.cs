@@ -880,12 +880,15 @@ public class ExamRepository : IExamRepository
             var existExamSet = await _context.ExamSets.Include(ex => ex.Exams)
                 .FirstOrDefaultAsync(es => es.ExamSetId == existExam.ExamSetId);
 
+
+
             if (existExamSet != null)
             {
                 // Lấy danh sách tất cả các Exam trong ExamSet
                 var existExams = existExamSet.Exams;
                 var isEnough = existExamSet.ExamQuantity == existExams.Count;
-
+                var existProposal = await _context.Proposals.Include(ex => ex.ExamSets)
+              .FirstOrDefaultAsync(es => es.ProposalId == existExamSet.ProposalId);
                 if (isEnough)
                 {
                     // Kiểm tra nếu tất cả các exam trong examsToCheck có cùng trạng thái
@@ -917,16 +920,24 @@ public class ExamRepository : IExamRepository
                             .Where(exam => exam.Status is not "approved")
                             .All(exam => exam.Status is "pending_approval");
 
-                        var anyRejectedOrInProgress =
-                            existExams.Any(exam => exam.Status is "rejected" or "in_progress");
+                        var anyRejected =
+                            existExams.Any(exam => exam.Status is "rejected");
+                        var anyInProgress =
+                            existExams.Any(exam => exam.Status is "in_progress");
 
                         if (allPending)
                         {
                             existExamSet.Status = "pending_approval";
                         }
-                        else if (anyRejectedOrInProgress)
+                        else if (anyRejected)
+                        {
+                            existExamSet.Status = "rejected";
+                            existProposal.Status = "rejected";
+                        }
+                        else if (anyInProgress)
                         {
                             existExamSet.Status = "in_progress";
+                            existProposal.Status = "in_progress";
                         }
                     }
                 }
@@ -938,8 +949,9 @@ public class ExamRepository : IExamRepository
 
                 // Cập nhật exam_set
                 _context.ExamSets.Update(existExamSet);
-            }
+                _context.Proposals.Update(existProposal);
 
+            }
             #endregion
 
             // Lưu thay đổi vào DB
